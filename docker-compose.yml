@@ -1,0 +1,43 @@
+# SWAGINO private shared server: the app + a Cloudflare Tunnel, both 24/7.
+#
+#   docker compose up -d        # start (after filling in .env)
+#   docker compose logs -f      # watch
+#   docker compose down         # stop
+#
+# The 'swagino' service is NEVER published to the host (no `ports:` mapping) — the only way in
+# is through the tunnel, and the tunnel is gated by a Cloudflare Access email allowlist you
+# configure in the dashboard. See DEPLOY.md.
+
+services:
+  swagino:
+    build: .
+    env_file: .env                 # provides TRADIER_TOKEN
+    environment:
+      - BIND=0.0.0.0
+      - PORT=8787
+      - PYTHONDONTWRITEBYTECODE=1   # nothing to write: lets the read-only rootfs below stay clean
+    expose:
+      - "8787"                     # internal to the compose network only — not on the host
+    read_only: true                # proxy.py never writes to disk; lock the whole filesystem
+    tmpfs:
+      - /tmp                       # the one writable scratch area, in RAM, wiped on restart
+    security_opt:
+      - no-new-privileges:true     # a process here can never gain more rights than it starts with
+    restart: unless-stopped
+    logging:                       # cap logs so a long-running box can't fill its disk
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate run
+    env_file: .env                 # provides TUNNEL_TOKEN (from the Cloudflare dashboard)
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    depends_on:
+      swagino:
+        condition: service_healthy # don't dial the tunnel until the app passes its healthcheck
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }

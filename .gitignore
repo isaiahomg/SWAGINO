@@ -1,0 +1,17 @@
+# SECRETS — never commit these
+.env
+deploy.local.ps1
+deploy_key
+deploy_key.pub
+*.pem
+id_ed25519*
+id_rsa*
+
+# logs / scratch
+*.log
+start_error.log
+__pycache__/
+*.pyc
+
+# local dev launcher artifacts (Windows-only, not part of the server)
+# (kept in the repo intentionally? remove the next lines if you DO want them versioned)

@@ -1,0 +1,493 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500;600&display=swap">
+  <style>
+    :root{
+      --disp:'Space Grotesk','Inter',-apple-system,'Segoe UI',system-ui,sans-serif;
+      --ui:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+      --mono:'Roboto Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+      --text:#ffffff; --dim:#c9ccd2; --faint:#7d818b;
+      --long:#2dd4a7; --short:#f0564f; --warn:#e8a33d; --pivot:#8b7bf4;
+      --session:#5aa7d6; --band:#d6b35a; --gexp:#4caf6e; --gexn:#c75d5d;
+      --rsi:#7E57C2;
+      --accent:#0a84ff; --accent2:#5e5ce6;
+      --line:rgba(255,255,255,.09); --line2:rgba(255,255,255,.055);
+      --blurL:saturate(180%) blur(22px); --blurM:saturate(160%) blur(14px);
+      --glass-hi:rgba(255,255,255,.16);
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;height:100%;font-family:var(--ui);color:var(--text);font-size:13px;
+      font-variant-numeric:tabular-nums;font-feature-settings:'tnum' 1;-webkit-font-smoothing:antialiased;overflow:hidden}
+    /* video backdrop stand-in: the real app plays a live clip here; a calm mesh gives the frost something to blur */
+    body{background:
+      radial-gradient(120% 80% at 18% 12%, #16233a 0%, transparent 55%),
+      radial-gradient(120% 90% at 88% 82%, #241a33 0%, transparent 55%),
+      radial-gradient(90% 70% at 60% 40%, #0e1420 0%, transparent 60%),
+      #050608;}
+    .num{font-family:var(--mono)}
+    a{color:var(--accent)} a:hover{color:#4fa8ff}
+
+    .app{width:100vw;height:100vh;display:flex;flex-direction:column;min-width:1200px;min-height:760px}
+
+    /* ---------- topbar (glass) ---------- */
+    .topbar{height:44px;flex:none;display:flex;align-items:center;gap:13px;padding:0 13px;
+      background:rgba(20,21,26,.6);-webkit-backdrop-filter:var(--blurL);backdrop-filter:var(--blurL);
+      border-bottom:1px solid var(--line);box-shadow:inset 0 1px 0 var(--glass-hi)}
+    .logo{font-family:var(--disp);font-weight:700;letter-spacing:.10em;font-size:14px;display:flex;align-items:center;gap:2px;color:#fff}
+    .logo em{color:var(--warn);font-style:normal}
+    .sym{display:flex;align-items:baseline;gap:9px}
+    .sym .tk{font-weight:700;font-size:14px}
+    .sym .px{font-family:var(--mono);font-size:15px;font-weight:600;color:var(--long)}
+    .sym .chg{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--long)}
+    .mphase{display:flex;align-items:center;gap:6px;height:24px;padding:0 10px 0 8px;border-radius:999px;font-size:10.5px;font-weight:600;
+      background:rgba(45,212,167,.14);border:1px solid rgba(45,212,167,.38);color:var(--long);
+      -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+    .mphase .d{width:6px;height:6px;border-radius:50%;background:var(--long);box-shadow:0 0 7px rgba(45,212,167,.9)}
+
+    .ctwrap{position:relative}
+    .ctbtn{display:flex;align-items:center;gap:5px;height:26px;padding:0 9px;color:var(--dim);cursor:pointer;border-radius:8px;
+      background:rgba(255,255,255,.05);border:1px solid var(--line);-webkit-backdrop-filter:var(--blurM);backdrop-filter:var(--blurM)}
+    .ctbtn:hover,.ctbtn.open{border-color:rgba(255,255,255,.22);color:#fff}
+    .ctbtn svg.g{width:15px;height:15px} .ctbtn svg.c{width:9px;height:9px;color:var(--faint)}
+    .ctlist{position:absolute;top:32px;left:0;width:158px;z-index:30;border-radius:12px;padding:4px;
+      background:rgba(28,29,35,.82);border:1px solid rgba(255,255,255,.12);-webkit-backdrop-filter:var(--blurL);backdrop-filter:var(--blurL);
+      box-shadow:0 24px 60px rgba(0,0,0,.6),inset 0 1px 0 var(--glass-hi)}
+    .cti{display:flex;align-items:center;gap:9px;height:30px;padding:0 9px;cursor:pointer;color:var(--dim);font-size:12px;border-radius:8px}
+    .cti:hover{background:rgba(255,255,255,.06)} .cti svg.g{width:15px;height:15px;color:var(--faint)}
+    .cti span{flex:1} .cti svg.k{width:12px;height:12px;color:var(--accent)}
+    .cti.on{color:#fff} .cti.on svg.g{color:var(--accent)}
+    .scrim{position:fixed;inset:0;z-index:29}
+
+    .spacer{flex:1}
+    .status{display:flex;align-items:center;gap:6px;font-size:10px;letter-spacing:.04em;color:var(--long)}
+    .status .d{width:5px;height:5px;background:var(--long);border-radius:50%}
+    .tbi{width:28px;height:28px;display:flex;align-items:center;justify-content:center;color:var(--faint);cursor:pointer;border-radius:8px}
+    .tbi:hover{color:var(--dim);background:rgba(255,255,255,.06)} .tbi svg{width:15px;height:15px}
+
+    /* ---------- body ---------- */
+    .body{flex:1;display:flex;min-height:0}
+
+    /* ---------- chart column (glass) ---------- */
+    .chart{flex:1;min-width:0;display:flex;flex-direction:column;--axw:58px;
+      background:rgba(15,16,21,.5);-webkit-backdrop-filter:var(--blurL);backdrop-filter:var(--blurL)}
+    .pane{display:flex;min-height:0;position:relative}
+    .plot{flex:1;position:relative;min-width:0}
+    .plot svg{display:block;width:100%;height:100%}
+    .ov{position:absolute;inset:0;pointer-events:none}
+    .yax{width:var(--axw);flex:none;position:relative;border-left:1px solid var(--line2)}
+    .ytick{position:absolute;right:8px;left:2px;font-family:var(--mono);font-size:9.5px;color:var(--faint);
+      transform:translateY(-50%);text-align:right;pointer-events:none;white-space:nowrap}
+    .ybadge{position:absolute;left:1px;right:1px;font-family:var(--mono);font-size:9.5px;font-weight:600;color:#08090c;
+      padding:2px 5px;text-align:right;transform:translateY(-50%);white-space:nowrap;line-height:1;border-radius:3px}
+    .panediv{height:1px;background:var(--line2);margin-right:var(--axw)}
+
+    .legend{position:absolute;top:6px;left:10px;display:flex;flex-direction:column;gap:1px;align-items:flex-start;pointer-events:auto}
+    .lrow{display:flex;align-items:center;gap:7px;padding:1px 4px;width:max-content}
+    .lrow.hdr .snm{font-size:11.5px;font-weight:600;color:#fff}
+    .lrow.hdr .ohlc{font-family:var(--mono);font-size:9.5px;color:var(--faint);display:flex;gap:7px;margin-left:3px}
+    .lrow.hdr .ohlc b{color:var(--dim);font-weight:500} .lrow.hdr .ohlc .u{color:var(--long)}
+    .ldash{width:11px;height:0;border-top:2px solid;flex:none;border-radius:2px}
+    .lnm{font-size:10px;font-weight:500;color:var(--dim);white-space:nowrap}
+    .lrow.off .lnm{color:#54575e} .lrow.off .ldash{opacity:.3}
+    /* .eye / .eyeic / .eo / .ec copied verbatim from swagino.html (its real indicator toggle) —
+       same markup, same on/off class-swap, same filter+colour transition. Not a redesign. */
+    .eye{background:none;border:none;padding:0 2px;line-height:0;color:var(--faint);opacity:.45;cursor:pointer;vertical-align:middle}
+    .eye.on{color:#ffffff;opacity:1;filter:drop-shadow(0 0 5px rgba(255,255,255,.9))}
+    .eye .eyeic{transition:filter .2s ease,color .2s ease}
+    .eye .ec{display:none} .eye:not(.on) .eo{display:none} .eye:not(.on) .ec{display:inline}
+    .eye:not(.on){opacity:.5;filter:none;color:var(--faint)}
+    .lrow .eye{opacity:0;transition:opacity .12s ease} .lrow:hover .eye{opacity:.45}
+    .lrow:hover .eye.on,.lrow .eye.on{opacity:1}
+    .gear{background:var(--glass,rgba(255,255,255,.06));border:1px solid var(--glass-brd,rgba(255,255,255,.14));
+      color:var(--faint);border-radius:6px;width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;
+      font-size:9px;cursor:pointer;opacity:0;transition:opacity .12s ease,color .12s ease}
+    .lrow:hover .gear{opacity:1} .gear:hover{color:var(--dim)}
+
+    .hideRibbon .layer-ribbon{display:none}
+    .hideAtr .layer-atr{display:none}
+    .hideStruct .layer-struct{display:none}
+
+    .xax{height:20px;flex:none;position:relative;margin-right:var(--axw);border-top:1px solid var(--line2)}
+    .xtick{position:absolute;top:4px;font-family:var(--mono);font-size:9.5px;color:var(--faint);transform:translateX(-50%);white-space:nowrap}
+
+    /* ---------- right panel (glass) ---------- */
+    .panel{width:262px;flex:none;display:flex;flex-direction:column;
+      background:rgba(17,18,22,.52);-webkit-backdrop-filter:var(--blurL);backdrop-filter:var(--blurL);border-left:1px solid var(--line)}
+    .tabs{display:flex;border-bottom:1px solid var(--line)}
+    .tab{flex:1;text-align:center;font-family:var(--disp);font-size:10.5px;font-weight:600;letter-spacing:.06em;color:var(--faint);padding:10px 0;cursor:pointer;border-bottom:2px solid transparent}
+    .tab.on{color:#fff;border-bottom-color:var(--accent)}
+    .pbody{flex:1;overflow:auto}
+    .sechead{font-family:var(--disp);font-size:10px;color:var(--dim);font-weight:600;letter-spacing:.14em;text-transform:uppercase;padding:12px 13px 7px;display:flex;align-items:center;gap:5px}
+    .sechead .i{width:11px;height:11px;border:1px solid var(--faint);border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:7px;color:var(--faint);font-family:var(--ui)}
+    .hint{font-size:10px;line-height:1.55;color:var(--faint);padding:0 13px 10px}
+    .hint b{color:var(--dim)}
+
+    table.lv{width:100%;border-collapse:collapse;font-size:11px}
+    tr.lvgrp td{padding:8px 13px 5px;background:rgba(255,255,255,.03);border-top:1px solid var(--line2);border-bottom:1px solid var(--line2)}
+    tr.lvgrp label{display:inline-flex;align-items:center;gap:8px;color:var(--dim);font-weight:600;letter-spacing:.02em;cursor:pointer}
+    tr.lvgrp .cnt{float:right;color:var(--faint);font-family:var(--mono);font-size:10px}
+    tr.lvrow td{padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.03)}
+    tr.lvrow td:first-child{padding-left:13px} tr.lvrow td.p{text-align:right;padding-right:13px;font-family:var(--mono);color:#fff;font-weight:500}
+    .lvsw{display:inline-block;width:11px;height:11px;border-radius:3px;vertical-align:middle}
+    .lvname{color:var(--dim)}
+    .cbx{width:13px;height:13px;border:1px solid rgba(255,255,255,.2);border-radius:3px;display:inline-block;position:relative;cursor:pointer;background:rgba(255,255,255,.04)}
+    .cbx.ck{background:var(--accent);border-color:var(--accent)}
+    .cbx.ck::after{content:'';position:absolute;left:4px;top:1px;width:3px;height:6px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+    .badge{font-size:7.5px;font-weight:700;letter-spacing:.06em;color:var(--warn);border:1px solid rgba(232,163,61,.4);border-radius:3px;padding:0 3px;margin-left:5px;vertical-align:middle}
+
+    .gxstatus{font-family:var(--mono);font-size:10.5px;color:var(--dim);line-height:1.6;padding:0 13px;margin:6px 0}
+    .gxstatus b{color:#fff}
+    .gxheatwrap{--gx-col:56px;--gx-strike:52px;margin:8px 0 10px;padding:0 13px;max-width:100%;overflow-x:auto;display:flex;justify-content:safe center}
+    .gxheat{border:1px solid rgba(255,255,255,.1);border-radius:8px;overflow:hidden;background:rgba(0,0,0,.35);
+      font-family:var(--mono);font-size:10px;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+    .gxr{display:grid;grid-template-columns:var(--gx-strike) repeat(3,var(--gx-col));height:17px}
+    .gxr.gxhead{height:25px}
+    .gxc{display:flex;align-items:center;justify-content:center;border-right:1px solid rgba(255,255,255,.05);border-bottom:1px solid rgba(255,255,255,.05);color:#fff;white-space:nowrap;overflow:hidden}
+    .gxr:last-child .gxc{border-bottom:none} .gxc:last-child{border-right:none}
+    .gxhead .gxc{background:rgba(255,255,255,.06);color:#fff;font-weight:600;font-size:10.5px;border-bottom:1px solid rgba(255,255,255,.14)}
+    .gxk{background:rgba(0,0,0,.4);color:#fff;font-weight:600;border-right:1px solid rgba(255,255,255,.14)}
+    .gxr.spot .gxk{background:rgba(232,163,61,.28);color:#fff3d6;font-weight:700}
+    .gxsum{font-family:var(--mono);font-size:11px;line-height:1.7;color:var(--dim);padding:2px 13px 14px}
+    .gxsum b{font-weight:700}
+
+    .logbody{padding:9px 13px;font-family:var(--mono);font-size:10px;line-height:1.75}
+    .logline{color:var(--dim)} .logline .t{color:var(--faint)} .logline.warn{color:var(--warn)} .logline.up{color:var(--long)}
+
+    /* ---------- bottom bar (glass foot) ---------- */
+    .bbar{height:30px;flex:none;display:flex;align-items:center;padding:0 13px;
+      background:rgba(17,18,22,.5);-webkit-backdrop-filter:var(--blurM);backdrop-filter:var(--blurM);border-top:1px solid var(--line)}
+    .iv{height:30px;padding:0 9px;font-size:10.5px;font-weight:500;color:var(--faint);cursor:pointer;display:flex;align-items:center;border-bottom:2px solid transparent}
+    .iv:hover{color:var(--dim)} .iv.on{color:#fff;border-bottom-color:var(--accent)}
+    .bsep{width:1px;height:13px;background:var(--line);margin:0 9px}
+    .rth{height:17px;padding:0 7px;font-size:8.5px;font-weight:700;letter-spacing:.05em;color:var(--warn);border:1px solid rgba(232,163,61,.35);border-radius:4px;display:flex;align-items:center}
+    .bspacer{flex:1}
+    .tz{font-family:var(--mono);font-size:9.5px;color:var(--faint)}
+  </style>
+</helmet>
+
+<div class="app">
+  <div class="topbar">
+    <div class="logo">SWAGIN<em>O</em></div>
+    <div class="sym">
+      <span class="tk">QQQ</span>
+      <span class="px">602.14</span>
+      <span class="chg">+0.42%</span>
+    </div>
+    <div class="mphase"><span class="d"></span>OPEN</div>
+    <div class="ctwrap">
+      <div class="ctbtn {{s.ctBtnCls}}" onClick="{{h.toggleCt}}">
+        <sc-if value="{{s.ctIsCandles}}" hint-placeholder-val="{{true}}">
+          <svg class="g" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 3v4M7 15v6M17 3v2M17 13v8"/><rect x="5" y="7" width="4" height="8" rx="1"/><rect x="15" y="5" width="4" height="8" rx="1"/></svg>
+        </sc-if>
+        <sc-if value="{{s.ctIsLine}}" hint-placeholder-val="{{false}}">
+          <svg class="g" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l5-6 4 3 8-9"/></svg>
+        </sc-if>
+        <svg class="c" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <sc-if value="{{s.ctOpen}}" hint-placeholder-val="{{false}}">
+        <div class="scrim" onClick="{{h.closeCt}}"></div>
+        <div class="ctlist">
+          <div class="cti {{s.ctCandlesCls}}" onClick="{{h.selCandles}}">
+            <svg class="g" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 3v4M7 15v6M17 3v2M17 13v8"/><rect x="5" y="7" width="4" height="8" rx="1"/><rect x="15" y="5" width="4" height="8" rx="1"/></svg>
+            <span>Candles</span>
+            <sc-if value="{{s.ctIsCandles}}" hint-placeholder-val="{{true}}"><svg class="k" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M4 12l5 5 11-11"/></svg></sc-if>
+          </div>
+          <div class="cti {{s.ctLineCls}}" onClick="{{h.selLine}}">
+            <svg class="g" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l5-6 4 3 8-9"/></svg>
+            <span>Line</span>
+            <sc-if value="{{s.ctIsLine}}" hint-placeholder-val="{{false}}"><svg class="k" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M4 12l5 5 11-11"/></svg></sc-if>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+    <div class="spacer"></div>
+    <div class="status"><span class="d"></span>LIVE · TRADIER</div>
+    <div class="tbi" title="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.34 1.87l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.7 1.7 0 00-1.87-.34 1.7 1.7 0 00-1 1.55V21a2 2 0 01-4 0v-.09A1.7 1.7 0 009 19.4a1.7 1.7 0 00-1.87.34l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.7 1.7 0 004.6 15a1.7 1.7 0 00-1.55-1H3a2 2 0 010-4h.09A1.7 1.7 0 004.6 9a1.7 1.7 0 00-.34-1.87l-.06-.06a2 2 0 112.83-2.83l.06.06A1.7 1.7 0 009 4.6a1.7 1.7 0 001-1.55V3a2 2 0 014 0v.09a1.7 1.7 0 001 1.55 1.7 1.7 0 001.87-.34l.06-.06a2 2 0 112.83 2.83l-.06.06A1.7 1.7 0 0019.4 9a1.7 1.7 0 001.55 1H21a2 2 0 010 4h-.09a1.7 1.7 0 00-1.51 1z"/></svg></div>
+  </div>
+
+  <div class="body">
+    <div class="chart {{s.layerCls}}" id="chartWrap">
+      <!-- PRICE PANE -->
+      <div class="pane" style="flex:0.63">
+        <div class="plot">
+          <svg id="priceSvg" viewBox="0 0 900 560" preserveAspectRatio="none"></svg>
+          <div class="ov" id="priceOv"></div>
+          <div class="legend">
+            <div class="lrow hdr">
+              <span class="snm">QQQ · {{s.ivShort}}</span>
+              <span class="ohlc"><span>O<b>601.20</b></span><span>H<b>603.55</b></span><span>L<b>600.40</b></span><span>C<b class="u">602.14</b></span></span>
+            </div>
+            <div class="lrow {{s.ribbonRowCls}}">
+              <span class="ldash" style="border-color:var(--long)"></span>
+              <span class="lnm">Saty Pivot Ribbon</span>
+              <button class="eye {{s.ribbonEyeCls}}" onClick="{{h.tRibbon}}" title="Saty Pivot Ribbon">
+                <svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none">
+                  <g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g>
+                  <g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g>
+                </svg>
+              </button>
+              <button class="gear" title="Saty Pivot Ribbon settings">&#9881;</button>
+            </div>
+            <div class="lrow {{s.atrRowCls}}">
+              <span class="ldash" style="border-color:var(--warn)"></span>
+              <span class="lnm">Saty ATR Levels</span>
+              <button class="eye {{s.atrEyeCls}}" onClick="{{h.tAtr}}" title="Saty ATR Levels">
+                <svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none">
+                  <g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g>
+                  <g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g>
+                </svg>
+              </button>
+              <button class="gear" title="Saty ATR Levels settings">&#9881;</button>
+            </div>
+            <div class="lrow {{s.structRowCls}}">
+              <span class="ldash" style="border-color:var(--pivot)"></span>
+              <span class="lnm">Market Structure</span>
+              <button class="eye {{s.structEyeCls}}" onClick="{{h.tStruct}}" title="Swing structure &amp; patterns">
+                <svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none">
+                  <g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g>
+                  <g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g>
+                </svg>
+              </button>
+              <button class="gear" title="Swing structure settings">&#9881;</button>
+            </div>
+          </div>
+        </div>
+        <div class="yax" id="priceYax"></div>
+      </div>
+      <div class="panediv"></div>
+
+      <!-- VOLUME PANE -->
+      <div class="pane" style="flex:0.13">
+        <div class="plot">
+          <svg id="volSvg" viewBox="0 0 900 140" preserveAspectRatio="none"></svg>
+          <div class="legend"><div class="lrow"><span class="lnm">Volume <b class="num" style="color:var(--dim)">1.82M</b></span></div></div>
+        </div>
+        <div class="yax" id="volYax"></div>
+      </div>
+      <div class="panediv"></div>
+
+      <!-- RSI PANE -->
+      <div class="pane" style="flex:0.24">
+        <div class="plot">
+          <svg id="rsiSvg" viewBox="0 0 900 220" preserveAspectRatio="none"></svg>
+          <div class="legend">
+            <div class="lrow">
+              <span class="ldash" style="border-color:var(--rsi)"></span>
+              <span class="lnm">RSI <b class="num" style="color:var(--rsi)">58.1</b> <b class="num" style="color:var(--warn)">55.9</b></span>
+              <button class="gear" title="RSI settings">&#9881;</button>
+            </div>
+          </div>
+        </div>
+        <div class="yax" id="rsiYax"></div>
+      </div>
+
+      <div class="xax" id="xax"></div>
+    </div>
+
+    <!-- ================= RIGHT PANEL ================= -->
+    <div class="panel">
+      <div class="tabs">
+        <div class="tab {{s.tabLevelsCls}}" onClick="{{h.showLevels}}">Levels</div>
+        <div class="tab {{s.tabGexCls}}" onClick="{{h.showGex}}">GEX</div>
+        <div class="tab {{s.tabLogCls}}" onClick="{{h.showLog}}">Log</div>
+      </div>
+      <div class="pbody">
+        <sc-if value="{{s.tabIsLevels}}" hint-placeholder-val="{{true}}">
+          <div class="sechead">Levels <span class="i">i</span></div>
+          <table class="lv">
+            <tr class="lvgrp"><td><label><span class="cbx ck"></span>Session</label><span class="cnt">3</span></td></tr>
+            <tr class="lvrow"><td><span class="cbx ck"></span></td><td><span class="lvsw" style="background:#2dd4a7"></span></td><td class="lvname">Session High</td><td class="p">604.60</td></tr>
+            <tr class="lvrow"><td><span class="cbx ck"></span></td><td><span class="lvsw" style="background:#f0564f"></span></td><td class="lvname">Session Low</td><td class="p">599.80</td></tr>
+            <tr class="lvrow"><td><span class="cbx ck"></span></td><td><span class="lvsw" style="background:#5aa7d6"></span></td><td class="lvname">Open 09:30</td><td class="p">601.20</td></tr>
+            <tr class="lvgrp"><td><label><span class="cbx ck"></span>Previous day</label><span class="cnt">3</span></td></tr>
+            <tr class="lvrow"><td><span class="cbx ck"></span></td><td><span class="lvsw" style="background:#d6b35a"></span></td><td class="lvname">Prev Close</td><td class="p">601.20</td></tr>
+            <tr class="lvrow"><td><span class="cbx ck"></span></td><td><span class="lvsw" style="background:#d6b35a"></span></td><td class="lvname">Prev High</td><td class="p">605.30</td></tr>
+            <tr class="lvrow"><td><span class="cbx ck"></span></td><td><span class="lvsw" style="background:#d6b35a"></span></td><td class="lvname">Prev Low</td><td class="p">598.10</td></tr>
+            <tr class="lvgrp"><td><label><span class="cbx ck"></span>GEX</label><span class="cnt">3</span></td></tr>
+            <tr class="lvrow"><td><span class="cbx ck"></span></td><td><span class="lvsw" style="background:#e8a33d"></span></td><td class="lvname">Call Wall<span class="badge">CONFLUENCE</span></td><td class="p">605.00</td></tr>
+            <tr class="lvrow"><td><span class="cbx ck"></span></td><td><span class="lvsw" style="background:#8b7bf4"></span></td><td class="lvname">Gamma Flip</td><td class="p">601.50</td></tr>
+            <tr class="lvrow"><td><span class="cbx ck"></span></td><td><span class="lvsw" style="background:#5aa7d6"></span></td><td class="lvname">Put Wall</td><td class="p">597.00</td></tr>
+          </table>
+        </sc-if>
+
+        <sc-if value="{{s.tabIsGex}}" hint-placeholder-val="{{false}}">
+          <div class="sechead">GEX</div>
+          <div class="hint">Dealer gamma computed from <b>your</b> Tradier options chain — no third-party service. Positive = dealers dampen moves (pinning); negative = dealers amplify them.</div>
+          <div class="gxstatus"><b>Computed 9:40:12 AM ET</b> · 42s ago · your Tradier chain<br>Auto-refresh: <b>next in 2:18</b></div>
+          <div class="gxheatwrap"><div class="gxheat" id="gxHeat"></div></div>
+          <div class="gxsum">
+            <b style="color:#a7f1ca">MAGNETS</b> - price tends to stall and get pulled back here<br>
+            Strongest: <b style="color:#a7f1ca">605</b> (1.9M)<br>Magnet: <b style="color:#a7f1ca">603</b> (0.8M)<br><br>
+            <b style="color:#f1a7a7">AIR POCKETS</b> - price action speed up through here<br>
+            Strongest: <b style="color:#f1a7a7">599</b> (1.4M)<br>Air Pocket: <b style="color:#f1a7a7">597</b> (0.6M)<br><br>
+            <b style="color:#8e8e8e">GAMMA FLIP</b> - above it moves stall, below it moves amplify<br>
+            <b style="color:#8e8e8e">601.5</b>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{s.tabIsLog}}" hint-placeholder-val="{{false}}">
+          <div class="logbody">
+            <div class="logline"><span class="t">09:40:12</span> GEX board parsed — strongest magnet 605, flip 601.5</div>
+            <div class="logline up"><span class="t">09:35:00</span> Structure — new higher high confirmed @ 606.10</div>
+            <div class="logline"><span class="t">09:30:00</span> RTH open — session levels reset</div>
+            <div class="logline warn"><span class="t">09:29:58</span> Auto GEX refresh armed for the 9:30 open</div>
+            <div class="logline"><span class="t">09:28:41</span> Tradier stream connected · QQQ 5m</div>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+  </div>
+
+  <div class="bbar">
+    <div class="iv {{s.iv1mCls}}" onClick="{{h.iv1m}}">1m</div>
+    <div class="iv {{s.iv5mCls}}" onClick="{{h.iv5m}}">5m</div>
+    <div class="iv {{s.iv15mCls}}" onClick="{{h.iv15m}}">15m</div>
+    <div class="iv {{s.iv1hCls}}" onClick="{{h.iv1h}}">1h</div>
+    <div class="iv {{s.ivDCls}}" onClick="{{h.ivD}}">D</div>
+    <div class="bsep"></div>
+    <div class="rth">RTH</div>
+    <div class="bspacer"></div>
+    <div class="tz">09:41:22 ET</div>
+  </div>
+</div>
+
+</x-dc>
+<script data-dc-script>
+window.__drawSwagino=function(){
+  const $=id=>document.getElementById(id);
+  if(!$('priceSvg'))return false;
+  const closes=[601.2,602.8,600.9,603.4,602.1,604.0,603.2,605.1,604.3,602.7,601.9,600.5,599.8,601.1,602.6,603.9,602.4,601.0,600.2,601.8,603.1,604.6,603.8,602.2,601.4,600.7,602.0,603.5,604.8,606.1,605.4,604.0,602.9,601.7,600.9,602.3,603.7,604.2,603.0,601.6,602.14];
+  const n=closes.length;
+  const bars=closes.map((c,i)=>{const o=i===0?600.8:closes[i-1];return {o,h:Math.max(o,c)+(0.28+(i%3)*0.13),l:Math.min(o,c)-(0.28+(i%4)*0.11),c,v:1.0+((i*37)%50)/50*1.6+Math.abs(c-o)*0.4};});
+  const ema=(a,len)=>{const k=2/(len+1);const o=[];let e=a[0];for(let i=0;i<a.length;i++){e=i?a[i]*k+e*(1-k):a[i];o.push(e);}return o;};
+  const ema8=ema(closes,8),ema21=ema(closes,21),ema34=ema(closes,34);
+  function rsiW(a,len){const o=new Array(a.length).fill(null);let ag=0,al=0;for(let i=1;i<a.length;i++){const ch=a[i]-a[i-1],g=Math.max(ch,0),l=Math.max(-ch,0);if(i<=len){ag+=g;al+=l;if(i===len){ag/=len;al/=len;o[i]=100-100/(1+ag/(al||1e-9));}}else{ag=(ag*(len-1)+g)/len;al=(al*(len-1)+l)/len;o[i]=100-100/(1+ag/(al||1e-9));}}return o;}
+  const rsiRaw=rsiW(closes,13),rsiSm=ema(rsiRaw.map(v=>v==null?50:v),3).map((v,i)=>rsiRaw[i]==null?null:v);
+  const prevClose=602.00,dayATR=3.00,trig=0.236,Lv=m=>prevClose+m*dayATR;
+  const lv={upTrig:Lv(trig),dnTrig:Lv(-trig),up382:Lv(.382),dn382:Lv(-.382),up500:Lv(.5),dn500:Lv(-.5),up618:Lv(.618),dn618:Lv(-.618),up786:Lv(.786),dn786:Lv(-.786),upATR:Lv(1),dnATR:Lv(-1)};
+  const gex={call:605,flip:601.5,put:599};
+  function swings(b,s){const hi=[],lo=[];for(let i=s;i<b.length-s;i++){let ph=1,pl=1;for(let j=i-s;j<=i+s;j++){if(j===i)continue;if(b[j].h>=b[i].h)ph=0;if(b[j].l<=b[i].l)pl=0;}if(ph)hi.push(i);if(pl)lo.push(i);}return {hi,lo};}
+  const sw=swings(bars,5);
+
+  const W=900,cw=(W-40)/n,cx=i=>20+i*cw+cw*0.5,bw=cw*0.62;
+  const pH=560,pTop=20,pBot=534;
+  const drawn=[gex.call,gex.flip,gex.put,lv.upTrig,lv.dnTrig,lv.upATR,lv.dnATR];
+  const pLo=Math.min(...bars.map(b=>b.l),...drawn)-0.4, pHi=Math.max(...bars.map(b=>b.h),...drawn)+0.4;
+  const pY=v=>pTop+(pHi-v)/(pHi-pLo)*(pBot-pTop);
+
+  let s='';
+  for(let g=1;g<5;g++){const yy=pTop+(pBot-pTop)*g/5;s+=`<line x1="0" y1="${yy}" x2="900" y2="${yy}" stroke="rgba(255,255,255,.04)"/>`;}
+  // Saty Pivot Ribbon — layered cloud bands + EMA borders + regime-flip arrows
+  let rb='';
+  function cloudBand(a,b,cB,cR,al){let o='',seg=null,up0=null;
+    const flush=()=>{ if(seg&&seg.length>1){const top=seg.map(p=>`${p.x},${pY(p.a)}`).join(' ');const bot=seg.slice().reverse().map(p=>`${p.x},${pY(p.b)}`).join(' ');o+=`<polygon points="${top} ${bot}" fill="${up0?cB:cR}" fill-opacity="${al}"/>`;} };
+    for(let i=0;i<n;i++){const up=a[i]>=b[i];if(up!==up0&&seg){seg.push({x:cx(i),a:a[i],b:b[i]});flush();seg=[{x:cx(i),a:a[i],b:b[i]}];up0=up;}else{if(!seg){seg=[];up0=up;}seg.push({x:cx(i),a:a[i],b:b[i]});}}
+    flush();return o;}
+  rb+=cloudBand(ema8,ema21,'#4CAF50','#FF5252',.30);
+  rb+=cloudBand(ema21,ema34,'#00BCD4','#FF9800',.22);
+  const poly=(a,c,w,op)=>{let d='';for(let i=0;i<n;i++)d+=(i?'L':'M')+cx(i)+' '+pY(a[i]);return `<path d="${d}" fill="none" stroke="${c}" stroke-width="${w}" stroke-opacity="${op||1}" stroke-linejoin="round"/>`;};
+  rb+=poly(ema34,'#00BCD4',1,.8)+poly(ema8,'#4CAF50',1,.85)+poly(ema21,'#e9eaee',1.3,.95);
+  for(let i=1;i<n;i++){const wasUp=ema8[i-1]>=ema21[i-1],isUp=ema8[i]>=ema21[i];if(wasUp===isUp)continue;
+    const x=cx(i);if(isUp){const y=pY(bars[i].l)+9;rb+=`<path d="M${x-4} ${y+5} L${x+4} ${y+5} L${x} ${y-2} Z" fill="#4CAF50"/>`;}
+    else{const y=pY(bars[i].h)-9;rb+=`<path d="M${x-4} ${y-5} L${x+4} ${y-5} L${x} ${y+2} Z" fill="#FF5252"/>`;}}
+  s+=`<g class="layer-ribbon">${rb}</g>`;
+  for(let i=0;i<n;i++){const b=bars[i],up=b.c>=b.o,col=up?'#2dd4a7':'#f0564f',x=cx(i),yO=pY(b.o),yC=pY(b.c);const bt=Math.min(yO,yC),bh=Math.max(1.4,Math.abs(yC-yO));s+=`<line x1="${x}" y1="${pY(b.h)}" x2="${x}" y2="${pY(b.l)}" stroke="#8ea3c4"/><rect x="${x-bw/2}" y="${bt}" width="${bw}" height="${bh}" fill="${col}"/>`;}
+  $('priceSvg').innerHTML=s;
+
+  const axH=$('priceYax').clientHeight||pBot, toPx=frac=>frac*axH, GAP=13;
+  const badges=[{v:bars[n-1].c,t:bars[n-1].c.toFixed(2),bg:'#2dd4a7',pr:5},{v:gex.call,t:'605.00',bg:'#e8a33d',pr:4},{v:gex.put,t:'599.00',bg:'#5aa7d6',pr:4},{v:gex.flip,t:'601.50',bg:'#8b7bf4',pr:3}].map(b=>({...b,px:toPx(pY(b.v)/pH)})).sort((a,b)=>b.pr-a.pr);
+  const keptB=[];badges.forEach(b=>{if(!keptB.some(k=>Math.abs(k.px-b.px)<GAP))keptB.push(b);});
+  let ah='';keptB.forEach(b=>ah+=`<div class="ybadge" style="top:${(b.px/axH*100).toFixed(2)}%;background:${b.bg}">${b.t}</div>`);
+  const keptPx=keptB.map(b=>b.px);
+  for(let g=0;g<=5;g++){const frac=(pTop+(pBot-pTop)*g/5)/pH,px=toPx(frac),v=pHi-(pHi-pLo)*g/5;if(keptPx.some(k=>Math.abs(k-px)<GAP))continue;keptPx.push(px);ah+=`<div class="ytick" style="top:${(px/axH*100).toFixed(2)}%">${v.toFixed(2)}</div>`;}
+  $('priceYax').innerHTML=ah;
+
+  const ov=$('priceOv');ov.innerHTML='';
+  const line=(v,color,solid,cls)=>{const el=document.createElement('div');el.style.cssText=`position:absolute;left:0;right:0;top:${pY(v)/pH*100}%;border-top:1px ${solid?'solid':'dashed'} ${color};${solid?'':'opacity:.6'}`;if(cls)el.className=cls;ov.appendChild(el);};
+  [lv.up382,lv.dn382,lv.up500,lv.dn500,lv.up618,lv.dn618,lv.up786,lv.dn786].forEach(v=>{if(v>pLo&&v<pHi){const el=document.createElement('div');el.className='layer-atr';el.style.cssText=`position:absolute;left:0;right:0;top:${pY(v)/pH*100}%;border-top:1px dashed rgba(232,163,61,.5);opacity:.32`;ov.appendChild(el);}});
+  line(lv.upTrig,'#e8a33d',true,'layer-atr');line(lv.dnTrig,'#e8a33d',true,'layer-atr');
+  line(lv.upATR,'rgba(232,163,61,.55)',false,'layer-atr');line(lv.dnATR,'rgba(232,163,61,.55)',false,'layer-atr');
+  line(gex.call,'#e8a33d',true,'layer-gex');line(gex.put,'#5aa7d6',true,'layer-gex');line(gex.flip,'#8b7bf4',false,'layer-gex');
+  const mark=(i,v,t,color,above)=>{const el=document.createElement('div');el.className='layer-struct';el.style.cssText=`position:absolute;left:${cx(i)/W*100}%;top:${pY(v)/pH*100+(above?-3.2:3.2)}%;transform:translate(-50%,-50%);font:600 9px var(--mono);color:${color};border:1px solid ${color};background:rgba(8,9,12,.85);padding:1px 4px;border-radius:3px;white-space:nowrap`;el.textContent=t;ov.appendChild(el);};
+  sw.hi.slice(-2).forEach(i=>mark(i,bars[i].h,'HH','#23d77d',true));
+  sw.lo.slice(-2).forEach(i=>mark(i,bars[i].l,'HL','#23d77d',false));
+
+  const vH=140,vTop=14,vBot=132,vMax=Math.max(...bars.map(b=>b.v))*1.1,vY=v=>vTop+(vMax-v)/vMax*(vBot-vTop);
+  let vs='';for(let i=0;i<n;i++){const b=bars[i],up=b.c>=b.o,y=vY(b.v);vs+=`<rect x="${cx(i)-bw/2}" y="${y}" width="${bw}" height="${vBot-y}" fill="${up?'#2dd4a7':'#f0564f'}" fill-opacity=".42"/>`;}
+  $('volSvg').innerHTML=vs;
+  $('volYax').innerHTML=`<div class="ytick" style="top:${vY(vMax*.9)/vH*100}%">${(vMax*.9).toFixed(1)}M</div><div class="ytick" style="top:${vY(vMax*.45)/vH*100}%">${(vMax*.45).toFixed(1)}M</div>`;
+
+  const rH=220,rTop=12,rBot=208,rY=v=>rTop+(100-v)/100*(rBot-rTop);
+  let rs=`<rect x="0" y="${rY(70)}" width="900" height="${rY(30)-rY(70)}" fill="#7E57C2" fill-opacity=".08"/>`;
+  [70,50,30].forEach(v=>rs+=`<line x1="0" y1="${rY(v)}" x2="900" y2="${rY(v)}" stroke="rgba(255,255,255,.08)" stroke-dasharray="${v===50?'1 5':'3 3'}"/>`);
+  const rpath=(arr,col,w)=>{let d='',st=false;for(let i=0;i<n;i++){if(arr[i]==null)continue;d+=(st?'L':'M')+cx(i)+' '+rY(arr[i]);st=true;}return `<path class="layer-rsi" d="${d}" fill="none" stroke="${col}" stroke-width="${w}"/>`;};
+  rs+=rpath(rsiSm,'#e8a33d',1.1);
+  rs+=rpath(rsiRaw,'#7E57C2',1.5);
+  $('rsiSvg').innerHTML=rs;
+  const rlRsi=rsiRaw[n-1], rlMa=rsiSm[n-1], raxH=$('rsiYax').clientHeight||rBot;
+  const rbadges=[{v:rlRsi,bg:'#7E57C2'},{v:rlMa,bg:'#e8a33d'}].map(b=>({...b,px:(rY(b.v)/rH)*raxH})).sort((a,b)=>a.px-b.px);
+  if(rbadges[1].px-rbadges[0].px<13)rbadges[1].px=rbadges[0].px+13;
+  let rah=rbadges.map(b=>`<div class="ybadge layer-rsi" style="top:${(b.px/raxH*100).toFixed(2)}%;background:${b.bg}">${b.v.toFixed(1)}</div>`).join('');
+  const rKept=rbadges.map(b=>b.px);
+  [70,50,30].forEach(v=>{const px=(rY(v)/rH)*raxH;if(rKept.some(k=>Math.abs(k-px)<13))return;rKept.push(px);rah+=`<div class="ytick" style="top:${(px/raxH*100).toFixed(2)}%">${v}</div>`;});
+  $('rsiYax').innerHTML=rah;
+
+  let xh='';for(let i=0;i<n;i+=5){const tot=30+i*5,hh=9+Math.floor(tot/60),mm=tot%60;xh+=`<div class="xtick" style="left:${cx(i)/W*100}%">${hh}:${String(mm).padStart(2,'0')}</div>`;}
+  $('xax').innerHTML=xh;
+
+  const gh=$('gxHeat');
+  if(gh){
+    const strikes=[607,606,605,604,603,602,601,600,599,598,597],exps=['08/22','08/25','08/29'],spot=602;
+    const base={607:-0.2,606:0.3,605:1.9,604:0.6,603:0.8,602:0.2,601:-0.1,600:-0.3,599:-1.4,598:-0.5,597:-0.6};
+    const val=(k,j)=>base[k]*(1-j*0.28)*1e6,max=1.9e6;
+    const gxColor=v=>{const r=Math.min(1,Math.abs(v)/max),a=(0.10+0.90*Math.sqrt(r)).toFixed(3);return v>=0?`rgba(20,160,95,${a})`:`rgba(198,48,44,${a})`;};
+    const fmtGx=v=>{const a=Math.abs(v);if(a>=1e6)return (v/1e6).toFixed(1)+'M';if(a>=1e3)return (v/1e3).toFixed(1)+'K';return v.toFixed(1);};
+    let hh2='<div class="gxr gxhead"><div class="gxc gxk">Strike</div>'+exps.map(e=>`<div class="gxc">${e}</div>`).join('')+'</div>';
+    strikes.forEach(k=>{hh2+=`<div class="gxr${k===spot?' spot':''}"><div class="gxc gxk">${k}</div>`+exps.map((e,j)=>{const v=val(k,j);return `<div class="gxc" style="background:${gxColor(v)}">${fmtGx(v)}</div>`;}).join('')+'</div>';});
+    gh.innerHTML=hh2;
+  }
+  return true;
+};
+</script>
+<script data-dc-script>
+class Component extends DCLogic {
+  state={ ctOpen:false, chartType:'candles', interval:'5m', tab:'levels', ribbon:true, atr:true, struct:true };
+  componentDidMount(){ this._draw(); }
+  componentDidUpdate(){ this._draw(); }
+  _draw(){ let t=0; const go=()=>{ if(window.__drawSwagino && window.__drawSwagino())return; if(t++<30)requestAnimationFrame(go); }; go(); }
+  tog(k){ this.setState(s=>({[k]:!s[k]})); }
+  renderVals(){
+    const st=this.state;
+    const ivShort={'1m':'1','5m':'5','15m':'15','1h':'60','D':'1D'};
+    const layer=[!st.ribbon&&'hideRibbon',!st.atr&&'hideAtr',!st.struct&&'hideStruct'].filter(Boolean).join(' ');
+    return {
+      s:{
+        ctOpen:st.ctOpen, ctBtnCls:st.ctOpen?'open':'', ctIsCandles:st.chartType==='candles', ctIsLine:st.chartType==='line',
+        ctCandlesCls:st.chartType==='candles'?'on':'', ctLineCls:st.chartType==='line'?'on':'',
+        ribbonEyeCls:st.ribbon?'on':'', atrEyeCls:st.atr?'on':'', structEyeCls:st.struct?'on':'',
+        ribbonRowCls:st.ribbon?'':'off', atrRowCls:st.atr?'':'off', structRowCls:st.struct?'':'off',
+        tabIsLevels:st.tab==='levels', tabIsGex:st.tab==='gex', tabIsLog:st.tab==='log',
+        tabLevelsCls:st.tab==='levels'?'on':'', tabGexCls:st.tab==='gex'?'on':'', tabLogCls:st.tab==='log'?'on':'',
+        iv1mCls:st.interval==='1m'?'on':'', iv5mCls:st.interval==='5m'?'on':'', iv15mCls:st.interval==='15m'?'on':'', iv1hCls:st.interval==='1h'?'on':'', ivDCls:st.interval==='D'?'on':'',
+        ivShort:ivShort[st.interval], layerCls:layer,
+      },
+      h:{
+        toggleCt:()=>this.tog('ctOpen'), closeCt:()=>this.setState({ctOpen:false}),
+        selCandles:()=>this.setState({chartType:'candles',ctOpen:false}), selLine:()=>this.setState({chartType:'line',ctOpen:false}),
+        tRibbon:()=>this.tog('ribbon'), tAtr:()=>this.tog('atr'), tStruct:()=>this.tog('struct'),
+        showLevels:()=>this.setState({tab:'levels'}), showGex:()=>this.setState({tab:'gex'}), showLog:()=>this.setState({tab:'log'}),
+        iv1m:()=>this.setState({interval:'1m'}), iv5m:()=>this.setState({interval:'5m'}), iv15m:()=>this.setState({interval:'15m'}), iv1h:()=>this.setState({interval:'1h'}), ivD:()=>this.setState({interval:'D'}),
+      },
+    };
+  }
+}
+</script>
+</body>
+</html>

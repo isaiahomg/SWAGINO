@@ -1,0 +1,509 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    :root{
+      --disp:-apple-system,BlinkMacSystemFont,'SF Pro Display','SF Pro Text','Inter','Segoe UI',system-ui,sans-serif;
+      --mono:ui-monospace,'SF Mono','Roboto Mono',Menlo,Consolas,monospace;
+      --text:#f5f5f7; --dim:#e6e8ec; --faint:#a0a3ab;
+      --long:#2dd4a7; --short:#f0564f; --warn:#e8a33d; --pivot:#8b7bf4;
+      --accent:#0a84ff; --accent2:#5e5ce6;
+      --line:#26282e; --line2:#3a3d45; --panel:#0d0e11; --panel2:#141519;
+      --lg:blur(26px) saturate(210%) brightness(1.12);
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;height:100%;background:#050608;font-family:var(--disp);color:var(--text);
+      -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;overflow:hidden}
+    body{
+      background:
+        radial-gradient(120% 90% at 12% 0%, rgba(10,132,255,.09), transparent 55%),
+        radial-gradient(100% 80% at 100% 100%, rgba(139,123,244,.06), transparent 55%),
+        #050608;
+    }
+
+    .app{width:100vw;height:100vh;display:flex;flex-direction:column;min-width:1180px;min-height:760px}
+
+    /* ================= TOPBAR ================= */
+    .topbar{
+      height:46px;flex:none;display:flex;align-items:center;gap:10px;padding:0 12px;
+      background:linear-gradient(180deg, rgba(30,32,38,.86), rgba(16,17,21,.9));
+      border-bottom:1px solid rgba(255,255,255,.08);
+      -webkit-backdrop-filter:var(--lg);backdrop-filter:var(--lg);
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.06), 0 1px 12px rgba(0,0,0,.35);
+      position:relative;z-index:5;
+    }
+    .logo{display:flex;align-items:center;gap:7px;font-weight:750;font-size:14px;letter-spacing:-.01em;color:var(--text);padding-right:4px}
+    .logo .dot{width:8px;height:8px;border-radius:50%;background:linear-gradient(180deg,#4fa8ff,#0a84ff);box-shadow:0 0 8px rgba(10,132,255,.7)}
+    .vsep{width:1px;align-self:stretch;margin:10px 0;background:rgba(255,255,255,.09)}
+
+    .symbtn{
+      display:flex;align-items:center;gap:7px;height:30px;padding:0 10px 0 11px;border-radius:15px;cursor:pointer;
+      background:linear-gradient(180deg, rgba(255,255,255,.1), rgba(255,255,255,.03) 60%, rgba(255,255,255,.01));
+      border:1px solid rgba(255,255,255,.13);
+      -webkit-backdrop-filter:var(--lg);backdrop-filter:var(--lg);
+      box-shadow:inset 0 1px .5px rgba(255,255,255,.45), 0 1px 3px rgba(0,0,0,.3);
+    }
+    .symbtn .tk{font-weight:700;font-size:13px;letter-spacing:.01em}
+    .symbtn .tf{font-size:11px;color:var(--faint);background:rgba(255,255,255,.06);padding:2px 6px;border-radius:6px;font-weight:600}
+    .symbtn .chev{width:9px;height:9px;color:var(--faint)}
+
+    .cttrigger{position:relative}
+    .ctbtn{
+      display:flex;align-items:center;gap:5px;height:30px;padding:0 8px;border-radius:9px;cursor:pointer;color:var(--dim);
+      transition:background .15s ease;
+    }
+    .ctbtn:hover,.ctbtn.open{background:rgba(255,255,255,.07)}
+    .ctbtn svg.gly{width:16px;height:16px}
+    .ctbtn svg.chev{width:9px;height:9px;color:var(--faint)}
+    .ctlist{
+      position:absolute;top:38px;left:0;width:198px;padding:5px;border-radius:12px;z-index:20;
+      background:linear-gradient(180deg, rgba(32,34,40,.92), rgba(18,19,23,.94));
+      border:1px solid rgba(255,255,255,.12);
+      -webkit-backdrop-filter:var(--lg);backdrop-filter:var(--lg);
+      box-shadow:inset 0 1px .5px rgba(255,255,255,.35), inset 0 0 0 .5px rgba(255,255,255,.06), 0 20px 46px rgba(0,0,0,.55);
+    }
+    .ctitem{display:flex;align-items:center;gap:10px;height:32px;padding:0 8px;border-radius:8px;cursor:pointer;color:var(--dim);font-size:12px;font-weight:600}
+    .ctitem:hover{background:rgba(255,255,255,.06)}
+    .ctitem svg.gly{width:16px;height:16px;flex:none;color:var(--faint)}
+    .ctitem span{flex:1}
+    .ctitem svg.check{width:13px;height:13px;flex:none;color:var(--accent)}
+    .ctitem.on{color:var(--text);background:linear-gradient(180deg, rgba(10,132,255,.14), rgba(10,132,255,.05))}
+    .ctitem.on svg.gly{color:var(--accent)}
+    .scrim{position:fixed;inset:0;z-index:19}
+
+    .pxblk{display:flex;align-items:baseline;gap:8px;padding-left:2px}
+    .pxblk .px{font-family:var(--mono);font-size:15px;font-weight:650;letter-spacing:.01em;color:var(--text)}
+    .pxblk .chg{font-family:var(--mono);font-size:11.5px;font-weight:650;color:var(--long);
+      background:rgba(45,212,167,.12);border:1px solid rgba(45,212,167,.22);border-radius:6px;padding:2px 6px}
+
+    .phase{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--faint);font-weight:600}
+    .phase .pdot{width:6px;height:6px;border-radius:50%;background:var(--long);box-shadow:0 0 6px rgba(45,212,167,.8)}
+
+    .tb-spacer{flex:1}
+    .tbicon{
+      width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--faint);
+      transition:background .15s ease,color .15s ease;flex:none;
+    }
+    .tbicon:hover{background:rgba(255,255,255,.07);color:var(--dim)}
+    .tbicon svg{width:16px;height:16px}
+    .connpill{
+      display:flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:13px;font-size:10.5px;font-weight:650;color:var(--long);
+      background:rgba(45,212,167,.1);border:1px solid rgba(45,212,167,.2);
+    }
+    .connpill .cd{width:5px;height:5px;border-radius:50%;background:var(--long);box-shadow:0 0 5px rgba(45,212,167,.9)}
+
+    /* ================= BODY LAYOUT ================= */
+    .body{flex:1;display:flex;min-height:0}
+
+
+    /* ================= CHART AREA ================= */
+    .chartwrap{flex:1;position:relative;min-width:0;display:flex;flex-direction:column;background:
+      linear-gradient(180deg, rgba(255,255,255,.015), transparent 12%),
+      #08090b;}
+    .plotrow{flex:1;display:flex;min-height:0}
+    .plot{flex:1;position:relative;min-width:0}
+    .plot svg{display:block;width:100%;height:100%}
+    .gridline{stroke:rgba(255,255,255,.045);stroke-width:1}
+
+    .yaxis{width:58px;flex:none;position:relative;border-left:1px solid rgba(255,255,255,.06)}
+    .ytick{position:absolute;right:8px;left:0;font-family:var(--mono);font-size:10px;color:var(--faint);
+      transform:translateY(-50%);text-align:right;pointer-events:none}
+    .axpx{
+      position:absolute;left:0;right:0;font-family:var(--mono);font-size:10.5px;font-weight:700;color:#08090b;
+      padding:3px 8px;text-align:right;transform:translateY(-50%);white-space:nowrap;
+    }
+
+    .xaxis{height:22px;flex:none;display:flex;position:relative;margin-right:58px;
+      border-top:1px solid rgba(255,255,255,.06)}
+    .xtick{position:absolute;top:0;bottom:0;display:flex;align-items:center;
+      font-family:var(--mono);font-size:10px;color:var(--faint);transform:translateX(-50%);pointer-events:none}
+
+    .lvlline{position:absolute;left:0;right:0;height:1px;border-top:1px dashed;pointer-events:none}
+    .lvltag{position:absolute;right:6px;font-family:var(--mono);font-size:9.5px;font-weight:650;
+      padding:1px 5px;border-radius:4px;transform:translateY(-50%);white-space:nowrap;letter-spacing:.02em}
+
+    .legend{position:absolute;top:8px;left:10px;display:flex;flex-direction:column;align-items:flex-start;gap:1px;max-width:340px}
+    .legrow{display:flex;align-items:center;gap:7px;padding:2px 6px 2px 4px;border-radius:6px;transition:background .12s ease;width:max-content;max-width:100%}
+    .legrow:hover{background:rgba(255,255,255,.05)}
+    .legrow.hdr{padding-left:4px;margin-bottom:2px}
+    .legrow.hdr .symname{font-size:12px;font-weight:750;color:var(--text);letter-spacing:-.01em}
+    .legrow.hdr .ohlc{font-family:var(--mono);font-size:10.5px;color:var(--faint);display:flex;gap:7px;margin-left:2px}
+    .legrow.hdr .ohlc b{font-weight:650}
+    .legrow.hdr .ohlc .u{color:var(--long)}
+    .legdot{width:9px;height:2.5px;border-radius:2px;flex:none}
+    .legname{font-size:11px;font-weight:600;color:var(--dim);white-space:nowrap}
+    .legval{font-family:var(--mono);font-size:10.5px;color:var(--faint);margin-left:1px}
+    .legrow.off .legname,.legrow.off .legval{color:#585a62}
+    .legrow.off .legdot{opacity:.35}
+    .eyebtn{width:20px;height:20px;flex:none;border-radius:5px;display:flex;align-items:center;justify-content:center;
+      color:var(--faint);opacity:0;transition:opacity .12s ease,background .12s ease,color .12s ease}
+    .eyebtn svg{width:13px;height:13px}
+    .legrow:hover .eyebtn{opacity:1}
+    .legrow.off .eyebtn{opacity:1;color:#585a62}
+    .eyebtn:hover{background:rgba(255,255,255,.08);color:var(--dim)}
+
+    /* ================= RIGHT PANEL ================= */
+    .panel{width:270px;flex:none;display:flex;flex-direction:column;
+      background:linear-gradient(180deg, rgba(19,20,24,.82), rgba(12,13,16,.86));
+      border-left:1px solid rgba(255,255,255,.07);}
+    .paneltabs{display:flex;gap:4px;padding:10px 10px 0}
+    .ptab{flex:1;text-align:center;font-size:11px;font-weight:650;color:var(--faint);padding:8px 0;border-radius:9px;cursor:pointer;
+      transition:background .15s ease,color .15s ease}
+    .ptab.on{color:var(--text);background:linear-gradient(180deg, rgba(255,255,255,.1), rgba(255,255,255,.03));
+      box-shadow:inset 0 1px .5px rgba(255,255,255,.35), inset 0 0 0 1px rgba(255,255,255,.08)}
+    .panelbody{flex:1;overflow:auto;padding:10px}
+    .prow{display:flex;align-items:center;justify-content:space-between;padding:8px 9px;border-radius:9px;margin-bottom:3px;
+      background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.05)}
+    .prow .k{font-size:11px;color:var(--faint);font-weight:600}
+    .prow .v{font-family:var(--mono);font-size:11.5px;font-weight:650;color:var(--dim)}
+    .prow .v.pos{color:var(--long)} .prow .v.neg{color:var(--short)}
+    .pcard{margin-top:4px;margin-bottom:10px;border-radius:12px;padding:11px 12px;
+      background:linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.015));
+      border:1px solid rgba(255,255,255,.08)}
+    .pcard .lbl{font-size:10px;color:var(--faint);font-weight:650;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px}
+    .pcard .big{font-family:var(--mono);font-size:18px;font-weight:700;color:var(--pivot)}
+    .sechd{font-size:10px;color:var(--faint);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:12px 0 6px;padding-left:2px}
+
+    /* ================= BOTTOM BAR ================= */
+    .bottombar{height:34px;flex:none;display:flex;align-items:center;gap:6px;padding:0 12px;
+      background:linear-gradient(0deg, rgba(16,17,21,.9), rgba(20,21,26,.82));
+      border-top:1px solid rgba(255,255,255,.07);}
+    .ivbtn{height:24px;padding:0 10px;border-radius:8px;font-size:11px;font-weight:650;color:var(--faint);cursor:pointer;
+      display:flex;align-items:center;transition:background .15s ease,color .15s ease}
+    .ivbtn:hover{background:rgba(255,255,255,.05);color:var(--dim)}
+    .ivbtn.on{color:var(--text);background:rgba(10,132,255,.16);box-shadow:inset 0 0 0 1px rgba(10,132,255,.28)}
+    .bb-sep{width:1px;height:16px;background:rgba(255,255,255,.08);margin:0 4px}
+    .rthpill{height:22px;padding:0 8px;border-radius:7px;font-size:10px;font-weight:700;color:var(--warn);
+      background:rgba(232,163,61,.12);border:1px solid rgba(232,163,61,.22);display:flex;align-items:center}
+    .bb-spacer{flex:1}
+    .tzstamp{font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+  </style>
+</helmet>
+
+<div class="app">
+  <div class="topbar">
+    <div class="logo"><span class="dot"></span>SWAGINO</div>
+    <div class="vsep"></div>
+    <div class="symbtn">
+      <span class="tk">QQQ</span>
+      <span class="tf">{{s.ivLabel}}</span>
+      <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>
+    </div>
+    <div class="cttrigger">
+      <div class="ctbtn {{s.ctBtnCls}}" onClick="{{h.toggleCt}}">
+        <sc-if value="{{s.ctIsCandles}}" hint-placeholder-val="{{true}}">
+          <svg class="gly" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 3v4M7 15v6M17 3v2M17 13v8M5 7h4v8H5zM15 5h4v8h-4z"/></svg>
+        </sc-if>
+        <sc-if value="{{s.ctIsLine}}" hint-placeholder-val="{{false}}">
+          <svg class="gly" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l5-6 4 3 8-9"/></svg>
+        </sc-if>
+        <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <sc-if value="{{s.ctOpen}}" hint-placeholder-val="{{false}}">
+        <div class="scrim" onClick="{{h.closeCt}}"></div>
+        <div class="ctlist">
+          <div class="ctitem {{s.ctCandlesCls}}" onClick="{{h.selectCandles}}">
+            <svg class="gly" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 3v4M7 15v6M17 3v2M17 13v8M5 7h4v8H5zM15 5h4v8h-4z"/></svg>
+            <span>Candles</span>
+            <sc-if value="{{s.ctIsCandles}}" hint-placeholder-val="{{true}}">
+              <svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M4 12l5 5 11-11"/></svg>
+            </sc-if>
+          </div>
+          <div class="ctitem {{s.ctLineCls}}" onClick="{{h.selectLine}}">
+            <svg class="gly" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l5-6 4 3 8-9"/></svg>
+            <span>Line</span>
+            <sc-if value="{{s.ctIsLine}}" hint-placeholder-val="{{false}}">
+              <svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M4 12l5 5 11-11"/></svg>
+            </sc-if>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+    <div class="pxblk">
+      <span class="px">602.14</span>
+      <span class="chg">+0.42%</span>
+    </div>
+    <div class="phase"><span class="pdot"></span>OPEN</div>
+    <div class="tb-spacer"></div>
+    <div class="connpill"><span class="cd"></span>LIVE</div>
+    <div class="tbicon" title="Theme">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+    </div>
+    <div class="tbicon" title="Settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.34 1.87l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.7 1.7 0 00-1.87-.34 1.7 1.7 0 00-1 1.55V21a2 2 0 01-4 0v-.09A1.7 1.7 0 009 19.4a1.7 1.7 0 00-1.87.34l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.7 1.7 0 004.6 15a1.7 1.7 0 00-1.55-1H3a2 2 0 010-4h.09A1.7 1.7 0 004.6 9a1.7 1.7 0 00-.34-1.87l-.06-.06a2 2 0 112.83-2.83l.06.06A1.7 1.7 0 009 4.6a1.7 1.7 0 001-1.55V3a2 2 0 014 0v.09a1.7 1.7 0 001 1.55 1.7 1.7 0 001.87-.34l.06-.06a2 2 0 112.83 2.83l-.06.06A1.7 1.7 0 0019.4 9a1.7 1.7 0 001.55 1H21a2 2 0 010 4h-.09a1.7 1.7 0 00-1.51 1z"/></svg>
+    </div>
+  </div>
+
+  <div class="body">
+    <div class="chartwrap">
+      <div class="plotrow">
+        <div class="plot">
+          <svg viewBox="0 0 900 560" preserveAspectRatio="none">
+            <line class="gridline" x1="0" y1="93" x2="900" y2="93"/>
+            <line class="gridline" x1="0" y1="186" x2="900" y2="186"/>
+            <line class="gridline" x1="0" y1="279" x2="900" y2="279"/>
+            <line class="gridline" x1="0" y1="372" x2="900" y2="372"/>
+            <line class="gridline" x1="0" y1="465" x2="900" y2="465"/>
+            <g id="candles"></g>
+          </svg>
+
+          <div class="legend">
+            <div class="legrow hdr">
+              <span class="symname">QQQ · {{s.ivShort}}</span>
+              <span class="ohlc"><span>O<b>601.20</b></span><span>H<b>603.55</b></span><span>L<b>600.40</b></span><span>C<b class="u">602.14</b></span></span>
+            </div>
+            <div class="legrow {{s.structRowCls}}">
+              <span class="legdot" style="background:var(--pivot)"></span>
+              <span class="legname">Market Structure</span>
+              <span class="legval">HH/HL</span>
+              <span class="eyebtn" onClick="{{h.toggleStruct}}">
+                <sc-if value="{{s.indStructure}}" hint-placeholder-val="{{true}}">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+                </sc-if>
+                <sc-if value="{{s.indStructureOff}}" hint-placeholder-val="{{false}}">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/><path d="M3 3l18 18"/></svg>
+                </sc-if>
+              </span>
+            </div>
+            <div class="legrow {{s.ribbonRowCls}}">
+              <span class="legdot" style="background:var(--warn)"></span>
+              <span class="legname">Saty Pivot Ribbon (8, 21, 34)</span>
+              <span class="eyebtn" onClick="{{h.toggleRibbon}}">
+                <sc-if value="{{s.indRibbon}}" hint-placeholder-val="{{true}}">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+                </sc-if>
+                <sc-if value="{{s.indRibbonOff}}" hint-placeholder-val="{{false}}">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/><path d="M3 3l18 18"/></svg>
+                </sc-if>
+              </span>
+            </div>
+            <div class="legrow {{s.rsiRowCls}}">
+              <span class="legdot" style="background:var(--accent2)"></span>
+              <span class="legname">RSI (13)</span>
+              <span class="legval">58.1</span>
+              <span class="eyebtn" onClick="{{h.toggleRsi}}">
+                <sc-if value="{{s.indRsi}}" hint-placeholder-val="{{false}}">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+                </sc-if>
+                <sc-if value="{{s.indRsiOff}}" hint-placeholder-val="{{true}}">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/><path d="M3 3l18 18"/></svg>
+                </sc-if>
+              </span>
+            </div>
+            <div class="legrow {{s.satyRowCls}}">
+              <span class="legdot" style="background:var(--long)"></span>
+              <span class="legname">Saty ATR Levels</span>
+              <span class="eyebtn" onClick="{{h.toggleSaty}}">
+                <sc-if value="{{s.indSaty}}" hint-placeholder-val="{{true}}">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+                </sc-if>
+                <sc-if value="{{s.indSatyOff}}" hint-placeholder-val="{{false}}">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/><path d="M3 3l18 18"/></svg>
+                </sc-if>
+              </span>
+            </div>
+          </div>
+
+          <div class="lvlline" style="top:21.4%;border-color:rgba(240,86,79,.55)"></div>
+          <div class="lvltag" style="top:21.4%;background:rgba(240,86,79,.16);color:var(--short);border:1px solid rgba(240,86,79,.3)">CALL WALL 605</div>
+          <div class="lvlline" style="top:41.1%;border-color:rgba(139,123,244,.55)"></div>
+          <div class="lvltag" style="top:41.1%;background:rgba(139,123,244,.16);color:var(--pivot);border:1px solid rgba(139,123,244,.3)">GEX FLIP 601.5</div>
+          <div class="lvlline" style="top:69.6%;border-color:rgba(45,212,167,.55)"></div>
+          <div class="lvltag" style="top:69.6%;background:rgba(45,212,167,.16);color:var(--long);border:1px solid rgba(45,212,167,.3)">PUT WALL 597</div>
+        </div>
+        <div class="yaxis" id="yaxis">
+          <div class="axpx" id="axpx" style="top:37.5%;background:var(--long)">602.14</div>
+        </div>
+      </div>
+      <div class="xaxis" id="xaxis"></div>
+    </div>
+
+    <div class="panel">
+      <div class="paneltabs">
+        <div class="ptab {{s.tabLevelsCls}}" onClick="{{h.showLevelsTab}}">Levels</div>
+        <div class="ptab {{s.tabGexCls}}" onClick="{{h.showGexTab}}">GEX</div>
+      </div>
+      <div class="panelbody">
+        <sc-if value="{{s.tabIsGex}}" hint-placeholder-val="{{true}}">
+          <div class="pcard">
+            <div class="lbl">Net GEX</div>
+            <div class="big">+3.24B</div>
+          </div>
+          <div class="sechd">Key Strikes</div>
+          <div class="prow"><span class="k">Call Wall</span><span class="v neg">605.00</span></div>
+          <div class="prow"><span class="k">Gamma Flip</span><span class="v" style="color:var(--pivot)">601.50</span></div>
+          <div class="prow"><span class="k">Put Wall</span><span class="v pos">597.00</span></div>
+          <div class="sechd">Session</div>
+          <div class="prow"><span class="k">IV Rank</span><span class="v">34.2%</span></div>
+          <div class="prow"><span class="k">ATR (5)</span><span class="v">1.86</span></div>
+          <div class="prow"><span class="k">Market Structure</span><span class="v pos">Bull HH/HL</span></div>
+          <div class="prow"><span class="k">RSI (13)</span><span class="v">58.1</span></div>
+        </sc-if>
+        <sc-if value="{{s.tabIsLevels}}" hint-placeholder-val="{{false}}">
+          <div class="sechd">Session</div>
+          <div class="prow"><span class="k">Session High</span><span class="v pos">604.60</span></div>
+          <div class="prow"><span class="k">Session Low</span><span class="v neg">599.80</span></div>
+          <div class="prow"><span class="k">Prior Close</span><span class="v">601.20</span></div>
+          <div class="sechd">Saty ATR Levels</div>
+          <div class="prow"><span class="k">Upper Trigger</span><span class="v pos">603.40</span></div>
+          <div class="prow"><span class="k">Upper Target</span><span class="v pos">604.90</span></div>
+          <div class="prow"><span class="k">Lower Trigger</span><span class="v neg">600.10</span></div>
+          <div class="prow"><span class="k">Lower Target</span><span class="v neg">598.60</span></div>
+          <div class="sechd">Structure</div>
+          <div class="prow"><span class="k">Last Swing High</span><span class="v">603.90</span></div>
+          <div class="prow"><span class="k">Last Swing Low</span><span class="v">600.50</span></div>
+        </sc-if>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottombar">
+    <div class="ivbtn {{s.iv1mCls}}" onClick="{{h.setIv1m}}">1m</div>
+    <div class="ivbtn {{s.iv5mCls}}" onClick="{{h.setIv5m}}">5m</div>
+    <div class="ivbtn {{s.iv15mCls}}" onClick="{{h.setIv15m}}">15m</div>
+    <div class="ivbtn {{s.iv1hCls}}" onClick="{{h.setIv1h}}">1h</div>
+    <div class="ivbtn {{s.ivDCls}}" onClick="{{h.setIvD}}">D</div>
+    <div class="bb-sep"></div>
+    <div class="rthpill">RTH</div>
+    <div class="bb-spacer"></div>
+    <div class="tzstamp">09:41:22 AM ET</div>
+  </div>
+</div>
+
+</x-dc>
+<script data-dc-script>
+(function(){
+  const seeds=[601.2,602.8,600.9,603.4,602.1,604.0,603.2,605.1,604.3,602.7,601.9,600.5,599.8,601.1,602.6,603.9,602.4,601.0,600.2,601.8,603.1,604.6,603.8,602.2,601.4,600.7,602.0,603.5,604.8,606.1,605.4,604.0,602.9,601.7,600.9,602.3,603.7,604.2,603.0,601.6,602.14];
+  const n=seeds.length, w=900, h=560, top=30, bot=530;
+  const lo=Math.min(...seeds)-1.2, hi=Math.max(...seeds)+1.2;
+  const y=v=>top+(hi-v)/(hi-lo)*(bot-top);
+  const cw=(w-40)/n;
+  const g=document.querySelector('#candles');
+  let svg='';
+  for(let i=0;i<n;i++){
+    const o=seeds[i], c=seeds[(i+1)%n]!==undefined? (i<n-1?seeds[i+1]:seeds[i]) : seeds[i];
+    const openV = i===0?seeds[0]-0.4:seeds[i-1];
+    const closeV = seeds[i];
+    const hiV = Math.max(openV,closeV)+ (0.3+ (i%3)*0.15);
+    const loV = Math.min(openV,closeV)- (0.3+ (i%4)*0.12);
+    const up = closeV>=openV;
+    const x = 20 + i*cw + cw*0.18;
+    const bw = cw*0.64;
+    const yO=y(openV), yC=y(closeV), yH=y(hiV), yL=y(loV);
+    const bodyTop=Math.min(yO,yC), bodyH=Math.max(2,Math.abs(yC-yO));
+    const col = up? 'var(--long)':'var(--short)';
+    svg += `<line x1="${x+bw/2}" y1="${yH}" x2="${x+bw/2}" y2="${yL}" stroke="${col}" stroke-width="1.4" opacity=".9"/>`;
+    svg += `<rect x="${x}" y="${bodyTop}" width="${bw}" height="${bodyH}" fill="${col}" opacity="${up?0.85:0.9}" rx="1"/>`;
+  }
+  g.innerHTML = svg;
+
+  // y-axis price ticks -- same gridline y-values drawn in the SVG, inverted through y()
+  const gridYs=[93,186,279,372,465];
+  const yaxis=document.querySelector('#yaxis');
+  let yticks='';
+  gridYs.forEach(yv=>{
+    const price = hi - (yv-top)/(bot-top)*(hi-lo);
+    yticks += `<div class="ytick" style="top:${(yv/h*100).toFixed(2)}%">${price.toFixed(2)}</div>`;
+  });
+  yaxis.insertAdjacentHTML('afterbegin', yticks);
+
+  // last-price axis badge, positioned at the real last close
+  const lastPx=seeds[n-1];
+  const axpx=document.querySelector('#axpx');
+  axpx.style.top=(y(lastPx)/h*100).toFixed(2)+'%';
+  axpx.textContent=lastPx.toFixed(2);
+
+  // x-axis time ticks -- 5m bars starting at the 09:30 ET open
+  const xaxisEl=document.querySelector('#xaxis');
+  let xticks='';
+  for(let i=0;i<n;i+=5){
+    const totalMin = 30 + i*5;
+    const hh = 9 + Math.floor(totalMin/60);
+    const mm = totalMin%60;
+    const label = `${hh}:${String(mm).padStart(2,'0')}`;
+    const xc = 20 + i*cw + cw*0.5;
+    xticks += `<div class="xtick" style="left:${(xc/w*100).toFixed(2)}%">${label}</div>`;
+  }
+  xaxisEl.innerHTML = xticks;
+})();
+</script>
+<script data-dc-script>
+class Component extends DCLogic {
+  state = {
+    ctOpen:false, chartType:'candles',
+    interval:'5m',
+    panelTab:'gex',
+    indStructure:true, indRibbon:true, indRsi:false, indSaty:true,
+  };
+
+  toggleCt(){ this.setState(s=>({ctOpen:!s.ctOpen})); }
+  closeCt(){ this.setState({ctOpen:false}); }
+  selectCandles(){ this.setState({chartType:'candles', ctOpen:false}); }
+  selectLine(){ this.setState({chartType:'line', ctOpen:false}); }
+
+  toggleInd(key){ this.setState(s=>({[key]:!s[key]})); }
+
+  showLevelsTab(){ this.setState({panelTab:'levels'}); }
+  showGexTab(){ this.setState({panelTab:'gex'}); }
+
+  setInterval(iv){ this.setState({interval:iv}); }
+
+  renderVals(){
+    const st=this.state;
+    const ivLabels={'1m':'1m','5m':'5m','15m':'15m','1h':'1h','D':'D'};
+    const ivShorts={'1m':'1','5m':'5','15m':'15','1h':'60','D':'1D'};
+    return {
+      s:{
+        ctOpen: st.ctOpen, ctBtnCls: st.ctOpen?'open':'',
+        ctIsCandles: st.chartType==='candles', ctIsLine: st.chartType==='line',
+        ctCandlesCls: st.chartType==='candles'?'on':'', ctLineCls: st.chartType==='line'?'on':'',
+
+        indStructure: st.indStructure, indStructureOff: !st.indStructure,
+        indRibbon: st.indRibbon, indRibbonOff: !st.indRibbon,
+        indRsi: st.indRsi, indRsiOff: !st.indRsi,
+        indSaty: st.indSaty, indSatyOff: !st.indSaty,
+        structRowCls: st.indStructure?'':'off',
+        ribbonRowCls: st.indRibbon?'':'off',
+        rsiRowCls: st.indRsi?'':'off',
+        satyRowCls: st.indSaty?'':'off',
+
+        tabIsGex: st.panelTab==='gex', tabIsLevels: st.panelTab==='levels',
+        tabGexCls: st.panelTab==='gex'?'on':'', tabLevelsCls: st.panelTab==='levels'?'on':'',
+
+        iv1mCls: st.interval==='1m'?'on':'', iv5mCls: st.interval==='5m'?'on':'',
+        iv15mCls: st.interval==='15m'?'on':'', iv1hCls: st.interval==='1h'?'on':'',
+        ivDCls: st.interval==='D'?'on':'',
+        ivLabel: ivLabels[st.interval], ivShort: ivShorts[st.interval],
+      },
+      h:{
+        toggleCt:()=>this.toggleCt(),
+        closeCt:()=>this.closeCt(),
+        selectCandles:()=>this.selectCandles(),
+        selectLine:()=>this.selectLine(),
+
+        toggleStruct:()=>this.toggleInd('indStructure'),
+        toggleRibbon:()=>this.toggleInd('indRibbon'),
+        toggleRsi:()=>this.toggleInd('indRsi'),
+        toggleSaty:()=>this.toggleInd('indSaty'),
+
+        showLevelsTab:()=>this.showLevelsTab(),
+        showGexTab:()=>this.showGexTab(),
+
+        setIv1m:()=>this.setInterval('1m'),
+        setIv5m:()=>this.setInterval('5m'),
+        setIv15m:()=>this.setInterval('15m'),
+        setIv1h:()=>this.setInterval('1h'),
+        setIvD:()=>this.setInterval('D'),
+      },
+    };
+  }
+}
+</script>
+</body>
+</html>

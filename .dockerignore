@@ -1,0 +1,17 @@
+# Keep the image tiny and secrets out of it.
+.env
+*.log
+start_error.log
+polish/
+terminal-redesign/
+terminal2/
+tv-redesign/
+.claude/
+Main.dc.html
+swagino-settings-glass.html
+hidden.vbs
+tray.ps1
+start.bat
+stop.bat
+stop_proxy.ps1
+*.md
