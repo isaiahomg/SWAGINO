@@ -12,6 +12,3 @@ id_rsa*
 start_error.log
 __pycache__/
 *.pyc
-
-# local dev launcher artifacts (Windows-only, not part of the server)
-# (kept in the repo intentionally? remove the next lines if you DO want them versioned)

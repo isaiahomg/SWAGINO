@@ -1,5 +1,9 @@
 # Keep the image tiny and secrets out of it.
 .env
+# The droplet's ~/swagino is a live git working copy (git clone + git pull) — exclude the repo
+# metadata from the build context so a git-history dump never rides along in an image layer.
+.git/
+.github/
 *.log
 start_error.log
 polish/

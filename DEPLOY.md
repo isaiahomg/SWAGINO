@@ -85,22 +85,38 @@ Log out and back in once more so the docker group takes effect:
 
 ---
 
-## Part B — Put the app on the droplet
+## Part B — Put the app on the droplet (git)
 
-**Recommended: git** (makes future updates one command). If this folder is a git repo pushed to
-GitHub/GitLab:
+This project's live deployment method is: the droplet holds a **git clone** of your repo, and
+an update is `git pull` + rebuild (Part F). That means the code has to reach GitHub first.
+
+### B1. Create a private repo and push this project
+**[PC]** in the project folder:
+```bash
+git init                    # skip if this folder is already a git repo
+git add .
+git commit -m "SWAGINO"
+```
+On github.com → **New repository** → **Private** → create it (don't add a README, so the push
+below isn't rejected for unrelated history). Then:
+```bash
+git branch -M main
+git remote add origin https://github.com/YOUR_USER/YOUR_REPO.git
+git push -u origin main
+```
+Before that first commit, run `git status` and confirm **`.env`** is not listed — `.gitignore`
+keeps it out, but it's worth a look since it holds your Tradier token.
+
+### B2. Clone it onto the droplet
 **[droplet]**
 ```bash
-git clone YOUR_REPO_URL ~/swagino
+git clone https://github.com/YOUR_USER/YOUR_REPO.git ~/swagino
 cd ~/swagino
 ```
-
-**Or, no git — copy from your PC** with the included script (see Part F) or manually:
-**[PC]** (run in the project folder)
-```bash
-ssh swagino@YOUR_DROPLET_IP "mkdir -p ~/swagino"
-scp proxy.py swagino.html Dockerfile docker-compose.yml .env.example c799f001526d973d5e323d94542fe589.ico swagino@YOUR_DROPLET_IP:~/swagino/
-```
+A **private** repo will prompt for credentials on clone/pull — use a GitHub
+[personal access token](https://github.com/settings/tokens) as the password (GitHub no longer
+accepts account passwords over HTTPS git), or clone over SSH with a deploy key if you'd rather
+not type a token each time.
 
 ---
 
@@ -170,16 +186,35 @@ non-allowlisted one) — the allowlisted email gets a code and lands in SWAGINO;
 
 ## Part F — Day-to-day
 
-### Deploy an update (after you edit swagino.html locally and test at localhost)
-**With git:** **[droplet]** `cd ~/swagino && git pull && docker compose up -d --build`
+### Deploy an update
+After you edit `swagino.html` (or `proxy.py`, `Dockerfile`, etc.) locally and test at
+`localhost:8787`:
 
-**Without git — one command from your PC:** create `deploy.local.ps1` once (see the top of
-`deploy.ps1`), then **[PC]**:
-```powershell
-.\deploy.ps1
+**[PC]**
+```bash
+git add -A
+git commit -m "describe the change"
+git push
+```
+
+**[droplet]**
+```bash
+cd ~/swagino && git pull && docker compose up -d --build
 ```
 Users get the new version on their next refresh — the app's ETag revalidates, so no stale-cache
 problem and no need to tell anyone to hard-refresh.
+
+### Rollback
+**[PC]**
+```bash
+git revert HEAD      # undoes the last commit as a new commit (keeps history honest)
+git push
+```
+**[droplet]**
+```bash
+cd ~/swagino && git pull && docker compose up -d --build
+```
+For an older commit specifically: `git checkout <commit> -- swagino.html && git commit -m "rollback" && git push`, then pull + rebuild on the droplet the same way.
 
 ### Other operations — **[droplet]** in `~/swagino`
 ```bash
@@ -189,75 +224,6 @@ docker compose down             # stop everything
 ```
 - **Add / remove a viewer:** edit the emails in the Cloudflare Access policy (C3). Instant, no redeploy.
 - **Rotate the Tradier token:** edit `TRADIER_TOKEN` in `.env` → `docker compose up -d`.
-
----
-
-## Part G — Push-to-deploy with GitHub Actions (the recommended update flow)
-
-With this set up, your update loop becomes: **edit `swagino.html` locally → test at localhost →
-`git push` → the live server updates itself.** You also get version history and easy rollback.
-
-> With Actions, the droplet's `~/swagino` is **not** a git clone — the Action copies files into it.
-> So during first setup, just make the folder and put `.env` there; skip the `git clone` in Part B.
-
-### G1. Create a private repo and push this project
-**[PC]** in the project folder:
-```bash
-git init
-git add .
-git commit -m "SWAGINO"
-```
-On github.com → **New repository** → **Private** → create it (don't add a README). Then:
-```bash
-git branch -M main
-git remote add origin https://github.com/YOUR_USER/YOUR_REPO.git
-git push -u origin main
-```
-`.gitignore` already keeps `.env`, logs, and `deploy.local.ps1` out of the repo — verify your
-`.env` is **not** listed when you run `git status` before that first commit.
-
-### G2. Make a dedicated deploy key
-This is a separate SSH key used *only* by GitHub to reach your droplet.
-**[PC]**
-```bash
-ssh-keygen -t ed25519 -f deploy_key -N '""' -C "github-actions-swagino"
-```
-That makes two files: `deploy_key` (private) and `deploy_key.pub` (public). **Don't commit them.**
-
-Install the **public** half on the droplet so it accepts that key:
-**[PC]**
-```bash
-type deploy_key.pub | ssh swagino@YOUR_DROPLET_IP "cat >> ~/.ssh/authorized_keys"
-```
-
-### G3. Add the repo secrets
-On GitHub → your repo → **Settings → Secrets and variables → Actions → New repository secret**.
-Add:
-- `DROPLET_HOST` = your droplet IP (e.g. `203.0.113.45`)
-- `DROPLET_USER` = `swagino`
-- `DEPLOY_SSH_KEY` = the **entire contents** of the private `deploy_key` file (open it in Notepad,
-  copy everything including the `-----BEGIN...`/`-----END...` lines)
-- *(recommended)* `DROPLET_KNOWN_HOSTS` = **[PC]** run `ssh-keyscan YOUR_DROPLET_IP` and paste its output
-
-Now delete the local key files so they don't linger: **[PC]** `del deploy_key deploy_key.pub`
-(the private key now lives only as a GitHub secret).
-
-### G4. Deploy
-Push any change (or use the **Actions** tab → **Deploy SWAGINO** → **Run workflow**):
-```bash
-git commit -am "tweak" && git push
-```
-Watch it under the repo's **Actions** tab. When it's green, the live site is updated — visitors
-get the new version on their next refresh (ETag revalidates, no stale cache).
-
-### Rollback
-```bash
-git revert HEAD      # undo the last change as a new commit
-git push             # auto-deploys the reverted version
-```
-or `git checkout <older-commit> -- swagino.html && git commit -am "rollback" && git push`.
-
----
 
 ## Security checklist
 - [ ] UFW enabled, only SSH inbound (Part A4)
