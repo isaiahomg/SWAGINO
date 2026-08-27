@@ -22,10 +22,11 @@
 <!-- The webfont stylesheet used to block first paint: a round trip to googleapis, which
      then points at gstatic, which is a second round trip - all before anything drew. Loaded
      as print media and promoted on load, so it no longer gates rendering. display=swap plus
-     the system-ui fallbacks already in --disp/--mono mean text is legible immediately and
-     simply restyles when Inter lands. -->
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet" media="print" onload="this.media='all';this.onload=null">
-<noscript><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet"></noscript>
+     the ui-monospace/SF Mono/Menlo/Consolas fallbacks already in --disp/--mono mean text is
+     legible immediately and simply restyles once JetBrains Mono lands (Inter/Roboto Mono
+     dropped — nothing references them since the sitewide switch to SF Mono / JetBrains Mono). -->
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all';this.onload=null">
+<noscript><link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet"></noscript>
 <style>
 :root{
   --ink:#000000; --panel:#000000; --panel2:#000000; --line:#1a1a1a; --line2:#282828;
@@ -38,15 +39,21 @@
      globally, which is what kept the old monospace useful for price columns. */
   /* Firefox has no font of its own — its UI (menus, tabs, chrome) renders in the OS's native
      UI font, which on Windows is Segoe UI (confirmed: Firefox docs/support threads, not assumed). */
-  --mono:'Segoe UI',-apple-system,BlinkMacSystemFont,Tahoma,Geneva,Verdana,system-ui,sans-serif;
-  --disp:'Segoe UI',-apple-system,BlinkMacSystemFont,Tahoma,Geneva,Verdana,system-ui,sans-serif;
-  --heat:'Segoe UI',-apple-system,BlinkMacSystemFont,Tahoma,Geneva,Verdana,system-ui,sans-serif;
+  /* SF Mono itself is never embedded here — Apple's font license covers it only for building
+     apps that run ON Apple platforms, and a web app serving font files to any browser doesn't
+     qualify. ui-monospace/"SF Mono"/"SFMono-Regular" instead just NAME the font: on a Mac that
+     already has it (every Mac does, system-wide) the OS resolves it with nothing downloaded or
+     redistributed. JetBrains Mono is the loaded, Apache-2.0-licensed fallback for everyone else —
+     the closest free match to SF Mono's own proportions and letterforms. */
+  --mono:ui-monospace,"SF Mono","SFMono-Regular","JetBrains Mono",Menlo,Consolas,monospace;
+  --disp:ui-monospace,"SF Mono","SFMono-Regular","JetBrains Mono",Menlo,Consolas,monospace;
+  --heat:ui-monospace,"SF Mono","SFMono-Regular","JetBrains Mono",Menlo,Consolas,monospace;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;background:#000;color:var(--text);font-family:var(--disp);font-size:14px;
+html,body{height:100%;background:#000;color:var(--text);font-family:var(--disp);font-weight:300;font-size:14px;
   font-variant-numeric:tabular-nums;font-feature-settings:'tnum' 1,'cv05' 1}
-button{font-family:var(--disp);cursor:pointer}
-input,select,textarea{font-family:var(--mono);background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:4px;padding:5px 8px;font-size:12px}
+button{font-family:var(--disp);font-weight:300;cursor:pointer}
+input,select,textarea{font-family:var(--mono);font-weight:300;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:4px;padding:5px 8px;font-size:12px}
 input:focus,textarea:focus,select:focus{outline:1px solid var(--pivot)}
 input[type=checkbox]{accent-color:var(--pivot)}
 .app{display:grid;grid-template-rows:44px 1fr;height:100vh;position:relative;z-index:1}
@@ -56,9 +63,12 @@ input[type=checkbox]{accent-color:var(--pivot)}
   position:relative;z-index:50}
 /* Keeps .topbar's popovers (the timeframe/chart-type dropdowns) painting above .chartcol
    regardless of DOM order. */
-/* Exempt from the sitewide Segoe UI change — the wordmark keeps its original typeface. */
+/* Previously exempt from the sitewide font (kept its own Inter branding face) — folded into the
+   same SF Mono / JetBrains Mono stack per an explicit "all text" request; font-weight:700 stays,
+   so this still reads bolder than the body copy around it, just in the new family. */
 .logo{font-weight:700;letter-spacing:.10em;font-size:14px;display:flex;align-items:center;gap:7px;
-  font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Display','SF Pro Text',system-ui,sans-serif}
+  font-family:var(--disp);
+  color:var(--axistext)}
 .logo .pin{height:19px;width:auto;display:block;filter:drop-shadow(0 1px 3px rgba(0,0,0,.6))}
 .logo em{color:var(--warn);font-style:normal}
 .sym{display:flex;gap:6px;align-items:center}
@@ -123,10 +133,13 @@ input[type=checkbox]{accent-color:var(--pivot)}
    panel is hidden, so the same button reads as "bring it back" instead of "hide" again. */
 #sbIcon.flip{transform:scaleX(-1)}
 .chartcol{display:flex;flex-direction:column;min-width:0;background:var(--ink)}
-/* Chart column shows the video backdrop behind the graph, same blur as the side panel but a
-   touch darker (.5 vs the panel's .32) so candles keep contrast over it. Raise/lower this
-   alpha to dim/brighten the backdrop behind the graph. Set with the transparent chart canvases. */
-.chartcol{background:rgba(15,16,21,.5)}
+/* Solid --chartbg (opaque, matches topbar/side/etc exactly) when the Backdrop is 'default' or
+   'color' — those two have one flat colour to match anyway, so a translucent tint over them was
+   only ever mixing that colour toward near-black and reintroducing the seam the rest of this UI
+   was just brought in line with. For 'picture'/'video' this still needs to show the wallpaper
+   through the (transparent) chart canvas, so applyBackdrop() swaps this var back to the original
+   rgba(15,16,21,.5) scrim in those two modes only — see --chartcol-bg's own definition. */
+.chartcol{background:var(--chartcol-bg)}
 .panerow{flex:1;display:flex;flex-direction:column;min-height:0}
 .panerow.split{flex-direction:row}
 .panerow.split .panewrap{flex:1;min-width:0;border-bottom:none;border-right:0.5px solid var(--panesep)}
@@ -178,7 +191,7 @@ input[type=checkbox]{accent-color:var(--pivot)}
 .tips{position:absolute;inset:0;pointer-events:none;z-index:6;overflow:hidden}
 .sessband{position:absolute;top:0;bottom:0;pointer-events:none;background:rgba(64,116,196,.09)}
 .sessband.post{background:rgba(64,116,196,.13)}
-.swdot{position:absolute;width:5px;height:5px;border-radius:50%;pointer-events:none;
+.swdot{position:absolute;width:5px;height:5px;border-radius:50%;pointer-events:auto;cursor:default;
   transform:translate(-50%,-50%);box-shadow:0 0 3px rgba(0,0,0,.9)}
 /* a break reads in three places: a small solid tick at the swing's own wick (with its name
    stacked right above/below it), a tick or cross on the bar that settled it, and the axis
@@ -251,9 +264,17 @@ input[type=checkbox]{accent-color:var(--pivot)}
 /* Only the older break's MARKERS fade. Its name and outcome stay at full strength: the
    whole reason a resolved break is still on the chart is so you can read what happened. */
 .brkmark.stale{opacity:.62}
+/* Line mode anchors this label to the swing bar's CLOSE (see swLabels' own comment), i.e.
+   deliberately ON the line's own path rather than offset into the open space beside a wick the
+   way candle mode is — so unlike candle mode, the line WILL run directly behind this label most
+   of the time. A transparent background there just reads as clutter where line and text overlap.
+   --linemask (the text-shadow glyph-ring approach) was tried for a similar problem and explicitly
+   abandoned elsewhere in this file for reading as a strike-through; the plate that replaced it —
+   a tight, background-coloured rect that cuts the line cleanly (line - gap - text - gap - line) —
+   is reused here instead of inventing a third approach. */
 .swlab{position:absolute;font-family:var(--mono);font-size:9.5px;font-weight:700;
-  letter-spacing:.02em;pointer-events:none;white-space:nowrap;
-  transform:translate(-50%,-50%);background:transparent;text-shadow:var(--linemask)}
+  letter-spacing:.02em;pointer-events:auto;cursor:default;white-space:nowrap;
+  transform:translate(-50%,-50%);background:var(--chartcol-bg);padding:0 3px;border-radius:3px}
 /* The pattern name is clickable: one click selects the pattern (name + both trendlines
    highlight together), and a tiny bin appears to remove it from the chart for good. */
 .patlab{position:absolute;font-family:var(--mono);font-size:10.5px;font-weight:600;
@@ -272,8 +293,8 @@ input[type=checkbox]{accent-color:var(--pivot)}
 .eye .eyeic{transition:filter .2s ease,color .2s ease}
 .eye .ec{display:none} .eye:not(.on) .eo{display:none} .eye:not(.on) .ec{display:inline}
 .eye:not(.on){opacity:.5;filter:none;color:var(--faint)}
-.indtog{display:inline-flex;align-items:center;gap:2px;font-family:'Trebuchet MS',Tahoma,sans-serif;font-weight:700;font-size:12px;color:var(--faint);margin-left:8px}
-.indtog.on{color:var(--text)}
+.indtog{display:inline-flex;align-items:center;gap:2px;font-family:var(--mono);font-weight:300;font-size:12px;color:var(--faint);margin-left:8px}
+.indtog.on{color:var(--axistext)}
 /* Saty ATR Levels / Saty Pivot Ribbon / Market Structure toggles, moved off the panebar and
    onto the chart itself (top-left, like the price-line tags). Same .indtog/.eye/.mini elements,
    same syncIndTogs()/onclick wiring below — only the container and hover reveal are new.
@@ -313,6 +334,11 @@ input[type=checkbox]{accent-color:var(--pivot)}
 .ctbtn{display:inline-flex;align-items:center;line-height:0;cursor:pointer;border:none!important;box-shadow:none!important;
   background:none!important;transition:background .18s ease,color .15s ease}
 .ctbtn:hover{background:rgba(255,255,255,.08)!important}
+/* .ctbtn's own colour otherwise comes from the shared .mini class (color:var(--dim)) — the
+   compound selector here beats that on specificity alone regardless of source order, so this
+   keeps tracking --axistext like .setupIconBtn does, preserving the "pixel-identical" invariant
+   documented above without touching .mini itself (used by many unrelated icon buttons). */
+.mini.ctbtn{color:var(--axistext)}
 /* Layout/Settings/hide-panel must render pixel-identically to .ctbtn (the chart-type icon
    button) in every state — idle, hover, active. NOT approximated: every value below was read
    directly off .ctbtn's own resolved cascade (getComputedStyle + the actual matched CSS rule
@@ -328,7 +354,7 @@ input[type=checkbox]{accent-color:var(--pivot)}
   padding:3px 8px!important;
   background:none!important;
   border:none!important;box-shadow:none!important;
-  color:var(--dim)!important;border-radius:11px!important;
+  color:var(--axistext)!important;border-radius:11px!important;
   transition:transform .13s cubic-bezier(.2,.8,.3,1),background .18s ease,box-shadow .2s ease,border-color .2s ease}
 .setupIconBtn:hover{color:var(--text)!important;
   background:rgba(255,255,255,.08)!important;
@@ -341,9 +367,9 @@ input[type=checkbox]{accent-color:var(--pivot)}
   background:#1a1c22;border:none;border-radius:8px;padding:3px;min-width:104px}
 .ctmenu.open{display:block}
 .ctitem{display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:5px;
-  font-size:11px;color:var(--dim);cursor:pointer;white-space:nowrap}
-.ctitem:hover{background:var(--panel2);color:var(--text)}
-.ctitem.on{color:var(--text)}
+  font-size:11px;color:var(--axistext);cursor:pointer;white-space:nowrap}
+.ctitem:hover{background:var(--panel2);color:var(--axistext)}
+.ctitem.on{color:var(--axistext)}
 /* Line chart type's own colour-mode row (Solid/Gradient) - only meaningful, so only shown,
    while that pane's chart type is actually Line; see syncChartTypeBtns(). */
 .ctlinesec{display:none;border-top:1px solid var(--line);margin-top:3px;padding-top:5px}
@@ -360,7 +386,7 @@ input[type=checkbox]{accent-color:var(--pivot)}
 .phandle:hover{background:var(--line)}
 .subpane{position:relative}
 .subpane>div.cinner{position:absolute;inset:0}
-.ptag{position:absolute;left:8px;top:4px;z-index:5;font-family:'Trebuchet MS',Tahoma,sans-serif;font-weight:700;font-size:11px;color:var(--faint)}
+.ptag{position:absolute;left:8px;top:4px;z-index:5;font-family:var(--mono);font-weight:300;font-size:11px;color:var(--axistext)}
 .ptag .volgear,.ptag .rsigear{opacity:0;transition:opacity .15s ease;
   background:none!important;border:none!important;box-shadow:none!important}
 .subpane:hover .volgear,.subpane:hover .rsigear{opacity:1}
@@ -386,7 +412,7 @@ input[type=checkbox]{accent-color:var(--pivot)}
 .row{display:flex;gap:8px;align-items:center;margin:6px 0;flex-wrap:wrap}
 .row label{font-size:11px;color:var(--dim);min-width:110px}
 .grow{flex:1}
-table.lv{width:100%;border-collapse:collapse;font-family:'Trebuchet MS',Tahoma,sans-serif;font-size:11px}
+table.lv{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px}
 table.lv td{padding:3px 4px;border-bottom:1px solid var(--panel2);white-space:normal;overflow-wrap:anywhere}
 table.lv td.p{font-weight:600;text-align:right;white-space:nowrap}
 .badge{font-size:9px;border:none;background:rgba(255,255,255,.08);border-radius:4px;padding:1px 5px;color:var(--dim);margin-left:4px}
@@ -616,8 +642,8 @@ input:disabled,select:disabled{opacity:.45;cursor:not-allowed}
 #ctxMenu .ci .lbl{flex:1}
 #ctxMenu .ci .kbd{color:#ffffff;font-size:11px;letter-spacing:.02em}
 
-.satyinfo{pointer-events:none;
-  font:500 10.5px/1.35 var(--disp);color:var(--dim);background:rgba(8,8,8,.72);
+.satyinfo{pointer-events:none;position:absolute;bottom:6px;left:9px;z-index:8;
+  font:500 10.5px/1.35 var(--disp);color:var(--dim);background:var(--chartbg);
   border:1px solid #202020;border-radius:5px;padding:3px 8px;
   white-space:nowrap;width:max-content}
 /* ---- Saty ATR Levels ----
@@ -638,7 +664,7 @@ input:disabled,select:disabled{opacity:.45;cursor:not-allowed}
 /* market phase pill: sits between the price and the Tradier connection state */
 .mphase{display:flex;align-items:center;gap:6px;padding:3px 10px 3px 7px;border-radius:999px;
   font:600 11px/1 ui-sans-serif,system-ui;letter-spacing:.4px;white-space:nowrap;
-  background:transparent;border:none;color:var(--dim)}
+  background:transparent;border:none;color:var(--axistext)}
 .mphase .mpi{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;flex:0 0 20px}
 /* The phase icons are transparent emoji now, not currentColor glyphs: they carry their own
    colour, so the pill only has to size them and keep them inside itself. 20px rather than
@@ -722,17 +748,37 @@ input:disabled,select:disabled{opacity:.45;cursor:not-allowed}
 
 /* ═══════════ Apple design refresh (flat surfaces — no blur/translucency/glass) ═══════════ */
 :root{
-  --disp:'Segoe UI',-apple-system,BlinkMacSystemFont,Tahoma,Geneva,Verdana,system-ui,sans-serif;
-  --mono:'Segoe UI',-apple-system,BlinkMacSystemFont,Tahoma,Geneva,Verdana,system-ui,sans-serif;
+  --disp:ui-monospace,"SF Mono","SFMono-Regular","JetBrains Mono",Menlo,Consolas,monospace;
+  --mono:ui-monospace,"SF Mono","SFMono-Regular","JetBrains Mono",Menlo,Consolas,monospace;
   --text:#f5f5f7; --dim:#e6e8ec; --faint:#a0a3ab;
   --line:#26282e; --line2:#3a3d45; --panel:#0d0e11; --panel2:#141519;
   --accent:#0a84ff; --accent2:#5e5ce6;
+  /* The chart canvases themselves are transparent (layout.background is rgba(0,0,0,0) — see
+     createChart) — what actually reads as "the chart's background" is .chartcol's
+     rgba(15,16,21,.5) scrim composited over html,body's #060607 (the Backdrop's "default"
+     state, no custom colour/picture/video set). That composite, resolved to one opaque hex, is
+     the single reference the side panel/topbar/separators all point at below — so a future
+     change to either colour only has one place to update, not three independent literals. */
+  --chartbg:#0b0b0e;
+  /* Same colour, as bare r,g,b components — for the one spot (.sessdrop .tfbtn) that needs an
+     alpha on it rather than a flat fill, since it floats over chart content instead of sitting
+     on solid chrome. Kept in lockstep with --chartbg by applyBackdrop(). */
+  --chartbg-rgb:11,11,14;
+  /* .chartcol's own background — solid --chartbg for 'default'/'color' (see .chartcol's own
+     comment), the original translucent scrim for 'picture'/'video'. Default value here matches
+     'default' mode's resolved --chartbg exactly, so this looks identical before applyBackdrop()'s
+     first run ever touches it. */
+  --chartcol-bg:#0b0b0e;
+  /* Settings > Chart > Axis text color (cfg.axisTextColor) is what these elements are meant to
+     follow — kept in sync by applyAxisTextColor(), the same function that already pushes that
+     setting onto every chart's own layout.textColor. Default matches cfg.axisTextColor's own
+     default (#ffffff) so this looks right before that function's first run ever touches it. */
+  --axistext:#ffffff;
   /* Pane/subpane dividers only. --line is a solid, fairly high-contrast grey — fine for a
      settings-panel rule, but even at a 0.5px border-width it still reads as a hard, heavy
-     line on the actual chart grid. A low-alpha hairline is thinner-looking at ANY zoom or
-     display scaling (subpixel border-width rendering is not guaranteed to actually shrink on
-     every system), so this is the more reliable lever for "thinner" than width alone. */
-  --panesep:rgba(255,255,255,.07);
+     line on the actual chart grid. Matches --chartbg now (see above) instead of a white
+     hairline, so a divider blends into the surrounding chrome rather than standing out. */
+  --panesep:var(--chartbg);
 }
 html,body{
   background:#060607;
@@ -745,8 +791,8 @@ html,body{
   text-rendering:optimizeLegibility;
 }
 input[type=checkbox]{accent-color:var(--accent)}
-.topbar{background:#101115; border-bottom:1px solid var(--line)}
-.side{background:#0c0d10; border-left:1px solid var(--line)}
+.topbar{background:var(--chartbg); border-bottom:1px solid var(--line)}
+.side{background:var(--chartbg); border-left:1px solid var(--line)}
 .tabs{border-bottom:1px solid var(--line)}
 /* ── buttons ── */
 .tbtn{
@@ -759,6 +805,7 @@ input[type=checkbox]{accent-color:var(--accent)}
 .tbtn.primary{background:#0a84ff; border-color:#0a84ff; color:#fff; font-weight:600}
 .tbtn.primary:hover{background:#3d9cff}
 .tbtn.on{background:rgba(10,132,255,.16); border-color:#0a84ff; color:#8ac6ff}
+.tbtn:disabled{opacity:.4; cursor:not-allowed}
 .mini{background:var(--panel2); border:1px solid var(--line); color:var(--dim); border-radius:9px; transition:all .15s ease}
 .mini:hover{color:var(--text); background:#1c1e24; border-color:var(--line2)}
 /* ── segmented control (timeframes etc.) ── */
@@ -767,7 +814,7 @@ input[type=checkbox]{accent-color:var(--accent)}
 .seg button:hover{color:var(--text)}
 .seg button.on{color:#fff; background:#26282e}
 /* ── tabs ── */
-.tabs button{color:var(--faint); font-weight:520; transition:color .15s ease}
+.tabs button{color:var(--axistext); font-weight:520; transition:color .15s ease}
 .tabs button.on{color:var(--text); border-bottom-color:var(--accent)}
 /* ── inputs ── */
 input,select,textarea{background:#0a0b0d; border:1px solid var(--line); border-radius:9px; color:var(--text); padding:6px 10px;
@@ -785,10 +832,15 @@ select option{background:var(--panel2);color:var(--text)}
 /* .sym is the whole "search bar": ticker input + timeframe dropdown in one pill — same
    background/border as .mini, so it reads as one control. The input loses its own box
    (background/border) so it blends into the pill instead of nesting a box inside a box. */
-.sym{background:var(--panel2);border:none;border-radius:11px;
+.sym{background:var(--chartbg);border:none;border-radius:11px;
   padding:3px 5px 3px 10px;gap:5px}
-.sym input{background:none!important;border:none!important;padding:2px 0!important}
+.sym input{background:none!important;border:none!important;padding:2px 0!important;color:var(--axistext)!important}
 .symlogo{width:16px;height:16px;border-radius:4px;object-fit:contain;flex:none}
+/* The timeframe control (#tfbtn0/#tfbtn1) sits right next to the ticker box, not inside it, so
+   it can't be reached via ".sym ..." — scoped by id instead of touching the shared .tfbtn class,
+   which is also used by several unrelated buttons (chart layout, indicator gears, etc.) that
+   weren't part of this. Only the label text, not its caret icon. */
+#tfbtn0,#tfbtn1{color:var(--axistext)}
 .sym input:focus{outline:none}
 .tfdrop{position:relative;display:inline-flex;align-items:center;
   border-left:1px solid var(--line);padding-left:6px;margin-left:1px}
@@ -804,8 +856,8 @@ select option{background:var(--panel2);color:var(--text)}
    color:var(--dim)!important, since an inherited value always loses to a direct one on the
    same element regardless of !important. That's why this read grey instead of matching
    Settings/Hide-panel: needs its own direct override, not a stronger one on the button. */
-#layIcon{width:20px!important;height:20px!important;color:var(--dim)!important}
-#layBtn:hover #layIcon{color:var(--text)!important}
+#layIcon{width:20px!important;height:20px!important;color:var(--axistext)!important}
+#layBtn:hover #layIcon{color:var(--axistext)!important}
 /* Meant for the tiny chevron caret used by the timeframe/RTH-ETH dropdowns — flipping 180°
    reads as "now pointing up" for a caret. #layBtn reuses .tfbtn purely for the same open/close
    wiring, not a caret, so its real icon (a pane-layout glyph) was getting the same flip and
@@ -823,6 +875,16 @@ select option{background:var(--panel2);color:var(--text)}
   text-align:left;padding:5px 10px;border-radius:5px;font-size:11px;white-space:nowrap}
 .tfmenu .seg button:hover{background:var(--panel2);color:var(--text)}
 .tfmenu .seg button.on{background:var(--panel2);color:var(--text)}
+/* .sytflab wraps the existing checkbox <input class="sytf"> unchanged (same class, same .checked/
+   .onchange wiring) — only its own look changes, to match .tfmenu .seg button exactly: same
+   padding/radius/font, hover-highlight, and an "on" (checked) highlight the same colour as the
+   real timeframe menu's selected state, so this reads as one dropdown family, not a rebuilt one. */
+.tfmenu .seg label.sytflab{background:none;border:none;color:var(--dim);
+  text-align:left;padding:5px 10px;border-radius:5px;font-size:11px;white-space:nowrap;
+  display:flex;align-items:center;gap:5px;cursor:pointer}
+.tfmenu .seg label.sytflab:hover{background:var(--panel2);color:var(--text)}
+.tfmenu .seg label.sytflab:has(input:checked){background:var(--panel2);color:var(--text)}
+.tfmenu .seg label.sytflab input{margin:0}
 /* The chart-type toggle sits between .sym and .px in the topbar now; .topbar's own gap already
    spaces it evenly from both, so drop its old panebar-only left margin here (pane 1's copy in
    its own panebar is untouched — that gap:8px + this margin was already how it looked there). */
@@ -843,7 +905,7 @@ select option{background:var(--panel2);color:var(--text)}
    Pane 1's own cluster (#p1cluster) is deliberately left OUT of this — it stays in normal flex
    flow between the logo and the price readout, at its own natural content width, regardless of
    how many panes are showing or how narrow pane 1's column gets. */
-#p2cluster,#p3cluster{position:absolute;top:0;bottom:0;justify-content:center;overflow:visible}
+#p2cluster{position:absolute;top:0;bottom:0;justify-content:center;overflow:visible}
 .linktog{position:relative;display:flex;align-items:center;justify-content:center;
   width:20px;height:20px;cursor:pointer;color:var(--faint);flex:none}
 .linktog input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer}
@@ -893,14 +955,38 @@ select option{background:var(--panel2);color:var(--text)}
 input[type=number]{-moz-appearance:textfield;appearance:textfield}
 input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 /* -- level table -- */
-table.lv{border-collapse:separate;border-spacing:0;font-size:11.5px;background:#101115;border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-top:2px}
+table.lv{border-collapse:separate;border-spacing:0;font-size:11.5px;background:var(--chartbg);color:var(--axistext);border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-top:2px}
 table.lv td{padding:6px 10px;border-bottom:1px solid #1a1c22}
+/* Swatch sits at the table's own normal left padding (10px, inherited from table.lv td above) so
+   it doesn't touch the table edge; the label follows INLINE right after it in that same cell (not
+   its own table column) — a separate column made the visual gap depend on each row's own label
+   length (a two-letter "HH" left a huge gap, a long CONFLUENCE label almost none), which broke
+   "same pixel distancing" outright. Inline + a fixed margin is what actually keeps that gap
+   constant regardless of label length. */
+.lv .lvsw{vertical-align:middle}
+.lv .lvlabel{margin-left:5px}
 table.lv tr:last-child td{border-bottom:none}
 .lv tr.lvrow{transition:background .12s ease}
 .lv tr.lvrow:hover td{background:#1a1c22}
 .lv tr.lvgrp td{padding:11px 10px 4px;border:none;text-align:center}
 .lv tr.lvgrp:first-child td{padding-top:7px}
-.lv tr.lvgrp label{font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--faint);font-weight:700}
+/* The category header used to carry a separate checkbox as its master on/off switch; now the
+   text itself is the switch — click (or Enter/Space) toggles the whole family, and the text's
+   own colour communicates the state instead of a checkbox next to it: bright when shown, greyed
+   out (like an unchecked/dimmed control) when hidden. */
+.catlabel{font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;font-weight:700;
+  cursor:pointer;padding:2px 4px;border-radius:4px;transition:color .15s ease}
+.catlabel:hover{background:rgba(255,255,255,.06)}
+.catlabel.on{color:var(--axistext)}
+.catlabel:not(.on){color:var(--faint)}
+/* Same on/off colour switch as .catlabel above, just sized for a normal row label instead of the
+   category header's small-caps uppercase treatment — this replaced the per-level checkbox
+   entirely, the label text itself is now the toggle. */
+.lvlabel{cursor:pointer;display:inline-block;border-radius:3px;padding:1px 3px;margin:-1px -3px;
+  transition:color .15s ease}
+.lvlabel:hover{background:rgba(255,255,255,.06)}
+.lvlabel.on{color:var(--axistext)}
+.lvlabel:not(.on){color:var(--faint)}
 .lv tr.lvrow.catoff{opacity:.4}
 
 /* ═══════════ Settings panel (#setup) — flat pass on the section contents, matching the ═══
@@ -1079,6 +1165,11 @@ table.lv tr:last-child td{border-bottom:none}
   transition:transform .12s cubic-bezier(.2,.8,.3,1);
 }
 #rsiModal .sw:hover,#stModal .sw:hover,#rbModal .sw:hover,#satyModal .sw:hover{transform:translateY(-1px) scale(1.06)}
+/* Same hover animation as the Saty ATR Levels & Style table's swatches, applied to the Levels
+   table's own (only the transform+transition — .lvsw keeps its existing compact 18x14 size,
+   this doesn't pull in the modals' 24x24 sizing rule above). */
+.lvsw{transition:transform .12s cubic-bezier(.2,.8,.3,1)}
+.lvsw:hover{transform:translateY(-1px) scale(1.06)}
 /* #satyModal .satysr .sw (line ~536) is more specific than the rule above, so its own compact
    22x16px size still wins there -- this just adds the border/hover on top of it. */
 
@@ -1092,13 +1183,18 @@ table.lv tr:last-child td{border-bottom:none}
 .tabs button.on{border-bottom:none}
 .tabic{flex:none;opacity:.85;transition:opacity .18s ease}
 .tabs button.on .tabic{opacity:1}
+/* Was a flat #26282e — a fixed dark grey that could match or nearly match a user-picked
+   Backdrop colour (the side panel it sits on now tracks that colour, see --chartbg), making the
+   selected tab's own highlight blend into its surroundings. --accent is untouched by backdrop
+   changes, so this reuses the same selected-state look already established on .tbtn.on for a
+   pill that stays visible against any backdrop. */
 .tabpill{position:absolute;top:4px;bottom:4px;left:0;width:0;border-radius:9px;pointer-events:none;z-index:0;
-  background:#26282e;
-  border:1px solid var(--line2);
+  background:rgba(10,132,255,.16);
+  border:1px solid var(--accent);
   transition:transform .38s cubic-bezier(.16,.84,.2,1), width .38s cubic-bezier(.16,.84,.2,1),
     background .2s ease;
 }
-.tabs button.on{color:#fff}
+.tabs button.on{color:var(--axistext)}
 .tabs button:not(.on):hover{color:var(--text)}
 
 /* On-chart indicator list (Saty ATR / Saty Ribbon / Market Structure, top-left of the chart):
@@ -1118,13 +1214,15 @@ table.lv tr:last-child td{border-bottom:none}
 .indcollapse{width:23px;height:18px}
 .indcollapse svg{width:11px;height:11px}
 
-/* RTH/ETH moved off the topbar: an overlay anchored where the chart's own time axis sits,
-   bottom-right of pane 1's main chart. Reuses .tfdrop/.tfbtn/.tfmenu wholesale (same open/
-   close/outside-click/Escape wiring already built for the timeframe dropdown), just
-   repositioned and given a translucent chip background since it floats over chart content
-   instead of sitting in the opaque topbar. */
-.sessdrop{position:absolute;right:8px;bottom:6px;z-index:8}
-.sessdrop .tfbtn{background:rgba(20,21,26,.85);
+/* RTH/ETH: baked into pane 0's own chart-corner DOM as a floating overlay, positioned every
+   render by positionAxisChrome() into the empty corner where the time-axis row sits beneath
+   the price-axis column. Reuses .tfdrop/.tfbtn/.tfmenu wholesale for its open/close wiring. */
+/* .tfdrop (reused wholesale for its open/close wiring) carries its own border-left divider,
+   meant to separate it from a control sitting immediately to its left in a flex row — there's
+   nothing to its left here, so that divider is just a stray line. Cancelled on .sessdrop only,
+   since the real timeframe dropdowns still need it. */
+.sessdrop{position:absolute;right:8px;bottom:6px;z-index:8;border-left:none;padding-left:0;margin-left:0}
+.sessdrop .tfbtn{background:rgba(var(--chartbg-rgb),.85);color:var(--axistext);
   border-radius:7px;padding:3px 7px;font-family:var(--mono);font-size:10.5px}
 .sessdrop .tfmenu{top:auto;bottom:100%;right:0;margin-top:0;margin-bottom:6px}
 /* chartOpts() makes the chart's own canvas background fully transparent (rgba(0,0,0,0)) on
@@ -1135,7 +1233,7 @@ table.lv tr:last-child td{border-bottom:none}
    element in the DOM, so plain paint order puts it underneath — no z-index games needed)
    gives those two strips an opaque fill; the chart still draws its own axis text and border
    line on top of it exactly as before, transparent everywhere else. */
-.axisback{position:absolute;pointer-events:none;background:var(--panel)}
+.axisback{position:absolute;pointer-events:none;background:var(--chartbg)}
 .axisback-r{top:0;right:0;bottom:0}
 .axisback-b{left:0;right:0;bottom:0}
 
@@ -1193,6 +1291,39 @@ table.lv tr:last-child td{border-bottom:none}
   window.applyBackdrop=function(){
     urls.forEach(function(u){try{URL.revokeObjectURL(u);}catch(e){}});urls=[];
     var bd=cfg(); window.bdMode=bd.mode||'default';
+    /* The side panel/topbar/ticker box/axis backing/pane separators/Levels table/Saty info bar
+       all track this one colour (--chartbg, see the :root definition), kept live in sync with
+       whichever backdrop is active. A solid-colour backdrop is used AS PICKED, full strength —
+       not composited through .chartcol's own rgba(15,16,21,.5) scrim, which is a separate,
+       pre-existing tint that only exists to keep candles legible over the plot area and made a
+       vivid pick read as muddy/desaturated everywhere else it touched. Picture/video have no
+       single colour to use at all, so they keep the same resolved shade the 'default' backdrop
+       uses (matches the answer already given: those two modes are not expected to be matched). */
+    var chartBg='#0b0b0e',chartBgRgb='11,11,14';
+    if(window.bdMode==='color'&&bd.color){
+      var m=/^#([0-9a-f]{6})$/i.exec(bd.color);
+      if(m){
+        chartBg=bd.color;
+        var n=parseInt(m[1],16);
+        chartBgRgb=((n>>16)&255)+','+((n>>8)&255)+','+(n&255);
+      }
+    }
+    document.documentElement.style.setProperty('--chartbg',chartBg);
+    // .chartcol itself: solid (matches the chrome exactly) for 'default'/'color', the original
+    // translucent scrim for 'picture'/'video' — those two still need the wallpaper showing
+    // through the transparent chart canvas, which an opaque fill here would completely hide.
+    document.documentElement.style.setProperty('--chartcol-bg',
+      (window.bdMode==='picture'||window.bdMode==='video')?'rgba(15,16,21,.5)':chartBg);
+    document.documentElement.style.setProperty('--chartbg-rgb',chartBgRgb);
+    // panes doesn't exist yet on the very first call (this script runs before the chart module
+    // further down the page), but does on every later call (Settings changing the Backdrop) —
+    // guarded rather than ordered around, since applyBackdrop() itself is called once immediately
+    // below at load time.
+    if(typeof panes!=='undefined'){
+      panes.forEach(function(p){if(!p)return;[p.chart,p.vchart,p.rchart].forEach(function(c){
+        try{c.applyOptions({rightPriceScale:{borderColor:chartBg},timeScale:{borderColor:chartBg}});}catch(e){}
+      });});
+    }
     if(window.bdMode==='color'){
       if(v){v.pause();v.removeAttribute('src');v.style.display='none';}
       document.body.style.background=bd.color||'#0b0d14';
@@ -1221,17 +1352,17 @@ table.lv tr:last-child td{border-bottom:none}
     <div class="p2cluster" id="p1cluster">
     <div class="sym">
       <img id="symLogo" class="symlogo" alt="" src="" style="display:none">
-      <input id="symInput" size="6" value="QQQ" placeholder="Ticker">
+      <input id="symInput" size="6" value="QQQ" placeholder="Ticker" autocomplete="off">
       <div class="tfdrop" data-pane="0">
         <button class="tfbtn" id="tfbtn0" title="Timeframe"><span id="tfbtnLabel0">5m</span><svg viewBox="0 0 12 12" fill="none"><path d="M2.5 4.5L6 8l3.5-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <div class="tfmenu">
           <div class="seg tfseg" data-pane="0">
-            <button data-tf="5">5m</button><button data-tf="10">10m</button><button data-tf="D">1D</button>
+            <button data-tf="5">5m</button><button data-tf="10">10m</button><button data-tf="60">1H</button><button data-tf="240">4H</button><button data-tf="D">1D</button><button data-tf="W">1W</button>
           </div>
         </div>
       </div>
     </div>
-    <span class="cttog" data-pane="0"><button class="mini ctbtn" data-pane="0" title="Chart type"><svg class="cticon" viewBox="0 0 16 16" width="20" height="20" fill="none"><g class="ct-candles"><path d="M5,2.333V4.333" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M5,9.667V12.333" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M4.533,4.333C4.055,4.333 3.667,4.721 3.667,5.2V8.8C3.667,9.279 4.055,9.667 4.533,9.667H5.467C5.945,9.667 6.333,9.279 6.333,8.8V5.2C6.333,4.721 5.945,4.333 5.467,4.333H4.533Z" stroke="currentColor" stroke-width="1.5"/><path d="M11,4.333V7.667" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M11,11V13.667" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M10.533,7.667C10.055,7.667 9.667,8.055 9.667,8.533V10.133C9.667,10.612 10.055,11 10.533,11H11.467C11.945,11 12.333,10.612 12.333,10.133V8.533C12.333,8.055 11.945,7.667 11.467,7.667H10.533Z" stroke="currentColor" stroke-width="1.5"/></g><g class="ct-line"><polyline points="1,13 5,8 8,10 15,2" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g></svg></button><div class="ctmenu" data-pane="0"><div class="ctitem" data-pane="0" data-ct="candles"><svg viewBox="0 0 16 16" width="20" height="20" fill="none"><path d="M5,2.333V4.333" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M5,9.667V12.333" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M4.533,4.333C4.055,4.333 3.667,4.721 3.667,5.2V8.8C3.667,9.279 4.055,9.667 4.533,9.667H5.467C5.945,9.667 6.333,9.279 6.333,8.8V5.2C6.333,4.721 5.945,4.333 5.467,4.333H4.533Z" stroke="currentColor" stroke-width="1.5"/><path d="M11,4.333V7.667" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M11,11V13.667" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M10.533,7.667C10.055,7.667 9.667,8.055 9.667,8.533V10.133C9.667,10.612 10.055,11 10.533,11H11.467C11.945,11 12.333,10.612 12.333,10.133V8.533C12.333,8.055 11.945,7.667 11.467,7.667H10.533Z" stroke="currentColor" stroke-width="1.5"/></svg><span>Candles</span></div><div class="ctitem" data-pane="0" data-ct="line"><svg viewBox="0 0 16 16" width="20" height="20" fill="none"><polyline points="1,13 5,8 8,10 15,2" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Line</span></div><div class="ctlinesec" data-pane="0"><div class="ctlinerow"><span class="nm">Line</span><select class="ctlcmode" data-pane="0"><option value="solid">Solid</option><option value="gradient">Gradient</option></select><span class="sw ctlctop" data-pane="0" title="Gradient top colour"></span><span class="sw ctlcbot" data-pane="0" title="Gradient bottom colour"></span></div></div></div></span>
+    <span class="cttog" data-pane="0"><button class="mini ctbtn" data-pane="0" title="Chart type"><svg class="cticon" viewBox="0 0 16 16" width="20" height="20" fill="none"><g class="ct-candles"><svg viewBox="300 250 1500 1500" width="16" height="16"><path d="M0 0 C20.79 0 41.58 0 63 0 C63 97.02 63 194.04 63 294 C96.99 294 130.98 294 166 294 C166 565.26 166 836.52 166 1116 C131.68 1116 97.36 1116 62 1116 C62 1196.52 62 1277.04 62 1360 C41.54 1360 21.08 1360 0 1360 C0 1279.48 0 1198.96 0 1116 C-34.32 1116 -68.64 1116 -104 1116 C-104 844.74 -104 573.48 -104 294 C-69.68 294 -35.36 294 0 294 C0 196.98 0 99.96 0 0 Z " fill="currentColor" transform="translate(1253,320)"/><path d="M0 0 C20.46 0 40.92 0 62 0 C62 62.37 62 124.74 62 189 C96.32 189 130.64 189 166 189 C166 363.24 166 537.48 166 717 C131.68 717 97.36 717 62 717 C62 768.81 62 820.62 62 874 C41.54 874 21.08 874 0 874 C0 822.19 0 770.38 0 717 C-34.32 717 -68.64 717 -104 717 C-104 543.09 -104 369.18 -104 190 C-69.68 190 -35.36 190 0 190 C0 127.3 0 64.6 0 0 Z " fill="currentColor" transform="translate(685,563)"/><path d="M0 0 C20.13 0 40.26 0 61 0 C61 97.02 61 194.04 61 294 C40.87 294 20.74 294 0 294 C0 196.98 0 99.96 0 0 Z " fill="currentColor" transform="translate(1254,321)"/><path d="M0 0 C20.46 0 40.92 0 62 0 C62 80.52 62 161.04 62 244 C41.54 244 21.08 244 0 244 C0 163.48 0 82.96 0 0 Z " fill="currentColor" transform="translate(1253,1436)"/><path d="M0 0 C20.13 0 40.26 0 61 0 C61 62.04 61 124.08 61 188 C40.87 188 20.74 188 0 188 C0 125.96 0 63.92 0 0 Z " fill="currentColor" transform="translate(685,564)"/><path d="M0 0 C20.13 0 40.26 0 61 0 C61 51.48 61 102.96 61 156 C40.87 156 20.74 156 0 156 C0 104.52 0 53.04 0 0 Z " fill="currentColor" transform="translate(685,1280)"/></svg></g><g class="ct-line"><polyline points="1,13 5,8 8,10 15,2" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g></svg></button><div class="ctmenu" data-pane="0"><div class="ctitem" data-pane="0" data-ct="candles"><svg viewBox="300 250 1500 1500" width="20" height="20" fill="none"><path d="M0 0 C20.79 0 41.58 0 63 0 C63 97.02 63 194.04 63 294 C96.99 294 130.98 294 166 294 C166 565.26 166 836.52 166 1116 C131.68 1116 97.36 1116 62 1116 C62 1196.52 62 1277.04 62 1360 C41.54 1360 21.08 1360 0 1360 C0 1279.48 0 1198.96 0 1116 C-34.32 1116 -68.64 1116 -104 1116 C-104 844.74 -104 573.48 -104 294 C-69.68 294 -35.36 294 0 294 C0 196.98 0 99.96 0 0 Z " fill="currentColor" transform="translate(1253,320)"/><path d="M0 0 C20.46 0 40.92 0 62 0 C62 62.37 62 124.74 62 189 C96.32 189 130.64 189 166 189 C166 363.24 166 537.48 166 717 C131.68 717 97.36 717 62 717 C62 768.81 62 820.62 62 874 C41.54 874 21.08 874 0 874 C0 822.19 0 770.38 0 717 C-34.32 717 -68.64 717 -104 717 C-104 543.09 -104 369.18 -104 190 C-69.68 190 -35.36 190 0 190 C0 127.3 0 64.6 0 0 Z " fill="currentColor" transform="translate(685,563)"/><path d="M0 0 C20.13 0 40.26 0 61 0 C61 97.02 61 194.04 61 294 C40.87 294 20.74 294 0 294 C0 196.98 0 99.96 0 0 Z " fill="currentColor" transform="translate(1254,321)"/><path d="M0 0 C20.46 0 40.92 0 62 0 C62 80.52 62 161.04 62 244 C41.54 244 21.08 244 0 244 C0 163.48 0 82.96 0 0 Z " fill="currentColor" transform="translate(1253,1436)"/><path d="M0 0 C20.13 0 40.26 0 61 0 C61 62.04 61 124.08 61 188 C40.87 188 20.74 188 0 188 C0 125.96 0 63.92 0 0 Z " fill="currentColor" transform="translate(685,564)"/><path d="M0 0 C20.13 0 40.26 0 61 0 C61 51.48 61 102.96 61 156 C40.87 156 20.74 156 0 156 C0 104.52 0 53.04 0 0 Z " fill="currentColor" transform="translate(685,1280)"/></svg><span>Candles</span></div><div class="ctitem" data-pane="0" data-ct="line"><svg viewBox="0 0 16 16" width="20" height="20" fill="none"><polyline points="1,13 5,8 8,10 15,2" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Line</span></div><div class="ctlinesec" data-pane="0"><div class="ctlinerow"><span class="nm">Line</span><select class="ctlcmode" data-pane="0"><option value="solid">Solid</option><option value="gradient">Gradient</option></select><span class="sw ctlctop" data-pane="0" title="Gradient top colour"></span><span class="sw ctlcbot" data-pane="0" title="Gradient bottom colour"></span></div></div></div></span>
     </div>
     <div class="mphase" id="mktPhase"><span class="mpi" id="mktPhaseIcon"></span><span id="mktPhaseTxt">—</span></div>
     <div class="tbpix">
@@ -1252,40 +1383,20 @@ table.lv tr:last-child td{border-bottom:none}
           <button class="tfbtn" id="tfbtn1" title="Timeframe"><span id="tfbtnLabel1">5m</span><svg viewBox="0 0 12 12" fill="none"><path d="M2.5 4.5L6 8l3.5-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
           <div class="tfmenu">
             <div class="seg tfseg" data-pane="1">
-              <button data-tf="5">5m</button><button data-tf="10">10m</button><button data-tf="D">1D</button>
+              <button data-tf="5">5m</button><button data-tf="10">10m</button><button data-tf="60">1H</button><button data-tf="240">4H</button><button data-tf="D">1D</button><button data-tf="W">1W</button>
             </div>
           </div>
         </div>
       </div>
-      <span class="cttog" data-pane="1"><button class="mini ctbtn" data-pane="1" title="Chart type"><svg class="cticon" viewBox="0 0 16 16" width="20" height="20" fill="none"><g class="ct-candles"><path d="M5,2.333V4.333" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M5,9.667V12.333" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M4.533,4.333C4.055,4.333 3.667,4.721 3.667,5.2V8.8C3.667,9.279 4.055,9.667 4.533,9.667H5.467C5.945,9.667 6.333,9.279 6.333,8.8V5.2C6.333,4.721 5.945,4.333 5.467,4.333H4.533Z" stroke="currentColor" stroke-width="1.5"/><path d="M11,4.333V7.667" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M11,11V13.667" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M10.533,7.667C10.055,7.667 9.667,8.055 9.667,8.533V10.133C9.667,10.612 10.055,11 10.533,11H11.467C11.945,11 12.333,10.612 12.333,10.133V8.533C12.333,8.055 11.945,7.667 11.467,7.667H10.533Z" stroke="currentColor" stroke-width="1.5"/></g><g class="ct-line"><polyline points="1,13 5,8 8,10 15,2" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g></svg></button><div class="ctmenu" data-pane="1"><div class="ctitem" data-pane="1" data-ct="candles"><svg viewBox="0 0 16 16" width="20" height="20" fill="none"><path d="M5,2.333V4.333" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M5,9.667V12.333" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M4.533,4.333C4.055,4.333 3.667,4.721 3.667,5.2V8.8C3.667,9.279 4.055,9.667 4.533,9.667H5.467C5.945,9.667 6.333,9.279 6.333,8.8V5.2C6.333,4.721 5.945,4.333 5.467,4.333H4.533Z" stroke="currentColor" stroke-width="1.5"/><path d="M11,4.333V7.667" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M11,11V13.667" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M10.533,7.667C10.055,7.667 9.667,8.055 9.667,8.533V10.133C9.667,10.612 10.055,11 10.533,11H11.467C11.945,11 12.333,10.612 12.333,10.133V8.533C12.333,8.055 11.945,7.667 11.467,7.667H10.533Z" stroke="currentColor" stroke-width="1.5"/></svg><span>Candles</span></div><div class="ctitem" data-pane="1" data-ct="line"><svg viewBox="0 0 16 16" width="20" height="20" fill="none"><polyline points="1,13 5,8 8,10 15,2" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Line</span></div><div class="ctlinesec" data-pane="1"><div class="ctlinerow"><span class="nm">Line</span><select class="ctlcmode" data-pane="1"><option value="solid">Solid</option><option value="gradient">Gradient</option></select><span class="sw ctlctop" data-pane="1" title="Gradient top colour"></span><span class="sw ctlcbot" data-pane="1" title="Gradient bottom colour"></span></div></div></div></span>
+      <span class="cttog" data-pane="1"><button class="mini ctbtn" data-pane="1" title="Chart type"><svg class="cticon" viewBox="0 0 16 16" width="20" height="20" fill="none"><g class="ct-candles"><svg viewBox="300 250 1500 1500" width="16" height="16"><path d="M0 0 C20.79 0 41.58 0 63 0 C63 97.02 63 194.04 63 294 C96.99 294 130.98 294 166 294 C166 565.26 166 836.52 166 1116 C131.68 1116 97.36 1116 62 1116 C62 1196.52 62 1277.04 62 1360 C41.54 1360 21.08 1360 0 1360 C0 1279.48 0 1198.96 0 1116 C-34.32 1116 -68.64 1116 -104 1116 C-104 844.74 -104 573.48 -104 294 C-69.68 294 -35.36 294 0 294 C0 196.98 0 99.96 0 0 Z " fill="currentColor" transform="translate(1253,320)"/><path d="M0 0 C20.46 0 40.92 0 62 0 C62 62.37 62 124.74 62 189 C96.32 189 130.64 189 166 189 C166 363.24 166 537.48 166 717 C131.68 717 97.36 717 62 717 C62 768.81 62 820.62 62 874 C41.54 874 21.08 874 0 874 C0 822.19 0 770.38 0 717 C-34.32 717 -68.64 717 -104 717 C-104 543.09 -104 369.18 -104 190 C-69.68 190 -35.36 190 0 190 C0 127.3 0 64.6 0 0 Z " fill="currentColor" transform="translate(685,563)"/><path d="M0 0 C20.13 0 40.26 0 61 0 C61 97.02 61 194.04 61 294 C40.87 294 20.74 294 0 294 C0 196.98 0 99.96 0 0 Z " fill="currentColor" transform="translate(1254,321)"/><path d="M0 0 C20.46 0 40.92 0 62 0 C62 80.52 62 161.04 62 244 C41.54 244 21.08 244 0 244 C0 163.48 0 82.96 0 0 Z " fill="currentColor" transform="translate(1253,1436)"/><path d="M0 0 C20.13 0 40.26 0 61 0 C61 62.04 61 124.08 61 188 C40.87 188 20.74 188 0 188 C0 125.96 0 63.92 0 0 Z " fill="currentColor" transform="translate(685,564)"/><path d="M0 0 C20.13 0 40.26 0 61 0 C61 51.48 61 102.96 61 156 C40.87 156 20.74 156 0 156 C0 104.52 0 53.04 0 0 Z " fill="currentColor" transform="translate(685,1280)"/></svg></g><g class="ct-line"><polyline points="1,13 5,8 8,10 15,2" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g></svg></button><div class="ctmenu" data-pane="1"><div class="ctitem" data-pane="1" data-ct="candles"><svg viewBox="300 250 1500 1500" width="20" height="20" fill="none"><path d="M0 0 C20.79 0 41.58 0 63 0 C63 97.02 63 194.04 63 294 C96.99 294 130.98 294 166 294 C166 565.26 166 836.52 166 1116 C131.68 1116 97.36 1116 62 1116 C62 1196.52 62 1277.04 62 1360 C41.54 1360 21.08 1360 0 1360 C0 1279.48 0 1198.96 0 1116 C-34.32 1116 -68.64 1116 -104 1116 C-104 844.74 -104 573.48 -104 294 C-69.68 294 -35.36 294 0 294 C0 196.98 0 99.96 0 0 Z " fill="currentColor" transform="translate(1253,320)"/><path d="M0 0 C20.46 0 40.92 0 62 0 C62 62.37 62 124.74 62 189 C96.32 189 130.64 189 166 189 C166 363.24 166 537.48 166 717 C131.68 717 97.36 717 62 717 C62 768.81 62 820.62 62 874 C41.54 874 21.08 874 0 874 C0 822.19 0 770.38 0 717 C-34.32 717 -68.64 717 -104 717 C-104 543.09 -104 369.18 -104 190 C-69.68 190 -35.36 190 0 190 C0 127.3 0 64.6 0 0 Z " fill="currentColor" transform="translate(685,563)"/><path d="M0 0 C20.13 0 40.26 0 61 0 C61 97.02 61 194.04 61 294 C40.87 294 20.74 294 0 294 C0 196.98 0 99.96 0 0 Z " fill="currentColor" transform="translate(1254,321)"/><path d="M0 0 C20.46 0 40.92 0 62 0 C62 80.52 62 161.04 62 244 C41.54 244 21.08 244 0 244 C0 163.48 0 82.96 0 0 Z " fill="currentColor" transform="translate(1253,1436)"/><path d="M0 0 C20.13 0 40.26 0 61 0 C61 62.04 61 124.08 61 188 C40.87 188 20.74 188 0 188 C0 125.96 0 63.92 0 0 Z " fill="currentColor" transform="translate(685,564)"/><path d="M0 0 C20.13 0 40.26 0 61 0 C61 51.48 61 102.96 61 156 C40.87 156 20.74 156 0 156 C0 104.52 0 53.04 0 0 Z " fill="currentColor" transform="translate(685,1280)"/></svg><span>Candles</span></div><div class="ctitem" data-pane="1" data-ct="line"><svg viewBox="0 0 16 16" width="20" height="20" fill="none"><polyline points="1,13 5,8 8,10 15,2" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Line</span></div><div class="ctlinesec" data-pane="1"><div class="ctlinerow"><span class="nm">Line</span><select class="ctlcmode" data-pane="1"><option value="solid">Solid</option><option value="gradient">Gradient</option></select><span class="sw ctlctop" data-pane="1" title="Gradient top colour"></span><span class="sw ctlcbot" data-pane="1" title="Gradient bottom colour"></span></div></div></div></span>
     </div>
-    <div class="p2cluster" id="p3cluster" style="display:none">
-      <div class="sym">
-        <label class="linktog" title="Link ticker to Pane 1">
-          <input type="checkbox" id="lnkSym2" checked>
-          <svg class="linkic lk-on" viewBox="0 0 56 56" fill="currentColor"><path d="M 11.3091 35.4341 L 12.9081 35.4341 C 12.7911 34.4202 12.6935 33.3088 12.8105 32.2949 L 11.5432 32.2949 C 6.7465 32.2949 3.3342 28.9217 3.3342 24.0860 C 3.3342 19.2894 6.7465 15.8966 11.5432 15.8966 L 28.8189 15.8966 C 33.6155 15.8966 37.0278 19.2894 37.0278 24.0860 C 37.0278 28.9217 33.6155 32.2949 28.8189 32.2949 L 21.9749 32.2949 C 21.7019 33.0553 21.7994 34.5373 22.4233 35.4341 L 29.0528 35.4341 C 35.6629 35.4341 40.3618 30.7935 40.3618 24.0860 C 40.3618 17.3980 35.6629 12.7573 29.0528 12.7573 L 11.3091 12.7573 C 4.6991 12.7573 0 17.3980 0 24.0860 C 0 30.7935 4.6991 35.4341 11.3091 35.4341 Z M 26.9470 44.5010 L 44.6906 44.5010 C 51.3007 44.5010 56 39.8603 56 33.1529 C 56 26.4648 51.3007 21.8242 44.6906 21.8242 L 43.0916 21.8242 C 43.2087 22.8186 43.3065 23.9495 43.1895 24.9634 L 44.4566 24.9634 C 49.2533 24.9634 52.6656 28.3367 52.6656 33.1529 C 52.6656 37.9690 49.2533 41.3617 44.4566 41.3617 L 27.1810 41.3617 C 22.3843 41.3617 18.9721 37.9690 18.9721 33.1529 C 18.9721 28.3367 22.3843 24.9634 27.1810 24.9634 L 34.0250 24.9634 C 34.2785 24.2030 34.1809 22.7211 33.5765 21.8242 L 26.9470 21.8242 C 20.3370 21.8242 15.6378 26.4648 15.6378 33.1529 C 15.6378 39.8603 20.3370 44.5010 26.9470 44.5010 Z"/></svg>
-          <svg class="linkic lk-off" viewBox="0 0 64 64" fill="currentColor"><path d="M43.124,38.264c-0.712,0-1.424-0.272-1.967-0.815c-1.086-1.086-1.086-2.847,0-3.934l7.403-7.403c2.737-2.737,2.737-7.19,0-9.927c-2.737-2.737-7.19-2.737-9.927,0l-3.169,3.169c-1.086,1.086-2.847,1.086-3.934,0c-1.086-1.086-1.086-2.847,0-3.934l3.169-3.169c2.377-2.376,5.536-3.685,8.897-3.685c3.361,0,6.52,1.309,8.897,3.685c4.906,4.906,4.906,12.888,0,17.794l-7.403,7.403C44.548,37.993,43.836,38.264,43.124,38.264z"/><path d="M21.875,55.454c-3.361,0-6.52-1.309-8.897-3.685c-2.376-2.376-3.685-5.536-3.685-8.897c0-3.361,1.309-6.521,3.685-8.897l7.403-7.403c1.086-1.086,2.847-1.086,3.934,0c1.086,1.086,1.086,2.847,0,3.934l-7.403,7.403c-2.737,2.737-2.737,7.19,0,9.927c1.326,1.326,3.088,2.056,4.963,2.056c1.875,0,3.637-0.73,4.963-2.056l3.169-3.169c1.086-1.086,2.847-1.086,3.934,0c1.086,1.086,1.086,2.847,0,3.934l-3.169,3.169C28.396,54.145,25.236,55.454,21.875,55.454z"/><path d="M34.763,36.384l12.64,12.953c1.081,1.108,1.06,2.883-0.048,3.964c-1.108,1.081-2.883,1.06-3.964-0.048c-0.163-0.167-0.308-0.362-0.421-0.555l-9.054-15.67c-0.148-0.256-0.06-0.584,0.196-0.733C34.328,36.169,34.596,36.213,34.763,36.384z"/><path d="M43.682,40.592l11.855,3.295c1.505,0.418,2.387,1.978,1.968,3.483c-0.418,1.505-1.978,2.387-3.483,1.968c-0.342-0.095-0.66-0.256-0.929-0.455l-9.878-7.336c-0.24-0.178-0.29-0.517-0.112-0.757C43.239,40.607,43.473,40.535,43.682,40.592z"/><path d="M21.797,22.727L8.434,18.895c-1.496-0.429-2.362-1.99-1.933-3.486c0.429-1.496,1.99-2.362,3.486-1.933c0.299,0.086,0.582,0.224,0.825,0.39l11.44,7.898c0.245,0.169,0.307,0.505,0.137,0.75C22.255,22.71,22.013,22.788,21.797,22.727z"/><path d="M29.005,25.121l-9.668-11.999c-0.974-1.209-0.784-2.979,0.425-3.953c1.209-0.974,2.979-0.784,3.953,0.425c0.174,0.216,0.316,0.463,0.416,0.708l5.791,14.28c0.112,0.275-0.021,0.589-0.296,0.701C29.401,25.373,29.151,25.301,29.005,25.121z"/></svg>
-        </label>
-        <img id="symLogo2" class="symlogo" alt="" src="" style="display:none">
-        <input id="psym2" style="width:64px;text-transform:uppercase;font-weight:600;padding:3px 6px" disabled>
-      </div>
-      <div class="tfdrop" data-pane="2">
-        <button class="tfbtn" id="tfbtn2" title="Timeframe"><span id="tfbtnLabel2">10m</span><svg viewBox="0 0 12 12" fill="none"><path d="M2.5 4.5L6 8l3.5-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-        <div class="tfmenu">
-          <div class="seg tfseg" data-pane="2">
-            <button data-tf="5">5m</button><button data-tf="10">10m</button><button data-tf="D">1D</button>
-          </div>
-        </div>
-      </div>
-      <span class="cttog" data-pane="2"><button class="mini ctbtn" data-pane="2" title="Chart type"><svg class="cticon" viewBox="0 0 16 16" width="20" height="20" fill="none"><g class="ct-candles"><path d="M5,2.333V4.333" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M5,9.667V12.333" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M4.533,4.333C4.055,4.333 3.667,4.721 3.667,5.2V8.8C3.667,9.279 4.055,9.667 4.533,9.667H5.467C5.945,9.667 6.333,9.279 6.333,8.8V5.2C6.333,4.721 5.945,4.333 5.467,4.333H4.533Z" stroke="currentColor" stroke-width="1.5"/><path d="M11,4.333V7.667" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M11,11V13.667" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M10.533,7.667C10.055,7.667 9.667,8.055 9.667,8.533V10.133C9.667,10.612 10.055,11 10.533,11H11.467C11.945,11 12.333,10.612 12.333,10.133V8.533C12.333,8.055 11.945,7.667 11.467,7.667H10.533Z" stroke="currentColor" stroke-width="1.5"/></g><g class="ct-line"><polyline points="1,13 5,8 8,10 15,2" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></g></svg></button><div class="ctmenu" data-pane="2"><div class="ctitem" data-pane="2" data-ct="candles"><svg viewBox="0 0 16 16" width="20" height="20" fill="none"><path d="M5,2.333V4.333" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M5,9.667V12.333" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M4.533,4.333C4.055,4.333 3.667,4.721 3.667,5.2V8.8C3.667,9.279 4.055,9.667 4.533,9.667H5.467C5.945,9.667 6.333,9.279 6.333,8.8V5.2C6.333,4.721 5.945,4.333 5.467,4.333H4.533Z" stroke="currentColor" stroke-width="1.5"/><path d="M11,4.333V7.667" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M11,11V13.667" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M10.533,7.667C10.055,7.667 9.667,8.055 9.667,8.533V10.133C9.667,10.612 10.055,11 10.533,11H11.467C11.945,11 12.333,10.612 12.333,10.133V8.533C12.333,8.055 11.945,7.667 11.467,7.667H10.533Z" stroke="currentColor" stroke-width="1.5"/></svg><span>Candles</span></div><div class="ctitem" data-pane="2" data-ct="line"><svg viewBox="0 0 16 16" width="20" height="20" fill="none"><polyline points="1,13 5,8 8,10 15,2" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Line</span></div><div class="ctlinesec" data-pane="2"><div class="ctlinerow"><span class="nm">Line</span><select class="ctlcmode" data-pane="2"><option value="solid">Solid</option><option value="gradient">Gradient</option></select><span class="sw ctlctop" data-pane="2" title="Gradient top colour"></span><span class="sw ctlcbot" data-pane="2" title="Gradient bottom colour"></span></div></div></div></span>
-    </div>
+    
     <div class="spacer"></div>
     <div class="tfdrop laydrop" id="layDrop">
       <button class="tbtn layBtn tfbtn setupIconBtn" id="layBtn" title="Chart layout"><svg class="layic" id="layIcon" viewBox="0 0 20 20" width="20" height="20" fill="currentColor"><path d="M 0 2 L 0 18 L 20 18 L 20 17 L 1 17 L 1 2 L 0 2 z M 6.4921875 2.5 C 6.3623006 2.50207 6.2383174 2.554606 6.1464844 2.6464844 L 2.1464844 6.6464844 C 1.6556578 7.1177388 2.3822612 7.8443422 2.8535156 7.3535156 L 6.421875 3.7851562 L 10.083984 9.2773438 C 10.223774 9.4866441 10.49734 9.5594276 10.722656 9.4472656 L 14.400391 7.6074219 L 18.146484 11.353516 C 18.617739 11.844289 19.344289 11.117739 18.853516 10.646484 L 14.853516 6.6464844 C 14.701521 6.4947425 14.469605 6.457007 14.277344 6.5527344 L 10.671875 8.3554688 L 6.9160156 2.7226562 C 6.8217568 2.5812359 6.6621214 2.497372 6.4921875 2.5 z M 6.4824219 10.5 A 0.50083746 0.50083746 0 0 0 6.1464844 10.646484 L 2.1464844 14.646484 A 0.50083746 0.50083746 0 1 0 2.8535156 15.353516 L 6.5996094 11.609375 L 10.275391 13.447266 A 0.50083746 0.50083746 0 0 0 10.621094 13.486328 L 14.441406 12.53125 L 18.275391 14.447266 A 0.50083746 0.50083746 0 1 0 18.724609 13.552734 L 14.724609 11.552734 A 0.50083746 0.50083746 0 0 0 14.378906 11.513672 L 10.558594 12.46875 L 6.7246094 10.552734 A 0.50083746 0.50083746 0 0 0 6.4824219 10.5 z "/></svg></button>
       <div class="tfmenu laymenu">
         <button class="layopt" data-n="1" title="1 chart"><span class="layn">1</span><svg viewBox="0 0 20 14" width="26" height="18.2" fill="none"><rect x="1" y="1" width="18" height="12" rx="2" stroke="currentColor" stroke-width="1.4"/></svg></button>
         <button class="layopt" data-n="2" title="2 charts"><span class="layn">2</span><svg viewBox="0 0 20 14" width="26" height="18.2" fill="none"><rect x="1" y="1" width="18" height="12" rx="2" stroke="currentColor" stroke-width="1.4"/><line x1="10" y1="1" x2="10" y2="13" stroke="currentColor" stroke-width="1.4"/></svg></button>
-        <button class="layopt" data-n="3" title="3 charts"><span class="layn">3</span><svg viewBox="0 0 20 14" width="26" height="18.2" fill="none"><rect x="1" y="1" width="18" height="12" rx="2" stroke="currentColor" stroke-width="1.4"/><line x1="7.3" y1="1" x2="7.3" y2="13" stroke="currentColor" stroke-width="1.4"/><line x1="13.6" y1="1" x2="13.6" y2="13" stroke="currentColor" stroke-width="1.4"/></svg></button>
       </div>
     </div>
     <button class="tbtn setupIconBtn" id="setupBtn" title="Settings"><svg viewBox="0 0 90 90" width="20" height="20" fill="currentColor"><path d="M 79.199 45 c 0 -2.017 -0.185 -3.99 -0.52 -5.912 l 10.238 -8.021 l -9.893 -17.135 l -12.065 4.856 c -3.016 -2.53 -6.473 -4.552 -10.242 -5.926 L 54.893 0 H 35.107 l -1.825 12.862 c -3.769 1.375 -7.225 3.397 -10.242 5.926 l -12.065 -4.856 L 1.083 31.067 l 10.238 8.021 c -0.335 1.921 -0.52 3.894 -0.52 5.912 s 0.185 3.99 0.52 5.912 L 1.083 58.933 l 9.893 17.135 l 12.065 -4.856 c 3.016 2.53 6.473 4.552 10.242 5.926 L 35.107 90 h 19.785 l 1.825 -12.862 c 3.769 -1.375 7.225 -3.397 10.242 -5.926 l 12.065 4.856 l 9.893 -17.135 l -10.238 -8.021 C 79.014 48.99 79.199 47.017 79.199 45 z M 45 66.659 c -11.962 0 -21.659 -9.697 -21.659 -21.659 S 33.038 23.341 45 23.341 S 66.659 33.038 66.659 45 S 56.962 66.659 45 66.659 z"/></svg></button>
@@ -1308,19 +1419,12 @@ table.lv tr:last-child td{border-bottom:none}
         <div class="phandle" data-pane="1" data-t="rsi" title="Drag to resize RSI panel"></div>
         <div class="subpane" id="rsic1wrap"><span class="ptag">RSI <button class="mini rsigear" data-pane="1" style="padding:0 5px;margin-left:4px">⚙</button></span><div class="cinner" id="rsic1"></div></div>
       </div>
-      <div class="panewrap" id="pw2" style="display:none">
-        <div class="pchart"><div class="chartcorner" data-pane="2"><div class="indlist" id="indlist2"><span class="indtog" id="stylab2">Saty ATR Levels<button class="eye" data-ind="saty" data-pane="2" title="Saty ATR Levels"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini satygear" style="padding:0 5px;margin-left:2px">&#9881;</button></span><span class="indtog" id="rblab2">Saty Pivot Ribbon<button class="eye" data-ind="ribbon" data-pane="2" title="Saty Pivot Ribbon"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini rbgear" style="padding:0 5px;margin-left:2px">&#9881;</button></span><span class="indtog" id="stlab2">Market Structure<button class="eye" data-ind="struct" data-pane="2" title="Swing structure &amp; patterns"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini stgear" data-pane="2" style="padding:0 5px;margin-left:2px">⚙</button></span></div><button class="indcollapse on" id="indcollapse2" title="Show/hide indicators"><svg viewBox="0 0 12 12" fill="none"><path d="M2.5 4.5L6 8l3.5-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div><div class="cinner" id="pc2"></div><div class="tips" id="tips2"></div><div class="cdown" id="cd2"></div></div>
-        <div class="phandle" data-pane="2" data-t="vol" title="Drag to resize Volume panel"></div>
-        <div class="subpane" id="volc2wrap"><span class="ptag">Volume <button class="mini volgear" data-pane="2" style="padding:0 5px;margin-left:4px">&#9881;</button></span><div class="cinner" id="volc2"></div></div>
-        <div class="phandle" data-pane="2" data-t="rsi" title="Drag to resize RSI panel"></div>
-        <div class="subpane" id="rsic2wrap"><span class="ptag">RSI <button class="mini rsigear" data-pane="2" style="padding:0 5px;margin-left:4px">⚙</button></span><div class="cinner" id="rsic2"></div></div>
-      </div>
-     </div>
+           </div>
     </div>
     <div class="side">
       <div class="tabs">
         <span class="tabpill" aria-hidden="true"></span>
-        <button class="on" data-pane="levels"><svg class="tabic" viewBox="0 0 512 512" width="16" height="16"><path d="M4.65 0.08C6.36 0.08 8.06 0.08 9.77 0.08C10.73 1.74 13.08 2.38 13.84 4.57C14.91 7.67 14.2 11.96 14.2 15.2C14.2 22.68 14.2 30.16 14.2 37.64C14.2 62.42 14.2 87.2 14.2 111.99C14.2 205.35 14.2 298.71 14.2 392.07C14.2 417.32 14.2 442.56 14.2 467.81C14.2 474.67 14.2 481.53 14.2 488.39C14.2 491.12 13.45 495.14 14.73 497.56C18.34 498.42 22.7 497.81 26.42 497.81C34.83 497.81 43.25 497.81 51.67 497.81C77.85 497.81 104.04 497.81 130.22 497.81C213.45 497.81 296.68 497.81 379.91 497.81C409.83 497.81 439.76 497.81 469.68 497.81C478.26 497.81 486.83 497.81 495.4 497.81C499.02 497.81 503.98 496.95 507.43 498.16C509.62 498.92 510.26 501.24 511.92 502.23C511.92 503.93 511.92 505.63 511.92 507.34C510.39 508.86 508.87 510.39 507.34 511.92C339.78 511.92 172.22 511.92 4.66 511.92C3.13 510.39 1.61 508.87 0.08 507.34C0.08 339.78 0.08 172.22 0.08 4.65C1.6 3.13 3.13 1.6 4.65 0.08ZM443.5 48.04C411.95 81.18 378.33 112.35 346.41 145.13C338.8 152.94 331.01 160.58 323.28 168.27C320.61 170.92 317.3 175.53 312.94 174.57C307.33 173.33 298.92 162.5 294.63 158.23C281.1 144.8 267.62 131.31 254.17 117.81C250.51 114.13 240.41 102.26 236.37 100.76C231.54 104.48 227.4 109.59 223.08 113.9C214.03 122.92 204.98 131.96 195.96 141.02C168.36 168.75 140.6 196.32 112.97 224.02C102.73 234.28 92.8 245.1 82.07 254.85C78.63 257.98 72.74 257.99 70.39 253.43C67.54 247.91 72.67 243.92 76.15 240.5C85.51 231.32 94.63 221.89 103.98 212.69C136.88 180.29 168.89 146.97 201.94 114.72C209.98 106.87 217.84 98.82 225.79 90.88C228.78 87.91 232.18 82.88 236.83 82.98C240.11 83.06 242.29 85.63 244.41 87.81C248.63 92.15 252.94 96.42 257.26 100.66C270.54 113.72 283.55 127.07 296.8 140.16C300.26 143.57 310.52 155.36 313.98 156.89C353.78 117.14 393.59 77.39 433.39 37.64C430.13 36.41 425.5 37.19 421.99 37.19C414.2 37.19 406.4 37.19 398.61 37.19C392.94 37.18 387.73 33.83 390.02 27.38C392.08 21.54 399.91 22.97 404.69 22.97C416.54 22.97 428.38 22.97 440.23 22.97C444.7 22.97 451.39 21.67 455.3 24.2C459.96 27.22 458.43 34.81 458.43 39.51C458.43 52.45 458.43 65.38 458.43 78.32C458.43 83.36 459.26 90.14 453.07 91.86C446.91 93.57 444.09 87.46 444.08 82.53C444.08 74.42 444.08 66.32 444.08 58.21C444.08 55.33 444.98 50.47 443.5 48.04ZM458.9 198.02C465.37 200.55 480.29 194.93 484.68 201.48C486.97 204.89 486.02 210.01 486.02 213.92C486.02 223.58 486.02 233.24 486.02 242.91C486.02 276.89 486.02 310.86 486.02 344.84C486.02 353.72 486.02 362.61 486.02 371.49C486.02 375.27 486.92 380.19 484.74 383.52C480.41 390.14 465.46 384.69 458.93 387.04C457.61 391.41 458.54 397.28 458.54 401.88C458.54 412.33 458.54 422.77 458.54 433.21C458.54 438.98 459.36 448.3 450.98 447.99C443.04 447.7 444.12 438.23 444.12 432.75C444.12 422.3 444.12 411.86 444.12 401.42C444.12 397.08 445.2 390.99 443.77 386.92C436.98 385.52 420.87 389.95 417.39 382.41C415.84 379.06 416.82 373.7 416.82 370.09C416.82 360.89 416.82 351.7 416.82 342.5C416.82 309.77 416.82 277.04 416.82 244.31C416.82 234.18 416.82 224.05 416.82 213.92C416.82 210.15 415.79 204.61 418.14 201.41C422.71 195.2 437.19 200.16 443.86 198.02C445.07 193.06 444.1 186.78 444.1 181.65C444.1 170.43 444.1 159.21 444.1 147.99C444.1 142.13 442.79 131.81 451.45 131.91C459.93 132.01 458.47 142.21 458.47 147.99C458.47 159.21 458.47 170.43 458.47 181.65C458.47 186.73 457.45 193.2 458.9 198.02ZM365.41 289.59C371.68 290.17 386.92 287.33 390.89 292.51C393.07 295.36 392.26 299.86 392.26 303.23C392.26 311.33 392.26 319.44 392.26 327.54C392.26 356.84 392.26 386.14 392.26 415.44C392.26 422.93 392.26 430.41 392.26 437.89C392.26 441.06 392.86 444.94 390.84 447.64C387.04 452.7 371.52 450 365.41 450.51C363.7 454.98 364.96 468 364.95 473.42C364.93 477.87 363 482.28 357.93 482.44C353.12 482.58 350.73 478.68 350.61 474.36C350.41 466.76 351.46 458.75 350.45 451.23C344.28 447.55 329.04 454.65 324.35 447.4C322.25 444.16 323.02 439.7 323.02 436.02C323.02 427.76 323.02 419.5 323.02 411.24C323.02 383.03 323.02 354.82 323.02 326.6C323.02 318.97 323.02 311.33 323.02 303.69C323.02 300.21 322.37 296.19 324.17 293.06C328.57 285.44 344.13 292.83 350.29 289.2C351.78 284.31 350.61 269.86 350.61 263.95C350.61 245.4 350.61 226.85 350.61 208.31C350.61 201.75 347.49 182.98 357.93 183.38C368.02 183.76 364.95 202.04 364.95 208.77C364.95 227.48 364.95 246.18 364.95 264.88C364.95 270.71 363.61 284.78 365.41 289.59ZM471.78 215.77C458.18 215.77 444.59 215.77 431 215.77C431 268.9 431 322.04 431 375.18C444.59 375.18 458.18 375.18 471.78 375.18C471.78 322.04 471.78 268.9 471.78 215.77ZM177.91 267.77C184.55 269.29 199.85 265.06 203.83 271.48C205.74 274.55 205.03 278.73 205.03 282.18C205.03 290.13 205.03 298.08 205.03 306.03C205.03 335.8 205.03 365.57 205.03 395.34C205.03 403.91 205.03 412.48 205.03 421.06C205.03 424.74 205.84 429.35 203.69 432.59C199.35 439.12 184.44 433.72 177.91 436.05C176.02 442.55 181.61 460.44 170.43 460.6C158.96 460.76 164.66 442.47 162.85 436.02C156.13 434.26 141.59 438.75 137.11 432.64C134.97 429.71 135.83 424.96 135.83 421.52C135.83 412.64 135.83 403.76 135.83 394.87C135.83 365.73 135.83 336.58 135.83 307.43C135.83 299.33 135.83 291.22 135.83 283.12C135.83 279.91 134.99 275.21 136.44 272.26C140.09 264.79 156.08 269.29 162.95 267.79C163.68 264.54 163.19 260.74 163.19 257.4C163.19 249.92 163.19 242.44 163.19 234.96C163.19 229.95 164.07 223.93 170.43 223.96C177.05 223.99 177.64 230.28 177.64 235.43C177.64 242.75 177.64 250.08 177.64 257.4C177.64 260.7 177.1 264.59 177.91 267.77ZM271.43 306.43C277.97 308.26 291.64 303.94 296.51 308.77C300.14 312.37 298.8 319.16 298.8 323.8C298.8 336.58 298.8 349.36 298.8 362.14C298.8 366.74 300.24 374.08 296.51 377.63C291.47 382.45 278.06 378.44 271.43 380.03C270 386.46 271.14 394.34 271.14 400.95C271.14 415.29 271.14 429.63 271.14 443.97C271.14 450.08 273.71 464.12 263.95 463.97C254.39 463.83 256.96 450.08 256.96 443.97C256.96 429.16 256.96 414.35 256.96 399.55C256.96 394.33 258.24 384.53 256.59 379.91C250.27 379.05 236.06 382.08 231.54 377.49C228.08 373.97 229.4 367.1 229.4 362.61C229.4 349.67 229.4 336.74 229.4 323.8C229.4 319.21 227.93 311.73 231.97 308.43C237.04 304.29 250.16 307.87 256.68 306.5C258.28 299.98 256.96 287.9 256.96 280.78C256.96 276.26 258.39 271.16 263.95 271.07C269.35 270.98 271.13 275.82 271.14 280.31C271.16 288.3 269.85 298.77 271.43 306.43ZM84.4 314.91C90.51 315.25 106.04 312.8 109.89 317.72C111.91 320.3 111.38 324.01 111.38 327.07C111.38 333.93 111.38 340.79 111.38 347.65C111.38 374.61 111.38 401.57 111.38 428.54C111.38 436.02 111.38 443.5 111.38 450.98C111.38 454.16 111.97 458.08 109.86 460.74C105.73 465.96 90.74 463 84.4 463.68C82.55 469.97 87.81 485.14 76.92 485.3C65.87 485.45 71.21 470.28 69.44 464.01C62.9 461.41 47.78 467.16 43.44 460.39C41.43 457.24 42.09 453.14 42.09 449.58C42.09 442.1 42.09 434.62 42.09 427.13C42.09 401.11 42.09 375.08 42.09 349.05C42.09 342.19 42.09 335.33 42.09 328.47C42.09 325.18 41.48 321.33 43.22 318.37C47.1 311.75 62.83 316.38 69.44 314.68C71.06 308.04 69.74 293.43 69.73 285.93C69.73 281.22 71.1 275.98 76.92 276.05C82.79 276.12 84 281.75 84 286.39C84 293.46 82.68 308.87 84.4 314.91ZM190.85 285.32C177.25 285.32 163.65 285.32 150.06 285.32C150.06 331.6 150.06 377.88 150.06 424.15C163.65 424.15 177.25 424.15 190.85 424.15C190.85 377.88 190.85 331.6 190.85 285.32ZM378.02 306.92C364.45 306.92 350.87 306.92 337.29 306.92C337.29 350.77 337.29 394.63 337.29 438.48C340.39 440.03 345.59 439.08 349.05 439.08C358.04 439.08 369.32 440.39 378.02 438.82C378.02 394.85 378.02 350.88 378.02 306.92ZM284.35 320.99C270.83 320.99 257.32 320.99 243.81 320.99C243.81 335.75 243.81 350.51 243.81 365.27C257.32 365.27 270.83 365.27 284.35 365.27C284.35 350.51 284.35 335.75 284.35 320.99ZM97.07 329.17C83.53 329.17 69.98 329.17 56.43 329.17C56.43 369.16 56.43 409.16 56.43 449.15C69.98 449.15 83.53 449.15 97.07 449.15C97.07 409.16 97.07 369.16 97.07 329.17Z" fill="#1c1c1c" fill-rule="evenodd" stroke="#1c1c1c" stroke-width="0.25" stroke-linejoin="round"/><path d="M471.78 215.77C471.78 268.9 471.78 322.04 471.78 375.18C458.18 375.18 444.59 375.18 431 375.18C431 322.04 431 268.9 431 215.77C444.59 215.77 458.18 215.77 471.78 215.77ZM284.35 320.99C284.35 335.75 284.35 350.51 284.35 365.27C270.83 365.27 257.32 365.27 243.81 365.27C243.81 350.51 243.81 335.75 243.81 320.99C257.32 320.99 270.83 320.99 284.35 320.99ZM97.07 329.17C97.07 369.16 97.07 409.16 97.07 449.15C83.53 449.15 69.98 449.15 56.43 449.15C56.43 409.16 56.43 369.16 56.43 329.17C69.98 329.17 83.53 329.17 97.07 329.17Z" fill="#36b594" fill-rule="evenodd" stroke="#36b594" stroke-width="0.25" stroke-linejoin="round"/><path d="M190.85 285.32C190.85 331.6 190.85 377.88 190.85 424.15C177.25 424.15 163.65 424.15 150.06 424.15C150.06 377.88 150.06 331.6 150.06 285.32C163.65 285.32 177.25 285.32 190.85 285.32ZM378.02 306.92C378.02 350.88 378.02 394.85 378.02 438.82C369.32 440.39 358.04 439.08 349.05 439.08C345.59 439.08 340.39 440.03 337.29 438.48C337.29 394.63 337.29 350.77 337.29 306.92C350.87 306.92 364.45 306.92 378.02 306.92Z" fill="#e54b43" fill-rule="evenodd" stroke="#e54b43" stroke-width="0.25" stroke-linejoin="round"/></svg>Levels</button>
+        <button class="on" data-pane="levels"><svg class="tabic" viewBox="0 0 512 512" width="16" height="16"><path d="M4.65 0.08C6.36 0.08 8.06 0.08 9.77 0.08C10.75 1.74 13.08 2.38 13.84 4.57C14.93 7.66 14.2 11.96 14.2 15.2C14.2 22.52 14.2 29.85 14.2 37.17C14.2 61.95 14.2 86.74 14.2 111.52C14.2 205.35 14.2 299.17 14.2 393C14.2 417.94 14.2 442.88 14.2 467.81C14.2 474.67 14.2 481.53 14.2 488.39C14.2 491.13 13.47 495.12 14.73 497.56C18.34 498.42 22.7 497.81 26.42 497.81C34.83 497.81 43.25 497.81 51.67 497.81C77.85 497.81 104.04 497.81 130.22 497.81C213.45 497.81 296.68 497.81 379.91 497.81C409.83 497.81 439.76 497.81 469.68 497.81C478.26 497.81 486.83 497.81 495.4 497.81C499.03 497.81 503.98 496.95 507.43 498.16C509.62 498.92 510.26 501.23 511.92 502.23C511.92 503.93 511.92 505.63 511.92 507.34C510.39 508.86 508.87 510.39 507.34 511.92C339.78 511.92 172.22 511.92 4.66 511.92C3.13 510.4 1.61 508.87 0.08 507.34C0.08 339.78 0.08 172.22 0.08 4.65C1.6 3.13 3.13 1.6 4.65 0.08ZM443.5 48.05C412 81.22 378.38 112.41 346.42 145.14C338.8 152.94 331.01 160.58 323.28 168.27C320.6 170.94 317.31 175.53 312.94 174.57C307.35 173.34 298.91 162.48 294.63 158.23C281.1 144.8 267.62 131.31 254.17 117.81C250.51 114.13 240.41 102.26 236.37 100.76C231.54 104.49 227.41 109.59 223.08 113.9C214.03 122.93 204.98 131.96 195.97 141.02C168.36 168.75 140.62 196.34 112.97 224.02C102.72 234.28 92.8 245.1 82.07 254.85C78.63 257.98 72.74 257.99 70.39 253.43C67.54 247.91 72.66 243.92 76.14 240.49C85.48 231.29 94.62 221.88 103.96 212.68C136.86 180.27 168.89 146.97 201.94 114.72C209.98 106.87 217.84 98.82 225.79 90.88C228.79 87.89 232.15 82.88 236.83 82.98C240.13 83.06 242.28 85.62 244.41 87.81C248.63 92.14 252.95 96.41 257.26 100.66C270.54 113.72 283.55 127.06 296.81 140.16C300.26 143.57 310.53 155.35 313.98 156.89C353.78 117.14 393.59 77.39 433.39 37.64C430.13 36.41 425.5 37.19 421.99 37.19C414.2 37.19 406.4 37.19 398.61 37.19C392.96 37.18 387.7 33.83 390.01 27.38C392.09 21.54 399.89 22.97 404.69 22.97C416.54 22.97 428.38 22.97 440.23 22.97C444.73 22.97 451.34 21.7 455.3 24.2C459.97 27.15 458.44 34.85 458.44 39.51C458.44 52.45 458.44 65.38 458.44 78.32C458.44 83.36 459.26 90.15 453.07 91.86C446.9 93.56 444.09 87.48 444.08 82.53C444.08 74.42 444.08 66.32 444.08 58.21C444.08 55.33 444.98 50.49 443.5 48.05ZM458.9 198.02C465.37 200.56 480.29 194.92 484.68 201.48C486.97 204.89 486.02 210.01 486.02 213.92C486.02 223.58 486.02 233.24 486.02 242.91C486.02 276.89 486.02 310.86 486.02 344.84C486.02 353.72 486.02 362.61 486.02 371.49C486.02 375.27 486.93 380.21 484.74 383.52C480.38 390.15 465.48 384.68 458.93 387.04C457.61 391.41 458.54 397.28 458.54 401.88C458.54 412.33 458.54 422.77 458.54 433.21C458.54 438.95 459.36 448.34 450.98 448.01C443.04 447.69 444.12 438.23 444.12 432.75C444.12 422.3 444.12 411.86 444.12 401.42C444.12 397.08 445.2 390.99 443.77 386.92C436.97 385.51 420.87 389.96 417.39 382.41C415.84 379.06 416.82 373.7 416.82 370.09C416.82 360.89 416.82 351.7 416.82 342.5C416.82 309.77 416.82 277.04 416.82 244.31C416.82 234.18 416.82 224.05 416.82 213.92C416.82 210.13 415.79 204.64 418.14 201.4C422.66 195.21 437.23 200.15 443.86 198.02C445.07 193.06 444.1 186.78 444.1 181.65C444.1 170.43 444.1 159.21 444.1 147.99C444.1 142.11 442.78 131.82 451.45 131.9C459.94 131.98 458.48 142.22 458.48 147.99C458.48 159.21 458.48 170.43 458.48 181.65C458.48 186.73 457.45 193.2 458.9 198.02ZM365.41 289.57C371.68 290.2 386.93 287.3 390.89 292.51C393.06 295.37 392.26 299.85 392.26 303.23C392.26 311.33 392.26 319.44 392.26 327.54C392.26 356.84 392.26 386.14 392.26 415.44C392.26 422.93 392.26 430.41 392.26 437.89C392.26 441.05 392.89 444.96 390.85 447.64C387 452.71 371.55 450.01 365.41 450.52C363.7 454.96 364.96 468.02 364.95 473.42C364.93 477.86 363 482.29 357.93 482.44C353.12 482.58 350.72 478.68 350.61 474.36C350.41 466.76 351.44 458.76 350.45 451.23C344.27 447.51 329.1 454.68 324.35 447.4C322.24 444.17 323.02 439.69 323.02 436.02C323.02 427.76 323.02 419.5 323.02 411.24C323.02 383.03 323.02 354.82 323.02 326.6C323.02 318.97 323.02 311.33 323.02 303.69C323.02 300.21 322.37 296.19 324.17 293.06C328.56 285.44 344.13 292.83 350.29 289.2C351.78 284.27 350.6 269.89 350.6 263.95C350.6 245.4 350.6 226.85 350.6 208.31C350.6 201.74 347.49 182.98 357.93 183.37C368.02 183.75 364.95 202.04 364.95 208.77C364.95 227.48 364.95 246.18 364.95 264.88C364.95 270.66 363.61 284.82 365.41 289.57ZM471.77 215.77C458.18 215.77 444.59 215.77 431.01 215.77C431.01 268.91 431.01 322.04 431.01 375.17C444.59 375.17 458.18 375.17 471.77 375.17C471.77 322.04 471.77 268.91 471.77 215.77ZM177.91 267.77C184.54 269.29 199.87 265.06 203.84 271.48C205.74 274.55 205.03 278.72 205.03 282.18C205.03 290.13 205.03 298.08 205.03 306.03C205.03 335.8 205.03 365.57 205.03 395.34C205.03 403.91 205.03 412.48 205.03 421.06C205.03 424.74 205.85 429.36 203.69 432.59C199.32 439.14 184.45 433.68 177.91 436.05C176.03 442.55 181.6 460.45 170.43 460.6C158.95 460.75 164.66 442.48 162.85 436.02C156.15 434.26 141.56 438.75 137.11 432.64C134.97 429.69 135.82 424.97 135.82 421.52C135.82 412.64 135.82 403.76 135.82 394.87C135.82 365.73 135.82 336.58 135.82 307.43C135.82 299.33 135.82 291.22 135.82 283.12C135.82 279.91 134.99 275.22 136.44 272.26C140.1 264.78 156.07 269.31 162.95 267.79C163.68 264.54 163.19 260.74 163.19 257.4C163.19 249.92 163.19 242.44 163.19 234.96C163.19 229.93 164.06 223.95 170.43 223.95C176.81 223.95 177.65 229.92 177.65 234.96C177.65 242.44 177.65 249.92 177.65 257.4C177.65 260.71 177.11 264.59 177.91 267.77ZM271.43 306.43C277.98 308.26 291.64 303.93 296.52 308.77C300.15 312.37 298.8 319.16 298.8 323.8C298.8 336.58 298.8 349.36 298.8 362.14C298.8 366.75 300.24 374.06 296.51 377.63C291.5 382.44 278.05 378.47 271.43 380.03C270 386.46 271.14 394.34 271.14 400.95C271.14 415.29 271.14 429.63 271.14 443.97C271.14 450.09 273.73 464.12 263.95 463.97C254.39 463.83 256.96 450.08 256.96 443.97C256.96 429.16 256.96 414.35 256.96 399.55C256.96 394.33 258.24 384.53 256.59 379.91C250.27 379.06 236.06 382.08 231.54 377.49C228.07 373.96 229.4 367.11 229.4 362.61C229.4 349.67 229.4 336.74 229.4 323.8C229.4 319.19 227.93 311.75 231.97 308.42C236.98 304.29 250.19 307.86 256.68 306.5C258.29 300.04 256.96 287.86 256.96 280.78C256.96 276.25 258.38 271.16 263.95 271.07C269.37 270.98 271.13 275.81 271.14 280.31C271.16 288.29 269.85 298.78 271.43 306.43ZM84.4 314.91C90.51 315.25 106.03 312.8 109.89 317.72C111.91 320.3 111.38 324 111.38 327.07C111.38 333.93 111.38 340.79 111.38 347.65C111.38 374.61 111.38 401.57 111.38 428.54C111.38 436.02 111.38 443.5 111.38 450.98C111.38 454.17 111.97 458.08 109.86 460.74C105.73 465.96 90.75 463 84.4 463.68C82.55 469.96 87.81 485.15 76.92 485.3C65.88 485.45 71.2 470.3 69.44 464.02C62.89 461.38 47.8 467.18 43.44 460.39C41.43 457.24 42.09 453.14 42.09 449.58C42.09 442.1 42.09 434.62 42.09 427.13C42.09 401.11 42.09 375.08 42.09 349.05C42.09 342.19 42.09 335.33 42.09 328.47C42.09 325.18 41.48 321.33 43.22 318.37C47.1 311.75 62.82 316.39 69.44 314.68C71.05 307.97 69.73 293.48 69.73 285.93C69.73 281.21 71.1 275.98 76.92 276.05C82.79 276.12 84 281.75 84 286.39C84 293.46 82.68 308.87 84.4 314.91ZM190.86 285.32C177.26 285.32 163.65 285.32 150.05 285.32C150.05 331.6 150.05 377.88 150.05 424.16C163.65 424.16 177.26 424.16 190.86 424.16C190.86 377.88 190.86 331.6 190.86 285.32ZM378.03 306.91C364.45 306.91 350.87 306.91 337.29 306.91C337.29 350.77 337.29 394.63 337.29 438.5C340.41 440.02 345.57 439.08 349.05 439.08C358.02 439.08 369.35 440.41 378.03 438.82C378.03 394.85 378.03 350.88 378.03 306.91ZM284.34 320.99C270.83 320.99 257.32 320.99 243.81 320.99C243.81 335.75 243.81 350.51 243.81 365.27C257.32 365.27 270.83 365.27 284.34 365.27C284.34 350.51 284.34 335.75 284.34 320.99ZM97.07 329.17C83.53 329.17 69.98 329.17 56.43 329.17C56.43 369.16 56.43 409.15 56.43 449.15C69.98 449.15 83.53 449.15 97.07 449.15C97.07 409.15 97.07 369.16 97.07 329.17Z" fill="#1c1c1c" fill-rule="evenodd" stroke="#1c1c1c" stroke-width="0.25" stroke-linejoin="round"/><path d="M471.77 215.77C471.77 268.91 471.77 322.04 471.77 375.17C458.18 375.17 444.59 375.17 431.01 375.17C431.01 322.04 431.01 268.91 431.01 215.77C444.59 215.77 458.18 215.77 471.77 215.77ZM284.34 320.99C284.34 335.75 284.34 350.51 284.34 365.27C270.83 365.27 257.32 365.27 243.81 365.27C243.81 350.51 243.81 335.75 243.81 320.99C257.32 320.99 270.83 320.99 284.34 320.99ZM97.07 329.17C97.07 369.16 97.07 409.15 97.07 449.15C83.53 449.15 69.98 449.15 56.43 449.15C56.43 409.15 56.43 369.16 56.43 329.17C69.98 329.17 83.53 329.17 97.07 329.17Z" fill="#36b595" fill-rule="evenodd" stroke="#36b595" stroke-width="0.25" stroke-linejoin="round"/><path d="M190.86 285.32C190.86 331.6 190.86 377.88 190.86 424.16C177.26 424.16 163.65 424.16 150.05 424.16C150.05 377.88 150.05 331.6 150.05 285.32C163.65 285.32 177.26 285.32 190.86 285.32ZM378.03 306.91C378.03 350.88 378.03 394.85 378.03 438.82C369.35 440.41 358.02 439.08 349.05 439.08C345.57 439.08 340.41 440.02 337.29 438.5C337.29 394.63 337.29 350.77 337.29 306.91C350.87 306.91 364.45 306.91 378.03 306.91Z" fill="#e34b43" fill-rule="evenodd" stroke="#e34b43" stroke-width="0.25" stroke-linejoin="round"/></svg>Levels</button>
         <button data-pane="gex"><svg class="tabic" viewBox="0 0 64 64" width="16" height="16"><circle cx="32" cy="32" r="30" fill="#2d2d2d" stroke="#B8860B" stroke-width="2"/><rect x="32" y="16.5" width="13" height="3" fill="#009959" opacity="0.9" rx="1"/><rect x="32" y="22.5" width="6" height="3" fill="#009959" opacity="0.9" rx="1"/><rect x="32" y="28.5" width="18" height="3" fill="#009959" opacity="0.9" rx="1"/><rect x="32" y="34.5" width="10" height="3" fill="#009959" opacity="0.9" rx="1"/><rect x="32" y="40.5" width="8" height="3" fill="#009959" opacity="0.9" rx="1"/><rect x="32" y="46.5" width="4" height="3" fill="#009959" opacity="0.9" rx="1"/><rect x="19" y="16.5" width="13" height="3" fill="#cc0000" opacity="0.9" rx="1"/><rect x="23" y="22.5" width="9" height="3" fill="#cc0000" opacity="0.9" rx="1"/><rect x="24" y="28.5" width="8" height="3" fill="#cc0000" opacity="0.9" rx="1"/><rect x="17" y="34.5" width="15" height="3" fill="#cc0000" opacity="0.9" rx="1"/><rect x="21" y="40.5" width="11" height="3" fill="#cc0000" opacity="0.9" rx="1"/><rect x="27" y="46.5" width="5" height="3" fill="#cc0000" opacity="0.9" rx="1"/><circle cx="48" cy="16" r="2" fill="#B8860B"><animate attributeName="opacity" values="1;0.3;1" dur="1s" repeatCount="indefinite"/></circle></svg>GEX</button>
         <button data-pane="log"><svg class="tabic" viewBox="0 0 256 256" width="16" height="16"><path d="M181.35 26.71C183.64 28.18 185.56 30.76 187.51 32.67C192.99 38.04 198.53 43.4 204.04 48.79C206.06 50.76 211.99 55.59 212.87 57.92C214.27 61.69 213.1 74.48 213.1 79.17C213.11 95.5 213.33 111.84 213.16 128.17C213.12 132.29 212.07 147.3 213.45 150.17C218.24 151.14 224.1 148.97 227.7 153.47C230.77 157.32 229.5 163.57 229.61 168.17C229.89 179.37 229.59 190.63 229.58 201.83C229.58 206.53 230.79 212.96 227.75 216.92C224.19 221.56 218.42 219.42 213.5 220.21C212 223.47 213.11 232.88 213.12 236.83C213.12 239.31 213.59 242.15 211.16 243.66C208.72 245.18 203.94 244.22 201.17 244.23C192.83 244.25 184.5 244.23 176.17 244.23C145.06 244.22 113.94 244.23 82.83 244.21C73.61 244.21 64.39 244.21 55.17 244.21C52.52 244.21 47.08 245.27 44.82 243.69C39.8 240.19 45.13 225.39 42.5 220.18C37.97 219.48 33.01 221.31 29.23 217.94C25.88 214.94 26.44 210.27 26.46 206.17C26.48 197.22 26.38 188.28 26.47 179.33C26.7 182.03 26.93 184.73 27.17 187.43C27.35 184.67 27.54 181.92 27.72 179.17C30.61 178.42 32.07 175.64 33.5 173.93C33.5 174.6 33.5 175.27 33.5 175.94C33.67 175.35 33.83 174.76 34 174.17C34.17 174.33 34.35 174.5 34.52 174.67C34.51 186.93 34.51 199.2 34.5 211.46C37.47 213.24 43.1 211.99 46.5 212.05C56.94 212.23 67.39 212.1 77.83 212.1C113.13 212.11 148.55 212.89 183.83 212.04C192.94 211.82 202.06 212.31 211.17 212.06C214.15 211.98 218.82 212.99 221.45 211.5C222.42 198.44 221.5 184.94 221.51 171.83C221.52 169.1 222.3 159.92 220.5 158.37C163.67 158.36 106.83 158.35 50 158.33C50.65 158.06 51.29 157.78 51.94 157.5C51.42 157.39 50.91 157.28 50.4 157.17C51.13 157.02 51.7 157.05 51.17 156.39C52.25 155.89 51.88 156.25 52.3 155.17C53.38 155.04 52.9 155.1 53.26 154.17C54.26 154.09 54.84 152.98 55.17 151.72C57.67 151.54 60.18 151.35 62.69 151.17C60.24 150.92 57.78 150.66 55.33 150.41C105.11 150.33 154.88 150.25 204.65 150.17C206 147.49 205.13 134.91 205.13 131.17C205.14 115.5 205.15 99.83 205.13 84.17C205.13 79.85 206.46 66.75 204.5 63.55C193.9 62.96 183.11 63.49 172.5 63.49C169.44 63.49 163.38 64.77 161.22 61.96C158.92 58.99 159.94 51.24 160.29 47.67C160.52 47.72 160.76 47.78 161 47.83C161.06 49.54 161.11 51.24 161.17 52.95C161.29 50.56 160.9 48.07 162.85 46.5C162.49 46.17 162.14 45.83 161.79 45.5C162.6 44.7 162.87 45.13 163.5 45.85C164.5 44.87 165.5 43.88 166.5 42.9C166.29 42.43 166.08 41.97 165.86 41.5C166.2 40.83 166.54 40.17 166.88 39.5C167.33 39.11 167.78 38.72 168.23 38.33C168.32 43.87 168.41 49.41 168.5 54.95C178.45 55.02 188.41 55.09 198.36 55.17C198.17 53.31 194.84 51.13 193.43 49.73C189.1 45.46 184.14 41.38 180.3 36.69C178.92 34.68 177.54 32.66 176.17 30.65C176.81 30.49 177.46 30.33 178.1 30.17C177.89 30.72 177.67 31.28 177.45 31.83C178.79 30.9 181.06 28.95 180.26 27.5C180.63 27.24 180.99 26.97 181.35 26.71ZM133.82 83.07C139.47 81.93 138.97 87.79 137.75 91.22C134.13 101.36 130.64 111.44 127.11 121.58C126.03 124.69 124.83 132.79 119.69 130.82C114.96 129 118.22 123.96 118.99 120.83C121.14 112.17 125.23 101.13 128.72 92.86C129.85 90.17 130.28 83.79 133.82 83.07ZM169.55 106.5C166.89 104.27 157.5 95.1 156.16 92.37C154.82 89.64 156.94 86.56 159.83 86.6C162.27 86.63 163.99 89.04 165.49 90.67C168.89 94.39 172.44 97.92 175.87 101.61C177.16 102.99 179.71 104.68 179.48 106.88C179.1 110.54 172.89 115.45 170.31 118.15C167.69 120.88 162.16 129.5 157.66 126.83C155.05 125.29 155.58 122.04 157.32 120.16C159.66 117.64 169.24 109.29 169.55 106.5ZM93.28 114.67C95.95 116.67 102.08 122.05 99.52 125.69C96.23 130.38 90.48 123.98 88.59 121.03C88.94 120.41 89.3 119.79 89.65 119.17C89.26 119.39 88.88 119.61 88.5 119.83C88.5 119 88.5 118.17 88.5 117.33C89.65 117.39 90.8 117.44 91.95 117.5C91.67 116.94 91.39 116.39 91.11 115.83C91.58 116.17 92.05 116.5 92.51 116.83C92.42 116.39 92.32 115.94 92.23 115.5C92.58 115.22 92.93 114.94 93.28 114.67ZM83.5 197.69C86.9 197.69 101.61 195.8 99.68 202.48C99.2 204.12 97.82 205.32 96.16 205.65C92.62 206.35 78.93 206.58 76.28 204.55C74.06 202.85 74.95 198.62 74.95 196.17C74.95 188.39 74.96 180.61 74.95 172.83C74.95 170.1 74.43 165.48 78.17 164.95C83.18 164.24 82.92 169.39 82.97 172.83C83.06 178.83 82.94 184.84 82.94 190.83C82.94 192.83 82.26 196.1 83.5 197.69ZM115.17 165.13C141.29 161.88 144.63 202.98 119.83 205.78C96.3 208.44 92.73 167.92 115.17 165.13ZM169.08 194.5C166.35 193.6 156.15 195.06 160.23 188.07C162.09 184.9 178.55 185.17 180.56 188.27C184.29 194.01 171.88 203.43 167.33 204.84C146.13 211.37 131.07 182.31 148.94 169.11C156.82 163.29 166.88 163.77 174.54 169.66C176.09 170.85 178.4 172.98 178.84 174.97C179.48 177.92 176.39 180.7 173.55 179.66C171.36 178.86 170.26 176.12 168.26 174.91C162.23 171.24 154.52 172.91 150.8 178.96C143.58 190.7 160.71 204.47 169.08 194.5ZM116.22 173.12C103.56 175.53 106.09 199.74 119.5 197.69C133.46 195.56 130.87 170.33 116.22 173.12ZM205.08 220.08C153.69 220.08 102.3 220.08 50.91 220.08C50.91 225.43 50.91 230.79 50.91 236.14C102.3 236.14 153.69 236.14 205.08 236.14C205.08 230.79 205.08 225.43 205.08 220.08Z" fill="#f84631" fill-rule="evenodd" stroke="#f84631" stroke-width="0.25" stroke-linejoin="round"/><path d="M181.35 26.71C180.99 26.97 180.63 27.24 180.26 27.5C181.06 28.95 178.79 30.9 177.45 31.83C177.67 31.28 177.89 30.72 178.1 30.17C177.46 30.33 176.81 30.49 176.17 30.65C177.54 32.66 178.92 34.68 180.3 36.69C176.37 33.12 172.43 29.54 168.5 25.96C168.41 30.08 168.32 34.21 168.23 38.33C167.78 38.72 167.33 39.11 166.88 39.5C166.54 40.17 166.2 40.83 165.86 41.5C166.08 41.97 166.29 42.43 166.5 42.9C165.5 43.88 164.5 44.87 163.5 45.85C162.87 45.13 162.6 44.7 161.79 45.5C162.14 45.83 162.49 46.17 162.85 46.5C160.9 48.07 161.29 50.56 161.17 52.95C161.11 51.24 161.06 49.54 161 47.83C160.76 47.78 160.52 47.72 160.29 47.67C159.9 41.01 160.19 34.19 160.19 27.5C160.19 25.18 160.94 21.44 159.59 19.5C123.44 19.61 87.29 19.72 51.13 19.83C51.18 63.28 51.22 106.72 51.27 150.17C52.62 150.25 53.98 150.33 55.33 150.41C57.78 150.66 60.24 150.92 62.69 151.17C60.18 151.35 57.67 151.54 55.17 151.72C54.84 152.98 54.26 154.09 53.26 154.17C52.9 155.1 53.38 155.04 52.3 155.17C51.88 156.25 52.25 155.89 51.17 156.39C51.7 157.05 51.13 157.02 50.4 157.17C50.91 157.28 51.42 157.39 51.94 157.5C51.29 157.78 50.65 158.06 50 158.33C45.17 158.34 40.33 158.35 35.5 158.36C33.51 160.04 34.58 171.49 34.52 174.67C34.35 174.5 34.17 174.33 34 174.17C33.83 174.76 33.67 175.35 33.5 175.94C33.5 175.27 33.5 174.6 33.5 173.93C32.07 175.64 30.61 178.42 27.72 179.17C27.54 181.92 27.35 184.67 27.17 187.43C26.93 184.73 26.7 182.03 26.47 179.33C26.23 172.47 23.95 154.68 31.17 151.3C34.79 149.6 38.82 150.94 42.57 150.17C43.7 147.78 42.9 143.5 42.9 140.83C42.9 133.61 42.91 126.39 42.9 119.17C42.84 93.83 42.77 68.5 42.88 43.17C42.9 36.28 42.88 29.39 42.88 22.5C42.88 19.99 42.12 16.09 43.26 13.79C44.89 10.51 49.48 11.45 52.5 11.44C61.06 11.42 69.61 11.53 78.17 11.45C98.28 11.27 118.39 11.49 138.5 11.45C144.46 11.44 160.94 10.22 165.69 11.82C167.69 12.5 179.87 24.52 181.35 26.71ZM93.28 114.67C92.93 114.94 92.58 115.22 92.23 115.5C92.32 115.94 92.42 116.39 92.51 116.83C92.05 116.5 91.58 116.17 91.11 115.83C91.39 116.39 91.67 116.94 91.95 117.5C90.8 117.44 89.65 117.39 88.5 117.33C88.5 118.17 88.5 119 88.5 119.83C88.88 119.61 89.26 119.39 89.65 119.17C89.3 119.79 88.94 120.41 88.59 121.03C86.11 119.6 76.33 109.11 76.62 106.5C76.96 103.43 84.33 97.21 86.64 94.8C88.99 92.35 92.72 86.38 96.5 86.61C99.24 86.77 101.11 89.81 99.85 92.38C98.52 95.1 89.12 104.27 86.46 106.5C88.74 109.22 91.01 111.94 93.28 114.67Z" fill="#ef1b6a" fill-rule="evenodd" stroke="#ef1b6a" stroke-width="0.25" stroke-linejoin="round"/></svg>Log</button>
       </div>
@@ -1361,26 +1465,32 @@ table.lv tr:last-child td{border-bottom:none}
     <div class="row"><label style="min-width:0"><input type="checkbox" id="syOptLab"> Use options labels</label></div>
     <div class="row"><label>Level size</label><input id="sySize" type="number" min="1" max="4" step="1" style="width:60px">
       <span class="hint" style="margin:0;flex:1">default line thickness &mdash; any rung below can override it</span></div>
-    <h3 style="font-size:11px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase;margin:12px 0 6px">Info label</h3>
-    <div class="row"><label style="min-width:0"><input type="checkbox" id="syInfo"> Show info label on chart</label></div>
+    <h3 style="display:none;font-size:11px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase;margin:12px 0 6px">Info label</h3>
+    <div class="row" style="display:none"><label style="min-width:0"><input type="checkbox" id="syInfo"> Show info label on chart</label></div>
     <div class="row"><label style="min-width:74px">Fast EMA</label><input id="syFast" type="number" min="2" step="1" style="width:52px">
       <label style="min-width:66px">Pivot EMA</label><input id="syPivot" type="number" min="2" step="1" style="width:52px">
       <label style="min-width:62px">Slow EMA</label><input id="sySlow" type="number" min="2" step="1" style="width:52px"></div>
     <h3 style="font-size:11px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase;margin:12px 0 6px">Levels &amp; style</h3>
     <div class="hint" style="margin:0 0 8px">Every rung, in price order. A greyed row is switched off by <b>Show all Fibonacci levels</b> or <b>Show extensions</b> above, not by its own checkbox.</div>
     <div id="satyStyRows" class="satysty"></div>
-    <h3 style="font-size:11px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase;margin:12px 0 6px">Timeframes</h3>
-    <div class="row" style="gap:16px">
-      <label style="min-width:0"><input type="checkbox" class="sytf" data-tf="5"> 5m</label>
-      <label style="min-width:0"><input type="checkbox" class="sytf" data-tf="10"> 10m</label>
-      <label style="min-width:0"><input type="checkbox" class="sytf" data-tf="60"> 1H</label>
-      <label style="min-width:0"><input type="checkbox" class="sytf" data-tf="240"> 4H</label>
-      <label style="min-width:0"><input type="checkbox" class="sytf" data-tf="D"> 1D</label></div>
+    <div class="tfdrop" id="satyTfDrop" style="border-left:none;padding-left:0;margin-left:0;margin-top:6px">
+      <button type="button" class="tfbtn" id="satyTfBtn" title="Timeframes"><span>Timeframes</span><svg viewBox="0 0 12 12" fill="none"><path d="M2.5 4.5L6 8l3.5-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      <div class="tfmenu">
+        <div class="seg">
+          <label class="sytflab"><input type="checkbox" class="sytf" data-tf="5"> 5m</label>
+          <label class="sytflab"><input type="checkbox" class="sytf" data-tf="10"> 10m</label>
+          <label class="sytflab"><input type="checkbox" class="sytf" data-tf="60"> 1H</label>
+          <label class="sytflab"><input type="checkbox" class="sytf" data-tf="240"> 4H</label>
+          <label class="sytflab"><input type="checkbox" class="sytf" data-tf="D"> 1D</label>
+          <label class="sytflab"><input type="checkbox" class="sytf" data-tf="W"> 1W</label>
+        </div>
+      </div>
+    </div>
     <div class="hint">Unchecked timeframes hide the whole indicator there. The eye in the pane bar stays where you left it.</div>
     <div class="row" style="justify-content:flex-end;margin-top:12px">
       <button class="tbtn" id="satyDefaults">Defaults</button><span style="flex:1"></span>
       <button class="tbtn" id="satyCancel">Cancel</button>
-      <button class="tbtn primary" id="satyOk">Ok</button></div>
+      <button class="tbtn primary" id="satyOk">OK</button></div>
   </div></div>
 
 <div id="rbModal" role="dialog" aria-modal="true" style="position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:150;display:none;align-items:center;justify-content:center">
@@ -1430,7 +1540,7 @@ table.lv tr:last-child td{border-bottom:none}
     <div class="row" style="justify-content:flex-end;margin-top:12px">
       <button class="tbtn" id="rbDefaults">Defaults</button><span style="flex:1"></span>
       <button class="tbtn" id="rbCancel">Cancel</button>
-      <button class="tbtn primary" id="rbOk">Ok</button></div>
+      <button class="tbtn primary" id="rbOk">OK</button></div>
   </div>
 </div>
 <div id="picker">
@@ -1510,20 +1620,20 @@ table.lv tr:last-child td{border-bottom:none}
     <div class="row"><label style="min-width:0"><input type="checkbox" id="rsMidOn"></label><span style="min-width:96px;font-size:12px">Middle Band</span><span class="sw" id="swRsMid"></span><input id="rsMid" style="width:56px"></div>
     <div class="row"><label style="min-width:0"><input type="checkbox" id="rsLoOn"></label><span style="min-width:96px;font-size:12px">Lower Band</span><span class="sw" id="swRsLo"></span><input id="rsLo" style="width:56px"></div>
     <div class="row"><label style="min-width:0"><input type="checkbox" id="rsFill"></label><span style="min-width:96px;font-size:12px">Background Fill</span><span class="sw" id="swRsFill"></span></div>
-    <div class="row"><label style="min-width:0"><input type="checkbox" id="rsGrad"></label><span style="min-width:200px;font-size:12px">Overbought / oversold gradient fill</span></div>
+    <div class="row"><label style="min-width:0"><input type="checkbox" id="rsGrad"></label><span style="min-width:200px;font-size:12px">Overbought / oversold gradient fill</span><span class="sw" id="swRsOb" title="Overbought color"></span><span class="sw" id="swRsOs" title="Oversold color"></span></div>
     <div class="hint">This is TradingView's built-in <b>Relative Strength Index</b>, ported from its Pine v6 source — Wilder RMA smoothing, the same 70 / 50 / 30 bands, band background fill, and gradient overbought/oversold fills. Divergence does NOT follow Pine's stock version (RSI-line pivots) — see the note under Divergence above for why. The scale is locked 0–100. The RSI line colour is on the Style tab.</div>
     <div id="rsAuto" class="hint" style="margin:8px 0 0"></div>
-    <div class="row" style="justify-content:flex-end"><button class="tbtn" id="rsCancel">Close</button><button class="tbtn primary" id="rsOk">Ok</button></div>
+    <div class="row" style="justify-content:flex-end"><button class="tbtn" id="rsCancel">Close</button><button class="tbtn primary" id="rsOk">OK</button></div>
   </div>
 </div>
 <div id="volModal" style="position:fixed;inset:0;background:rgba(6,9,15,.85);z-index:120;display:none;align-items:center;justify-content:center">
   <div class="card" style="width:340px">
     <h1>Volume</h1>
+    <div class="hint" style="margin:0 0 8px">Colored the same way as the candles: up/down vs the previous bar's close when "Color bars based on previous close" is on (Settings &gt; Appearance &gt; Candles), otherwise vs that bar's own open.</div>
     <h3 class="setsub">Style</h3>
     <div class="row"><span style="min-width:96px;font-size:12px">Up bars</span><span class="sw" id="swVoUp"></span></div>
     <div class="row"><span style="min-width:96px;font-size:12px">Down bars</span><span class="sw" id="swVoDn"></span></div>
-    <div class="hint">Colored the same way as the candles: up/down vs the previous bar's close when "Color bars based on previous close" is on (Settings &gt; Appearance &gt; Candles), otherwise vs that bar's own open.</div>
-    <div class="row" style="justify-content:flex-end"><button class="tbtn" id="voCancel">Close</button><button class="tbtn primary" id="voOk">Ok</button></div>
+    <div class="row" style="justify-content:flex-end"><button class="tbtn" id="voCancel">Close</button><button class="tbtn primary" id="voOk">OK</button></div>
   </div>
 </div>
 <div id="stModal" style="position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:120;display:none;align-items:center;justify-content:center">
@@ -1545,15 +1655,14 @@ table.lv tr:last-child td{border-bottom:none}
       <span class="hint" style="margin:0;flex:1">Consecutive closes back through the level before a break is called failed. <b>1</b> is the exact mirror of the break rule &mdash; and it is wrong more often than it is right. Measured on 70,215 real 5m bars across 15 names (2,732 breaks): at <b>1</b>, 63% of &quot;failed&quot; verdicts saw price close back through the level the break's own way within the hour, and overall verdict accuracy was <b>49.6%</b>. At <b>3</b> it is <b>66.2%</b>, and the same knee shows up on 10m, 1H, 4H and 1D. The cost is a slower call (median 7 bars instead of 2). <b>3</b> is the default for that reason; lower it only if you want the twitchier read back.</span></div>
     <div class="row"><label style="min-width:0"><input type="checkbox" id="stPat"></label><span style="min-width:150px;font-size:12px">Pattern trendlines</span><span class="sw" id="swStPat"></span></div>
     <div class="row"><label style="min-width:0"><input type="checkbox" id="stPatLab"></label><span style="min-width:150px;font-size:12px">Pattern name on chart</span></div>
-    <div class="hint">Patterns are geometric fits through the last three swing highs and three swing lows — descriptive, not predictive. A shape is only drawn while it is <b>live</b>: it needs three touches per boundary, every swing must sit within the timeframe's fit tolerance of its own boundary line, a converging shape must not have reached its apex, and price must still be inside. The moment any of that stops being true the pattern is <b>removed from the chart entirely</b> rather than left up as history. Click a pattern's name on the chart to select it — the boundaries turn amber and a bin icon appears to drop it for good.</div>
-    <div class="hint">In <b>ETH</b> the same engine runs on the extended tape, but a pivot must be <b>backed by volume</b> to count as structure: it is measured against this chart's own regular-session median, so a genuine overnight gap or news reaction still registers while a 5am wiggle on a few hundred shares does not. Without that gate the ETH chart produced roughly four times as many swings as RTH, seven in ten of them on hours when almost nothing traded, and every pattern died.</div>
-    <div class="row" style="justify-content:flex-end"><button class="tbtn" id="stCancel">Cancel</button><button class="tbtn primary" id="stOk">Ok</button></div>
+    <div class="hint">Shapes like triangles and channels appear when price is actually forming one, and disappear once it breaks out. Click a pattern's name on the chart to highlight it, or to remove it for good.</div>
+    <div class="row" style="justify-content:flex-end"><button class="tbtn" id="stCancel">Cancel</button><button class="tbtn primary" id="stOk">OK</button></div>
   </div>
 </div>
 <div id="setup">
   <div class="card">
     <h1>SWAGINO settings</h1>
-    <p>Your Tradier key is stored only in this browser (localStorage) and is sent only to <b>api.tradier.com</b> — or your own local proxy if enabled. It is never sent anywhere else, including any GEX fetch URL.</p>
+    <p style="display:none">Your Tradier key is stored only in this browser (localStorage) and is sent only to <b>api.tradier.com</b> — or your own local proxy if enabled. It is never sent anywhere else, including any GEX fetch URL.</p>
     <button class="explainhdr setsec" data-sec="appearance" aria-expanded="false"><svg class="sec-ic" viewBox="0 0 20 20" fill="none"><path d="M10 17.5A7.5 7.5 0 1117.5 10c0 1.4-.9 2.2-2.1 2.2h-1.6a1.6 1.6 0 00-1.1 2.7c.3.3.5.7.5 1.1a1.5 1.5 0 01-1.5 1.5h-1.7Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><circle cx="6.6" cy="9.2" r="1.1" fill="currentColor"/><circle cx="9.4" cy="6" r="1.1" fill="currentColor"/><circle cx="13.2" cy="7.4" r="1.1" fill="currentColor"/></svg><span class="caret">&#9662;</span> Appearance</button>
     <div class="setbody" data-sec="appearance" style="display:none">
     <h3 class="setsub">Candles</h3>
@@ -1604,8 +1713,13 @@ table.lv tr:last-child td{border-bottom:none}
       <span class="hint" style="margin:0;flex:1">RSI, its smoothing MA, the divergence window and swing strength follow the chart you are on. Off = every panel uses the values in its own gear (RSI defaults to TradingView's 14 / SMA-14). Triggers always reason on 5m and are never affected either way.</span></div>
 
     </div>
+    <button class="explainhdr setsec" data-sec="diag" aria-expanded="false"><svg class="sec-ic" viewBox="0 0 20 20" fill="none"><path d="M4 16V9M10 16V4M16 16v-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span class="caret">&#9662;</span> Diagnostics</button>
+    <div class="setbody" data-sec="diag" style="display:none">
+      <div class="row"><button class="tbtn" id="diagRunBtn">Run diagnostics (30 min)</button></div>
+      <div class="hint" style="margin:0">If you hit a bug, running this records technical detail (price feed events, chart updates — nothing about your account) for 30 minutes. When it finishes, download the file it produces and send it over so the issue can be tracked down.</div>
+    </div>
     <div class="warnbox">This tool marks levels and raises alerts. It does not place orders, and it is not financial advice.</div>
-    <div class="row" style="justify-content:flex-end"><button class="tbtn" id="cfgCancel">Close</button><button class="tbtn primary" id="cfgSave">Save & connect</button></div>
+    <div class="row" style="justify-content:flex-end"><button class="tbtn" id="cfgCancel">Close</button><button class="tbtn" id="cfgApply" disabled>Apply</button><button class="tbtn primary" id="cfgConnect">Connect</button></div>
   </div>
 </div>
 
@@ -1635,6 +1749,101 @@ const LS={
   get gex(){try{return JSON.parse(localStorage.getItem('lc_gex'))||null}catch(e){return null}},set gex(v){localStorage.setItem('lc_gex',JSON.stringify(v))},
   get lvlSty(){try{return JSON.parse(localStorage.getItem('lc_lvlsty'))||{}}catch(e){return{}}},set lvlSty(v){localStorage.setItem('lc_lvlsty',JSON.stringify(v))},
 };
+// Data-pipeline instrumentation for bug reports. Originally a hidden local-testing-only tool
+// (URL flag / localStorage key to even reveal the button); now a real Settings > Diagnostics
+// feature any user can run and hand the resulting file to the developer, so the trigger is a
+// plain Settings button (#diagRunBtn, wired in diagOpenFromSettings() below) instead of a
+// gated flag. Capture itself does not begin at page load, or even at Settings-open — it begins
+// the moment the button is clicked, and runs for exactly 30 minutes of real wall-clock time from
+// that click — not tied to market hours or any fixed clock, and does not recur; once it expires,
+// a fresh click starts a new window. Uses a plain Blob + <a download> — no server upload, no
+// browser-specific API — so the file it produces comes out the same way on Safari/macOS as on
+// Chrome/Windows.
+const DIAG_WINDOW_MS=30*60*1000;
+let DIAG_ACTIVE=false,DIAG_START_MS=0;
+// diagOn() re-checks elapsed time on every call (not just the flag) so a background-tab-throttled
+// setTimeout can never extend capture past the true 30-minute mark.
+function diagOn(){return DIAG_ACTIVE&&(Date.now()-DIAG_START_MS)<=DIAG_WINDOW_MS;}
+window.SWAGINO_DIAG_LOG=window.SWAGINO_DIAG_LOG||[];
+// Export the full capture verbatim from devtools with: copy(JSON.stringify(window.SWAGINO_DIAG_LOG))
+function diagLog(tag,data){
+  if(!diagOn())return;
+  const entry={tag,tsMs:Date.now(),diagElapsedMs:Date.now()-DIAG_START_MS,data};
+  window.SWAGINO_DIAG_LOG.push(entry);
+  console.log('[DIAG]',tag,JSON.stringify(entry));
+}
+// Creates the floating countdown box (if it doesn't already exist) and starts the capture —
+// called from #diagRunBtn's click handler, further down where the rest of the Settings dialog
+// is wired up. Kept as its own function (rather than inlined there) so the box's creation stays
+// next to the rest of the diag machinery it belongs to.
+function diagOpenFromSettings(){
+  let box=document.getElementById('diagCountdownBox');
+  if(box){diagStartCapture(box);return;}
+  box=document.createElement('div');
+  box.id='diagCountdownBox';
+  box.style.cssText='position:fixed;bottom:12px;right:12px;z-index:99999;min-width:170px;'
+    +'text-align:center;background:#0b0d14;color:#8ab4ff;border:1px solid #8ab4ff;'
+    +'border-radius:6px;padding:6px 10px;font:12px/1.4 monospace;'
+    +'box-shadow:0 2px 8px rgba(0,0,0,.4);';
+  document.body.appendChild(box);
+  diagStartCapture(box);
+}
+// Runs exactly once, on the button click: this is the true start of the 30-minute window (not
+// page load). Arms the one-shot expiry timer, announces it in the on-page log, and turns the
+// same box into the live countdown.
+function diagStartCapture(box){
+  DIAG_ACTIVE=true;DIAG_START_MS=Date.now();
+  setTimeout(()=>{DIAG_ACTIVE=false;},DIAG_WINDOW_MS);   // one-shot: fires once, nothing recurring
+  log('LOCAL-DIAG capture window started — recording for 30 minutes','warn');
+  box.style.cursor='default';box.style.borderColor='#2dd4a7';box.style.color='#2dd4a7';
+  let iv;
+  const render=()=>{
+    const remain=Math.max(0,DIAG_WINDOW_MS-(Date.now()-DIAG_START_MS));
+    const mm=Math.floor(remain/60000),ss=Math.floor((remain%60000)/1000);
+    box.textContent='DIAG capturing '+mm+':'+String(ss).padStart(2,'0');
+    if(remain<=0){clearInterval(iv);diagBuildDownload(box);}
+  };
+  render();
+  iv=setInterval(render,1000);
+}
+// Runs once the 30-minute window closes. There is no real network download here — the captured
+// entries already live in window.SWAGINO_DIAG_LOG — so the shown percentage is REAL progress
+// through serializing that array to JSON (batched, yielding between batches), not a simulated or
+// timed animation. Produces an actual file via a Blob + object URL, downloadable like any other
+// browser download (drag the saved file in to hand over the whole capture verbatim).
+function diagBuildDownload(box){
+  box.style.borderColor='#f0b429';box.style.color='#f0b429';
+  const entries=window.SWAGINO_DIAG_LOG;
+  const total=entries.length;
+  if(total===0){
+    box.textContent='DIAG: 0 entries captured';
+    diagRenderDownloadLink(box,new Blob(['[]'],{type:'application/json'}));
+    return;
+  }
+  const parts=['['];
+  let i=0;
+  const batch=Math.max(1,Math.ceil(total/50));   // ~50 real progress updates regardless of log size
+  const step=()=>{
+    const end=Math.min(total,i+batch);
+    for(;i<end;i++)parts.push((i>0?',':'')+JSON.stringify(entries[i]));
+    box.textContent='DIAG preparing download… '+Math.round((i/total)*100)+'%';
+    if(i<total)setTimeout(step,0);
+    else{parts.push(']');diagRenderDownloadLink(box,new Blob([parts.join('')],{type:'application/json'}));}
+  };
+  step();
+}
+function diagRenderDownloadLink(box,blob){
+  const url=URL.createObjectURL(blob);
+  const fname='swagino-diag-'+new Date(DIAG_START_MS).toISOString().replace(/[:.]/g,'-')+'.json';
+  box.style.borderColor='#2dd4a7';box.style.color='#2dd4a7';box.textContent='';
+  const a=document.createElement('a');
+  a.href=url;a.download=fname;
+  a.textContent='⬇ Download diag log ('+(blob.size/1024).toFixed(1)+' KB)';
+  a.style.cssText='color:inherit;text-decoration:none;cursor:pointer;';
+  a.addEventListener('click',()=>setTimeout(()=>URL.revokeObjectURL(url),5000));
+  box.appendChild(a);
+}
+// LOCAL-DIAG-ONLY
 // POLL-DEFAULTS — quoteS=2s (quote poll) and barS=10s (bar poll) are the standing testing /
 // back-testing defaults: KEEP them at 2 and 10 here, and reuse cfg.quoteS / cfg.barS for ALL polling
 // (quoteTimer / barTimer / altTimer setInterval sites) — never add a new hardcoded interval, and
@@ -1645,9 +1854,13 @@ let cfg=Object.assign({proxy:true,quoteS:2,barS:10,
   // 3.70% — previous close 3.7000, intraday 3.7030). Not fetched live; edit it in Settings > GEX
   // as the real rate moves, so the GEX board never silently prices off a stale value nobody set.
   gexRfr:3.70,
-  sym:'QQQ',sess:'eth',split:false,paneN:1,tf0:'5',tf1:'60',tf2:'10',rsiH0:76,rsiH1:76,rsiH2:76,volH0:70,volH1:70,volH2:70,stream:true,satyCfg:null,link:true,sym1:'',link2:true,sym2:'',tfPresets:true,struct0:false,struct1:false,struct2:false,saty0:false,saty1:false,saty2:false,ribbon0:false,ribbon1:false,ribbon2:false,
+  sym:'QQQ',sess:'eth',split:false,paneN:1,tf0:'5',tf1:'60',rsiH0:76,rsiH1:76,volH0:70,volH1:70,stream:true,satyCfg:null,link:true,sym1:'',tfPresets:true,struct0:false,struct1:false,saty0:false,saty1:false,ribbon0:false,ribbon1:false,
   chartType0:'candles',chartType1:'candles',  // per-pane main series type, same cfg[key+i] pattern as struct0/saty0/ribbon0
   axisTextColor:'#ffffff',  // price/volume/RSI axis tick-label colour (all three share one lightweight-charts layout.textColor)
+  // Right-click price chart > "Scale price chart only" (TradingView's own item, replicated).
+  // Default false, matching TradingView's own default: the Ribbon/Saty ATR/Structure overlays
+  // count toward the price scale's autofit unless this is checked (see NO_SCALE's own comment).
+  scalePriceOnly:false,
   // Line chart type's own colour mode, mirrors TradingView's real Settings > Line control
   // (verified live against tradingview.com, not guessed): 'solid' = today's existing behaviour
   // (up/down, or Candle Bias's colour when that's on); 'gradient' = colour purely by the price's
@@ -1657,6 +1870,10 @@ let cfg=Object.assign({proxy:true,quoteS:2,barS:10,
   lineGradTop0:'#d500f9',lineGradTop1:'#d500f9',
   lineGradBot0:'#00bce5',lineGradBot1:'#00bce5'
   },LS.cfg);
+// Set --axistext (see its :root definition) as soon as the saved cfg.axisTextColor is known,
+// rather than waiting for applyAxisTextColor()'s first real call later — that function also
+// touches `panes`, which doesn't exist yet this early in the script.
+document.documentElement.style.setProperty('--axistext',cfg.axisTextColor);
 if(cfg.sess==='all')cfg.sess='eth';
 cfg.candle=Object.assign({prevClose:false,body:true,bodyUp:'#2dd4a7',bodyDn:'#f0564f',border:true,borderUp:'#2dd4a7',borderDn:'#f0564f',wick:true,wickUp:'#8ea3c4',wickDn:'#8ea3c4'},cfg.candle||{});
 cfg.crosshair=Object.assign({color:'#9598A1',style:'dashed'},cfg.crosshair||{});
@@ -1665,23 +1882,23 @@ cfg.ind=cfg.ind||{};Object.keys(IND_DEF).forEach(k=>cfg.ind[k]=Object.assign({},
 let lvlSty=LS.lvlSty;
 cfg.structCfg=Object.assign({strength:5,maxSwings:60,tolPct:0.25,
   labels:true,patterns:true,bos:true,patLabel:true,
-  upC:'#2dd4a7',dnC:'#f0564f',patC:'#6fb7ff',patW:1,patSt:'dashed',
+  upC:'#2dd4a7',dnC:'#f0564f',patC:'#f5d763',patW:2,patSt:'dashed',
   // BOS and CHoCH mean different things — one continues the trend, the other turns it —
   // so they are coloured separately rather than both borrowing the swing colours.
   bosC:'#6fb7ff',chochC:'#e8a33d',bosSt:'auto',bosW:0,failN:3},cfg.structCfg||{});
 // TradingView's built-in "Relative Strength Index" defaults, matched exactly:
 // length 14, source close, divergence off, SMA-14 smoothing, bands 70/50/30 in #787B86,
 // RSI line #7E57C2, band background fill rgb(126,87,194) at 90% transparency, MA yellow.
-cfg.rsi=Object.assign({len:14,src:'close',div:false,divCfg:null,smType:'sma',smLen:14,bbMult:2,
+cfg.rsi=Object.assign({len:14,src:'close',div:true,divCfg:null,smType:'sma',smLen:14,bbMult:2,
   up:70,mid:50,lo:30,upOn:true,midOn:true,loOn:true,
   upC:'#787B86',midC:'rgba(120,123,134,0.5)',loC:'#787B86',
   fill:true,fillC:'rgba(126,87,194,0.10)',maC:'#ffeb3b',maW:1,maSt:'solid',
-  bbC:'#4caf50',grad:true},cfg.rsi||{});
+  bbC:'#4caf50',grad:true,obC:'rgba(0,128,0,0.85)',osC:'rgba(255,0,0,0.85)'},cfg.rsi||{});
 // One-time swap of the old hand-rolled RSI styling for TradingView's. Without this, the
 // previous settings saved in localStorage would win and the panel would still look like
 // the old indicator. Runs once, then never touches the user's later customisations.
 if(!cfg.rsiTV){
-  cfg.rsi=Object.assign(cfg.rsi,{len:14,src:'close',div:false,smType:'sma',smLen:14,bbMult:2,
+  cfg.rsi=Object.assign(cfg.rsi,{len:14,src:'close',div:true,smType:'sma',smLen:14,bbMult:2,
     up:70,mid:50,lo:30,upOn:true,midOn:true,loOn:true,
     upC:'#787B86',midC:'rgba(120,123,134,0.5)',loC:'#787B86',
     fill:true,fillC:'rgba(126,87,194,0.10)',maC:'#ffeb3b',maW:1,maSt:'solid',bbC:'#4caf50',grad:true});
@@ -1820,6 +2037,9 @@ function parseColor(c){
   return{r:255,g:255,b:255,a:1};
 }
 function rgbaStr(o){return o.a>=1?'#'+[o.r,o.g,o.b].map(x=>Math.round(+x).toString(16).padStart(2,'0')).join(''):`rgba(${Math.round(o.r)},${Math.round(o.g)},${Math.round(o.b)},${o.a})`;}
+// Same color, alpha 0 — the transparent stop of a two-stop gradient fill (RSI OB/OS shading)
+// whose opaque stop is user-configurable; the fade-out end always matches it, not a fixed hue.
+function fadeOut(c){const o=parseColor(c);return rgbaStr({r:o.r,g:o.g,b:o.b,a:0});}
 let pkCb=null,pkAnchor=null,pkState={h:0,s:0,v:1,a:1,w:1,st:'solid'};
 // Level styler carries an independent label-text colour alongside the price-line colour, edited via
 // the Style / Text tabs. pkText = level (tabbed) mode; pkTab = active tab; pkLineCol / pkTextCol hold
@@ -1991,12 +2211,22 @@ function openStyler(anchor,state,showLine,cb){
   pkShowLine=!!showLine;
   $('#pLineSec').style.display=showLine?'block':'none';
   syncPicker();
-  const p=$('#picker');p.style.display='block';
+  const p=$('#picker');
+  // Measure the REAL rendered size (content is already synced above) instead of guessing a
+  // fixed height per tab combination — the guess could under-measure a particular combination,
+  // which meant flipping upward to clear the bottom of the viewport still left the popup tall
+  // enough to grow back down over the swatch that opened it. Same measure-then-place pattern
+  // openMenu() already uses for the same reason. Anchored to the swatch's RIGHT edge and
+  // growing leftward (not r.left, growing rightward) so the popup never starts flush against
+  // the swatch it came from in the first place.
+  p.style.visibility='hidden';p.style.display='block';
   const r=anchor.getBoundingClientRect();
-  let x=r.left,y=r.bottom+6;
-  const H=(showLine?540:400)+(pkText?36:0);
-  if(x+292>innerWidth)x=innerWidth-292;if(y+H>innerHeight)y=Math.max(8,r.top-H);
+  const pr=p.getBoundingClientRect();
+  let x=r.right-pr.width,y=r.bottom+6;
+  if(x<8)x=8;
+  if(y+pr.height>innerHeight)y=Math.max(8,r.top-pr.height-6);
   p.style.left=Math.round(x)+'px';p.style.top=Math.round(y)+'px';
+  p.style.visibility='';
 }
 function bindSwatch(el,get,set){ // color-only swatch (candles)
   el.style.background=get();
@@ -2046,11 +2276,9 @@ let panes=[],bars5=[],bars15=[],dailyRows=[];
 // 3 slots are actually shown right now; everything that does per-tick or per-render pane work
 // should iterate this, not panes directly.
 function visPanes(){return panes.filter(p=>p&&p.idx<cfg.paneN);}
-// One independent-symbol slot per non-primary pane (index 1 = pane 2, index 2 = pane 3), so
-// two panes can each show a DIFFERENT unlinked ticker at once — a plain singleton (the original
-// design, when only pane 2 could ever unlink) could not represent that.
-let altState={1:{sym:'',data:{bars5:[],bars15:[],daily:[]},timer:null},
-               2:{sym:'',data:{bars5:[],bars15:[],daily:[]},timer:null}};
+// One independent-symbol slot for the non-primary pane (index 1 = pane 2), so it can show a
+// DIFFERENT unlinked ticker than pane 1's own.
+let altState={1:{sym:'',data:{bars5:[],bars15:[],daily:[]},timer:null}};
 let levels=[];
 let quoteTimer=null,barTimer=null,prevClosePx=null,lastPx=null;
 let ws=null,wsAlive=false,wsRetryMs=1000,wsRetryTimer=null,wsWantSym='';
@@ -2095,12 +2323,16 @@ const CHART_THEMES=[
 ];
 
 /* ---------- panes ---------- */
-function chartOpts(extra){return Object.assign({
-  layout:{background:{color:'rgba(0,0,0,0)'},textColor:cfg.axisTextColor,fontFamily:"Inter,-apple-system,'Segoe UI',system-ui,sans-serif",fontSize:11,attributionLogo:false},
+function chartOpts(extra){
+  // Matches whatever applyBackdrop() last resolved --chartbg to (falls back to its own default
+  // if read before that ran once, which it always has by the time any chart is created).
+  const axisBorder=getComputedStyle(document.documentElement).getPropertyValue('--chartbg').trim()||'#1e1e1e';
+  return Object.assign({
+  layout:{background:{color:'rgba(0,0,0,0)'},textColor:cfg.axisTextColor,fontFamily:"ui-monospace,'SF Mono','SFMono-Regular','JetBrains Mono',Menlo,Consolas,monospace",fontSize:11,attributionLogo:false},
   localization:{timeFormatter:fmtCross},
   grid:{vertLines:{visible:false},horzLines:{visible:false}},
-  rightPriceScale:{borderColor:'#1e1e1e',autoScale:true},
-  timeScale:{borderColor:'#1e1e1e',timeVisible:true,secondsVisible:false,tickMarkFormatter:fmtTick},
+  rightPriceScale:{borderColor:axisBorder,autoScale:true},
+  timeScale:{borderColor:axisBorder,timeVisible:true,secondsVisible:false,tickMarkFormatter:fmtTick},
   // TradingView with "Auto (fits data to screen)" unchecked: the price range is yours to
   // set. Dragging the price axis rescales it, dragging the chart body pans it vertically,
   // and a double-click on the axis re-fits once without turning Auto back on.
@@ -2122,6 +2354,9 @@ function applyCrosshairCfg(){
 // exposes ONE text colour for both axes here (layout.textColor) - no separate y-axis-only knob.
 function applyAxisTextColor(){
   panes.forEach(p=>{if(!p)return;[p.chart,p.vchart,p.rchart].forEach(c=>{try{c.applyOptions({layout:{textColor:cfg.axisTextColor}});}catch(e){}});});
+  // --axistext: the ticker box, timeframe label, market-phase pill, Levels/GEX/Log tabs, ETH/RTH
+  // chip, and the Levels table's own text all reference this one variable — see its definition.
+  document.documentElement.style.setProperty('--axistext',cfg.axisTextColor);
 }
 // Applies a CHART_THEMES preset: candle colours, axis text colour, and the chart background
 // (via the existing Backdrop "solid colour" mode — same storage/apply path its own colour
@@ -2172,7 +2407,12 @@ function applyChartTheme(t){
        The RSI pane is the immune case for the same reason — its provider returns a fixed
        0-100 range and ignores the default, so its divergence markers cannot move it.
    ====================================================================================== */
-const NO_SCALE=()=>null;
+// Right-click price chart > "Scale price chart only" (cfg.scalePriceOnly, default true) hangs
+// off this one function rather than touching each of its 4 call sites: returning null excludes
+// a series from the price scale's autofit entirely (today's default, unchanged); calling through
+// to LWC's own `original` implementation instead lets that series' real range count toward it,
+// same effect as unchecking the option on a real TradingView chart.
+const NO_SCALE=original=>cfg.scalePriceOnly===false?(original?original():null):null;
 function priceScale(p){try{return p.chart.priceScale('right');}catch(e){return null;}}
 // Re-assert auto-fit. Dragging the price axis takes the scale out of auto (as it should),
 // so timeframe changes, symbol changes and Reset view put it back.
@@ -2297,7 +2537,7 @@ function makePane(idx){
     autoscaleInfoProvider:LOCK});
   // fill(rsiPlot, midLinePlot, 100, 70, green) — opaque at 100, transparent at 70.
   const rsiOB=rchart.addBaselineSeries({baseValue:{type:'price',price:70},
-    topFillColor1:'rgba(0,128,0,0.85)',topFillColor2:'rgba(0,128,0,0)',
+    topFillColor1:cfg.rsi.obC,topFillColor2:fadeOut(cfg.rsi.obC),
     bottomFillColor1:NOFILL,bottomFillColor2:NOFILL,
     topLineColor:NOFILL,bottomLineColor:NOFILL,lineWidth:1,
     priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false,
@@ -2305,7 +2545,7 @@ function makePane(idx){
   // fill(rsiPlot, midLinePlot, 30, 0, red) — transparent at 30, opaque at 0.
   const rsiOS=rchart.addBaselineSeries({baseValue:{type:'price',price:30},
     topFillColor1:NOFILL,topFillColor2:NOFILL,
-    bottomFillColor1:'rgba(255,0,0,0)',bottomFillColor2:'rgba(255,0,0,0.85)',
+    bottomFillColor1:fadeOut(cfg.rsi.osC),bottomFillColor2:cfg.rsi.osC,
     topLineColor:NOFILL,bottomLineColor:NOFILL,lineWidth:1,
     priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false,
     autoscaleInfoProvider:LOCK});
@@ -2549,6 +2789,27 @@ function seriesForTFRaw(tf,D){
   const S=D||{bars5:bars5,bars15:bars15,daily:dailyRows};
   let b5=S.bars5,b15=S.bars15;const drows=S.daily;
   if(tf==='D')return drows.map(r=>({time:r.date,open:r.open,high:r.high,low:r.low,close:r.close,volume:r.volume||0,ymd:r.date,etMin:960,rth:true}));
+  // Weekly rolls up dailyRows directly (never intraday bars), Monday-anchored via the same
+  // satyPeriodKey('multiday',...) grouping satyPeriods() already uses for the ATR ladder — same
+  // key, same open/high/low/close roll-up, plus a summed volume satyPeriods doesn't need. The
+  // in-progress week falls out of this naturally (the final `cur` is always pushed, closed or not),
+  // exactly like satyPeriods() and the 'D' branch above already do.
+  if(tf==='W'){
+    const out=[];let cur=null,curKey=null;
+    for(const r of drows){
+      const k=satyPeriodKey('multiday',r.date);
+      if(k!==curKey){
+        if(cur)out.push(cur);
+        cur={time:k,open:r.open,high:r.high,low:r.low,close:r.close,volume:r.volume||0,ymd:k,etMin:960,rth:true};
+        curKey=k;
+      }else{
+        cur.high=Math.max(cur.high,r.high);cur.low=Math.min(cur.low,r.low);
+        cur.close=r.close;cur.volume+=r.volume||0;
+      }
+    }
+    if(cur)out.push(cur);
+    return out;
+  }
   const anchor=cfg.sess==='rth'?570:240;
   let src;
   // 1H and 4H used to come only from the 15-minute series, and Tradier retains far less
@@ -3702,7 +3963,12 @@ function renderPane(p){
     p.rsiTail={t:n?data[n-1].time:null,upR:pair(_rp.ru),dnR:pair(_rp.rd),prevClose:pair(srcArr),
       n:Math.max(1,PP.rsiLen),src:cfg.rsi.src,on:cfg.ind.rsi.on};
   }
-  p.rsi.applyOptions({visible:cfg.ind.rsi.on,color:cfg.ind.rsi.c,lineWidth:cfg.ind.rsi.w,lineStyle:lwcStyle(cfg.ind.rsi.st)});
+  // visible stays true even with the RSI line "off" — that flag only hides the LINE itself
+  // (lineVisible/lastValueVisible); the series must stay visible or the bands, background fill
+  // and gradient fills attached to this same pane all vanish with it, despite having their own
+  // independent on/off toggles.
+  p.rsi.applyOptions({visible:true,lineVisible:cfg.ind.rsi.on,lastValueVisible:cfg.ind.rsi.on,
+    color:cfg.ind.rsi.c,lineWidth:cfg.ind.rsi.w,lineStyle:lwcStyle(cfg.ind.rsi.st)});
   p.rsi.setData(padSeries(data,rsi));
   // Smoothing MA + optional Bollinger Bands (TV's "Smoothing" group)
   // The Bollinger-band variant is a user choice, not a per-timeframe one, so it survives
@@ -3717,6 +3983,18 @@ function renderPane(p){
   let ma=null;
   if(maOn){ma=maCalc(rsi,smLen,maKind,p.vals.vol);p.rsiMa.setData(padSeries(data,ma));}
   else p.rsiMa.setData([]);
+  // CONFIRMED tail for the smoothing MA's own live-tick step (paneTick, next to rsiTail): the
+  // last two raw-RSI windows, pair-seeded exactly like rsiTail/rbTail, plus the last two confirmed
+  // MA values. ema/rma step from prevMa in O(1); sma/wma/vwma have no running state to step from,
+  // so they re-sum their fixed window from this tail + the live RSI value computed on the tick.
+  if(maOn){
+    const n=data.length,winN=smLen,vv=p.vals.vol;
+    const winAt=(endIdx)=>{const out=[];for(let j=0;j<winN;j++){const idx=endIdx-j;out.push(idx>=0?rsi[idx]:null);}return out;};
+    const volAt=(endIdx)=>{const out=[];for(let j=0;j<winN;j++){const idx=endIdx-j;out.push(idx>=0&&vv?vv[idx]:null);}return out;};
+    p.rsiMaTail={t:n?data[n-1].time:null,kind:maKind,len:winN,
+      prevMa:[n>=2?ma[n-2]:null,n>=1?ma[n-1]:null],
+      win:[winAt(n-2),winAt(n-1)],volWin:[volAt(n-2),volAt(n-1)]};
+  }else p.rsiMaTail=null;
   p.rsiBBu.applyOptions({visible:isBB,color:cfg.rsi.bbC});
   p.rsiBBl.applyOptions({visible:isBB,color:cfg.rsi.bbC});
   if(isBB&&ma){
@@ -3728,10 +4006,28 @@ function renderPane(p){
   p.rsiFill.setData(cfg.rsi.fill?data.map(d=>({time:d.time,value:+cfg.rsi.up})):[]);
   // overbought / oversold gradient fills, clipped to the band edges
   const gradOn=cfg.rsi.grad!==false&&cfg.ind.rsi.on;
-  p.rsiOB.applyOptions({visible:gradOn,baseValue:{type:'price',price:+cfg.rsi.up}});
-  p.rsiOS.applyOptions({visible:gradOn,baseValue:{type:'price',price:+cfg.rsi.lo}});
-  p.rsiOB.setData(gradOn?padSeries(data,rsi):[]);
-  p.rsiOS.setData(gradOn?padSeries(data,rsi):[]);
+  p.rsiOB.applyOptions({visible:gradOn,baseValue:{type:'price',price:+cfg.rsi.up},
+    topFillColor1:cfg.rsi.obC,topFillColor2:fadeOut(cfg.rsi.obC)});
+  p.rsiOS.applyOptions({visible:gradOn,baseValue:{type:'price',price:+cfg.rsi.lo},
+    bottomFillColor1:fadeOut(cfg.rsi.osC),bottomFillColor2:cfg.rsi.osC});
+  // Ramp the fill's first few bars in from the band edge instead of feeding the raw RSI value
+  // straight in: a Baseline series' gradient varies with PRICE distance from baseValue, not time,
+  // so the instant RSI's Wilder warm-up ends on a bar already deep in OB/OS territory (common —
+  // the first RMA value is just the lookback's raw average), the fill has no prior bar to ramp
+  // from and appears as a solid block out of nowhere. Fading the fed value toward the band edge
+  // over a few bars only touches this decorative shading, never the RSI line or its MA.
+  const rampFill=(edge)=>{
+    const out=rsi.slice(),first=out.findIndex(v=>v!=null);
+    if(first<0)return out;
+    const RAMP=3;
+    for(let k=0;k<RAMP&&first+k<out.length;k++){
+      const v=out[first+k];if(v==null)continue;
+      out[first+k]=edge+(v-edge)*((k+1)/RAMP);
+    }
+    return out;
+  };
+  p.rsiOB.setData(gradOn?padSeries(data,rampFill(+cfg.rsi.up)):[]);
+  p.rsiOS.setData(gradOn?padSeries(data,rampFill(+cfg.rsi.lo)):[]);
   {
     const n=data.length-1;
     if(n>=0){
@@ -3797,6 +4093,7 @@ function renderPane(p){
       if(data.length){
         const last=data[data.length-1];
         const closed=p.tf==='D'?(last.ymd!==nowET().ymd)
+          :p.tf==='W'?(last.ymd!==satyPeriodKey('multiday',nowET().ymd))
           :(last.t!=null?(Math.floor(Date.now()/1000)>=last.t+(+p.tf||5)*60):true);
         if(!closed)closedLen=data.length-1;
       }
@@ -3922,7 +4219,7 @@ function positionLvlTags(p){
     const L={y,color:t.color,w:t.w,style:t.style};   // line params; the visible line is drawn later
     if(t.name){
       const d=document.createElement('div');
-      d.className='lvltag';d.style.color=t.tc||t.color;d.style.top=y+'px';
+      d.className='lvltag';d.style.color=t.tc||'var(--axistext)';d.style.top=y+'px';
       d.style.right=(axisW+22)+'px';d.dataset.y=y;
       d.textContent=t.name;d.__line=L;
       host.appendChild(d);
@@ -4037,6 +4334,22 @@ function brkTipHtml(bk){
     : '<b>Not decided yet.</b>';
   return '<div style="line-height:1.5"><b>'+name+'</b> at '+px+'<br>'+what+'<br>'+outcome+'</div>';
 }
+// Same shape as brkTipHtml, for the HH/HL/LH/LL swing labels: one line for what this specific
+// swing IS (dynamic off x.label/x.price), one for what it implies for the next likely move.
+const SWING_TIP={
+  HH:['Higher High','This high printed above the last swing high \u2014 price is reaching new highs.',
+    'Uptrend intact: expect price to keep testing higher until a high prints BELOW the last one.'],
+  HL:['Higher Low','This low printed above the last swing low \u2014 dips are getting bought sooner each time.',
+    'Uptrend intact: this level is a likely spot for buyers on the next pullback.'],
+  LH:['Lower High','This high printed below the last swing high \u2014 rallies are running out of steam sooner.',
+    'Downtrend intact: this level is a likely spot for sellers on the next bounce.'],
+  LL:['Lower Low','This low printed below the last swing low \u2014 price is reaching new lows.',
+    'Downtrend intact: expect price to keep testing lower until a low prints ABOVE the last one.']
+};
+function swingTipHtml(x){
+  const px=(+x.price).toFixed(2),t=SWING_TIP[x.label]||[x.label,'',''];
+  return '<div style="line-height:1.5"><b>'+t[0]+'</b> ('+x.label+') at '+px+'<br>'+t[1]+'<br>'+t[2]+'</div>';
+}
 function positionBreaks(p){
   const host=$('#tips'+p.idx);if(!host)return;
   if(!cfg['struct'+p.idx]||!cfg.structCfg.bos||!p.brks||!p.brks.length)return;
@@ -4143,12 +4456,14 @@ function positionStruct(p){
       const dot=document.createElement('div');dot.className='swdot';
       dot.style.background=x.color;dot.style.left=cx+'px';
       dot.style.top=(x.type==='H'?y-4:y+4)+'px';
+      tipAttach(dot,swingTipHtml(x));
       host.appendChild(dot);
       const d=document.createElement('div');d.className='swlab';
       d.textContent=x.label;d.style.color=x.color;
       d.style.left=cx+'px';
       const ty=(x.type==='H'?y-13:y+13);
       d.style.top=ty+'px';d.dataset.y=ty;
+      tipAttach(d,swingTipHtml(x));
       host.appendChild(d);
     });
   }
@@ -4175,7 +4490,7 @@ function positionStruct(p){
         if(p.patKey)patDismissed.add(p.patKey);
         const nme=p.pattern?p.pattern.name:'pattern';
         patSelected=null;p.pattern=null;p.patKey=null;
-        log(`${nme} removed from the ${p.tf==='D'?'1D':p.tf+'m'} chart — it will not be drawn again unless a different pattern forms`,'warn');
+        log(`${nme} removed from the ${p.tf==='D'?'1D':p.tf==='W'?'1W':p.tf+'m'} chart — it will not be drawn again unless a different pattern forms`,'warn');
         renderPane(p);
       };
       t.appendChild(del);
@@ -4213,7 +4528,7 @@ function computeSessBands(times){
 function positionSessionBands(p){
   const host=$('#tips'+p.idx);if(!host)return;
   host.querySelectorAll('.sessband').forEach(e=>e.remove());
-  if(cfg.sess!=='eth'||p.tf==='D'||!p.sessBands||!p.sessBands.length)return;
+  if(cfg.sess!=='eth'||p.tf==='D'||p.tf==='W'||!p.sessBands||!p.sessBands.length)return;
   // Clipped to the PLOT width, not the pane's full width: w included the price-axis column,
   // so a band reaching the right edge of the chart painted straight over the axis text too —
   // the axis has no opaque fill of its own (see .axpx/native plate notes), so whatever's
@@ -4592,8 +4907,18 @@ function updateForming(px,sz,closeOnly,cvol){
       // delta separately for the guardrail), or fall back to summed size when there is no cvol.
       if(bv!=null){last._cvolV=bv;last.v=Math.max(last.v||0,bv);} else last.v+=sz;
       last._fresh=fresh;last._tick=now;
+      // gated to !closeOnly: this shared bucket-update path is also called by the quote-poll
+      // fallback with closeOnly=true, which is not a live tick and is excluded from this capture.
+      // LOCAL-DIAG-ONLY
+      if(!closeOnly&&diagOn())diagLog('LIVE_TICK_BUCKET',{period,bucketT:b,kind:'update'});
+      // LOCAL-DIAG-ONLY
     }
-    else if(!last||b>last.t){const f=bucketFields(b);arr.push(Object.assign({t:b,o:px,h:px,l:px,c:px,v:(bv!=null?bv:sz),_cvolV:bv,_fresh:fresh,_tick:now},f));}
+    else if(!last||b>last.t){
+      const f=bucketFields(b);arr.push(Object.assign({t:b,o:px,h:px,l:px,c:px,v:(bv!=null?bv:sz),_cvolV:bv,_fresh:fresh,_tick:now},f));
+      // LOCAL-DIAG-ONLY
+      if(!closeOnly&&diagOn())diagLog('LIVE_TICK_BUCKET',{period,bucketT:b,kind:'insert'});
+      // LOCAL-DIAG-ONLY
+    }
   };
   upd(bars5,300);upd(bars15,900);
   if(haveCvol)_cvolPrev=cvol;
@@ -4790,6 +5115,16 @@ async function startStream(){
       if(!line.trim())return;
       let d;try{d=JSON.parse(line);}catch(e){return;}
       if(d.type==='trade'&&d.symbol===wsWantSym){
+        // raw payload exactly as parsed, before any field extraction
+        // LOCAL-DIAG-ONLY
+        if(diagOn())diagLog('LIVE_TICK_RAW',d);
+        // LOCAL-DIAG-ONLY
+        // A real trade always has positive size. Confirmed via LOCAL-DIAG capture that Tradier's
+        // pre-market feed can repeatedly send a non-trade message under this same 'trade' type —
+        // size 0, price pinned to the prior session's close — which corrupted the live price and
+        // whichever bar bucket was open at the time. Reject anything without genuine size before
+        // it can touch lastPx or any bar.
+        if(!(+d.size>0))return;
         // §2: only 'trade' events reach here (subscription filter:['trade']), so quote/bid-ask
         // updates never count toward volume, and volume uses d.size (per-print) NOT d.cvol (session
         // cumulative). FLAG (§2c/§3b): these are 'trade' events, not 'timesale' — Tradier's trade
@@ -4822,6 +5157,22 @@ function paneTick(p){
     const r=dailyRows[dailyRows.length-1];
     if(r&&r.date===nowET().ymd)bar={time:r.date,open:r.open,high:r.high,low:r.low,close:r.close,
       volume:r.volume||0,ymd:r.date};
+  }else if(p.tf==='W'){
+    // Same walk-backward-until-the-period-changes idiom as the intraday branch below (bounded to
+    // at most a handful of rows — a week never holds more than ~7 days — so this is not a scan of
+    // the full dailyRows history), just keyed by satyPeriodKey('multiday',...) instead of a minute
+    // bucket, and rooted at dailyRows the way the 'D' branch above is.
+    const r=dailyRows[dailyRows.length-1];
+    if(r&&r.date===nowET().ymd){
+      const wk=satyPeriodKey('multiday',r.date);
+      let o=null,h=-1e9,l=1e9,vol=0;
+      for(let i=dailyRows.length-1;i>=0;i--){
+        const rr=dailyRows[i];
+        if(satyPeriodKey('multiday',rr.date)!==wk)break;
+        o=rr.open;h=Math.max(h,rr.high);l=Math.min(l,rr.low);vol+=rr.volume||0;
+      }
+      bar={time:wk,open:o,high:h,low:l,close:r.close,volume:vol,ymd:wk};
+    }
   }else{
     const src=(p.tf==='5'||p.tf==='10')?bars5:bars15;
     const g=+p.tf,anchor=cfg.sess==='rth'?570:240;
@@ -4950,9 +5301,9 @@ function paneTick(p){
     // just-closed bar became the base (new bucket), seed 0 = still the same forming bar. Divergence
     // is NOT touched on a tick — it confirms on bar close only (MODULE 3 / the full render).
     const RS=p.rsiTail;
+    let rv=null;
     if(RS&&RS.on&&p.rsi){
       const sd2=bar.time!==RS.t?1:0,upR=RS.upR[sd2],dnR=RS.dnR[sd2],pc=RS.prevClose[sd2];
-      let rv=null;
       if(upR!=null&&dnR!=null&&pc!=null){
         const sv=srcVal(bar,RS.src),ch=sv-pc,nn=RS.n;
         const upF=Math.max(ch,0),dnF=-Math.min(ch,0);
@@ -4961,6 +5312,37 @@ function paneTick(p){
         p._rsiLast=rv;
       }else if(p._rsiLast!=null)rv=p._rsiLast;   // skipped (warm-up/gap): carry last RSI so the panel keeps a timestamped point for the synced crosshair
       if(rv!=null){try{p.rsi.update({time:bar.time,value:+rv.toFixed(4)});}catch(e){}}
+    }
+    // MODULE 2c provisional RSI smoothing MA — same one-step idea as the raw RSI above, but
+    // stepped over the RSI series (rsiMaTail, built alongside rsiTail in renderPane) instead of
+    // price. ema/rma (SMMA) step from the last CONFIRMED MA value; sma/wma/vwma have no running
+    // state to step from, so they re-sum their fixed window from the confirmed tail + the live rv
+    // computed above — cheap since smLen is small. Never touches historical/closed bars.
+    const MT=p.rsiMaTail;
+    if(MT&&p.rsiMa&&rv!=null){
+      const sd3=bar.time!==MT.t?1:0;
+      let mv=null;
+      if(MT.kind==='ema'){
+        const prev=MT.prevMa[sd3];
+        if(prev!=null){const k=2/(MT.len+1);mv=rv*k+prev*(1-k);}
+      }else if(MT.kind==='rma'){
+        const prev=MT.prevMa[sd3];
+        if(prev!=null)mv=(rv+(MT.len-1)*prev)/MT.len;
+      }else if(MT.kind==='sma'){
+        const win=MT.win[sd3];let sum=rv,ok=true;
+        for(let j=0;j<MT.len-1;j++){const v=win[j];if(v==null){ok=false;break;}sum+=v;}
+        if(ok)mv=sum/MT.len;
+      }else if(MT.kind==='wma'){
+        const win=MT.win[sd3];let num=rv*MT.len,den=MT.len,ok=true;
+        for(let j=0;j<MT.len-1;j++){const v=win[j];if(v==null){ok=false;break;}const w=MT.len-1-j;num+=v*w;den+=w;}
+        if(ok)mv=num/den;
+      }else if(MT.kind==='vwma'){
+        const win=MT.win[sd3],vwin=MT.volWin[sd3],liveV=bar.volume;
+        let pv=liveV!=null?rv*liveV:null,vv=liveV||0,ok=liveV!=null;
+        for(let j=0;j<MT.len-1;j++){const v=win[j],w=vwin[j];if(v==null||w==null){ok=false;break;}pv+=v*w;vv+=w;}
+        if(ok&&vv>0)mv=pv/vv;
+      }
+      if(mv!=null){try{p.rsiMa.update({time:bar.time,value:+mv.toFixed(4)});}catch(e){}}
     }
   }
   p.lastClose=bar.close;p.lastOpen=bar.open;
@@ -4977,6 +5359,7 @@ function paneTick(p){
     const last=d.length?d[d.length-1]:null;
     if(last){
       const closed=p.tf==='D'?(last.ymd!==nowET().ymd)
+        :p.tf==='W'?(last.ymd!==satyPeriodKey('multiday',nowET().ymd))
         :(last.t!=null?(Math.floor(Date.now()/1000)>=last.t+(+p.tf||5)*60):false);
       if(closed&&p._structClosedT!==last.t){p._structClosedT=last.t;lockView(p,()=>renderPane(p));}
       else if(!closed)p._structClosedT=null;
@@ -5099,6 +5482,10 @@ function tfRemaining(tf){
     if(minute<570)return 570*60-s;                 // counting to 9:30 open
     return null;                                   // after close
   }
+  // No weekly countdown: unlike 'D', an accurate "time until Friday's close" needs holiday-aware
+  // day-of-week arithmetic this file doesn't already have a pattern for, and guessing at one risks
+  // a wrong number rather than the honest "no data" this already renders as (fmtCd(null)='CLOSED').
+  if(tf==='W')return null;
   const anchor=(cfg.sess==='rth'?570:240)*60;
   const period=+tf*60;
   let rel=s-anchor;if(rel<0)rel+=86400;
@@ -5133,10 +5520,11 @@ function lvlStyleOf(l){const s=lvlSty[l.key]||{};
   // (Saty colour-codes the trigger, ATR targets and intermediate fibs inside one family); GEX needs
   // ds so magnets/air pockets draw solid and the gamma flip draws dashed regardless of confluence.
   // Both fall back to the family default when a level sets neither.
-  // tc = label text colour, independent of the price-line colour; unset labels track the line colour
-  // (existing behaviour), so styling text only diverges once the user picks a colour on the Text tab.
+  // tc = label text colour, independent of the price-line colour; unset labels default to white
+  // (--axistext) so every label reads clearly regardless of category, and only diverges once the
+  // user picks a colour of their own on the Text tab.
   const color=s.color||l.dc||CATCOLOR[l.cat];
-  return{color,tc:s.tc||color,width:s.width||(l.w>=2?2:1),
+  return{color,tc:s.tc||'var(--axistext)',width:s.width||(l.w>=2?2:1),
     style:s.style||l.ds||(l.conf?'solid':'dashed'),on:s.on!==false};}
 function drawLevelsOn(p){
   if(!p||!p.candles)return;
@@ -5293,7 +5681,7 @@ const SATY_DEFAULTS={
      ladder and the level table; re-enable this one in the Style tab if you want the anchor
      drawn as part of the ATR set. */
   sty:{pc:{on:false}},                     // per-level {on,color,w,st} overrides, Style tab
-  tfs:{'5':true,'10':true,'60':true,'240':true,'D':true}   // Visibility tab
+  tfs:{'5':true,'10':true,'60':true,'240':true,'D':true,'W':true}   // Visibility tab
 };
 function satyC(){
   if(!cfg.satyCfg||typeof cfg.satyCfg!=='object')cfg.satyCfg=JSON.parse(JSON.stringify(SATY_DEFAULTS));
@@ -5571,10 +5959,10 @@ function drawSatyOn(p){
     if(!isFinite(px))return;
     const o=C.sty[r.key]||{};
     const col=satyRowColor(r,C);
-    // Separate label-name colour (Text tab), falling back to the line colour when unset — the same
-    // color / tc split the Levels-table levels use (see lvlStyleOf). The axis price plate and the
-    // visible line segments stay on the LINE colour; only the on-chart name uses tc.
-    const tcol=o.tc||col;
+    // Separate label-name colour (Text tab), defaulting to white when unset — the same color / tc
+    // split the Levels-table levels use (see lvlStyleOf). The axis price plate and the visible
+    // line segments stay on the LINE colour; only the on-chart name uses tc.
+    const tcol=o.tc||'var(--axistext)';
     // The name rides the overlay layer (so it can slide out of another label's way), and the
     // pane line is drawn TRANSPARENT: the visible line is rebuilt in positionSatyLabels as two
     // HTML segments that stop either side of the name, so the name is never struck through -
@@ -5605,7 +5993,7 @@ function positionSatyLabels(p){
     if(y==null||y<6||y>h-4)return;
     axisPxLabel(host,l.price,y,l.color,'saty');     // axis price reading badge (line colour)
     const d=document.createElement('div');d.className='satylab';
-    d.textContent=l.text;d.style.color=l.tc||l.color;   // Text-tab colour for the name; line colour is the fallback
+    d.textContent=l.text;d.style.color=l.tc||'var(--axistext)';   // Text-tab colour for the name; white is the default fallback
     d.style.top=y+'px';d.dataset.y=y;
     d.style.right=(axisW+22)+'px';
     // The visible line is drawn in drawLevelSegments — AFTER deoverlapLabels has placed the labels —
@@ -5617,29 +6005,43 @@ function positionSatyLabels(p){
 // The Pine table, as a chart-corner readout: period, how much of the average range this
 // period has already spent, the ribbon trend, and the two trigger prices.
 function positionSatyInfo(p){
-  // Inserted as the FIRST child of .chartcorner (not #tips) so it sits above the indicator
-  // list/collapse arrow, in normal flow \u2014 reflows automatically when that list is hidden.
-  const host=document.querySelector('.chartcorner[data-pane="'+p.idx+'"]');if(!host)return;
+  // Positioned at the chart's bottom-left independently of .chartcorner (top-left indicator
+  // list) \u2014 appended into .chartcorner's own parent, .pchart, the pane's relatively-positioned
+  // chart container \u2014 and placed there by .satyinfo's own absolute bottom/left CSS.
+  const corner=document.querySelector('.chartcorner[data-pane="'+p.idx+'"]');if(!corner)return;
+  const host=corner.parentElement;if(!host)return;
   host.querySelectorAll('.satyinfo').forEach(e=>e.remove());
   const C=satyC();
   if(!cfg['saty'+p.idx]||!C.showInfo)return;
+  // Sit ABOVE the time-axis strip, not inside it: .satyinfo and .axisback-b are both absolute
+  // children of the same .pchart, and bottom:6px alone landed inside .axisback-b's own bottom
+  // band (it runs the real height of the axis row, ~28px, not a fixed 6px) \u2014 reading as part of
+  // the time pane instead of the chart above it. Measured the same way positionAxisChrome()
+  // measures the axis row, so this tracks it if that height ever changes (font size, zoom, etc).
+  let timeH=28;
+  try{
+    const pEl=$('#pc'+p.idx);
+    const trs=pEl.querySelectorAll('table>tr');
+    if(trs.length)timeH=trs[trs.length-1].getBoundingClientRect().height||28;
+  }catch(e){}
+  const bottomPx=(timeH+6)+'px';
   if(!p.satyState){
     if(!p.satyWhy)return;
-    const w=document.createElement('div');w.className='satyinfo';
+    const w=document.createElement('div');w.className='satyinfo';w.style.bottom=bottomPx;
     w.textContent='ATR levels \u2014 '+p.satyWhy;
-    host.insertBefore(w,host.firstChild);return;
+    host.appendChild(w);return;
   }
   const st=p.satyState,t=satyTrend(p);
   const pctCol=st.pct<=70?'var(--long)':st.pct>=90?'var(--short)':'var(--warn)';
   const trCol=t.cls==='up'?'var(--long)':t.cls==='dn'?'var(--short)':'var(--warn)';
-  const d=document.createElement('div');d.className='satyinfo';
+  const d=document.createElement('div');d.className='satyinfo';d.style.bottom=bottomPx;
   d.innerHTML='<b>'+st.label+'</b> \u00b7 <b style="color:'+trCol+'">'+t.word+'</b> \u00b7 range <b style="color:'
     +pctCol+'">'+st.pct.toFixed(1)+'%</b> of ATR '+st.atr.toFixed(2)
     +' \u00b7 <span style="color:'+satyRowColor({kind:'trigUp'},C)+'">'
     +(C.useOptionsLabels?'Calls':'Long')+' &gt; '+st.trigUp.toFixed(2)+'</span>'
     +' \u00b7 <span style="color:'+satyRowColor({kind:'trigDn'},C)+'">'
     +(C.useOptionsLabels?'Puts':'Short')+' &lt; '+st.trigDn.toFixed(2)+'</span>';
-  host.insertBefore(d,host.firstChild);
+  host.appendChild(d);
 }
 
 function computeLevels(){
@@ -5689,9 +6091,9 @@ function renderLevelTable(){
   const html=CAT_ORDER.map(cat=>{
     const mine=levels.filter(l=>l.cat===cat).sort((a,b)=>b.price-a.price);
     if(!mine.length)return '';
-    const hdr=`<tr class="lvgrp"><td colspan="4">`
-      +`<label><input type="checkbox" class="catck" data-cat="${cat}" ${shown[cat]?'checked':''}> `
-      +`${CAT_LABEL[cat]||cat}</label></td></tr>`;
+    const hdr=`<tr class="lvgrp"><td colspan="2">`
+      +`<span class="catlabel${shown[cat]?' on':''}" data-cat="${cat}" role="button" tabindex="0">`
+      +`${CAT_LABEL[cat]||cat}</span></td></tr>`;
     const body=mine.map(l=>{
       const st=lvlStyleOf(l);
       let badge='';
@@ -5704,17 +6106,26 @@ function renderLevelTable(){
           +`${confTol.toFixed(2)}: ${esc(l.confWith)}">CONFLUENCE</span>`;
       }
       return`<tr class="lvrow${shown[cat]?'':' catoff'}">
-      <td><input type="checkbox" class="lvck" data-key="${l.key}" ${st.on?'checked':''}></td>
-      <td><span class="sw lvsw" data-key="${l.key}" style="background:${st.color}"></span></td>
-      <td>${esc(l.label)}${badge}</td>
+      <td><span class="sw lvsw" data-key="${l.key}" style="background:${st.color}"></span><span class="lvlabel${st.on?' on':''}" data-key="${l.key}" role="button" tabindex="0">${esc(l.label)}</span>${badge}</td>
       <td class="p">${l.price.toFixed(2)}</td></tr>`;}).join('');
     return hdr+body;
   }).join('');
   $('#lvlTable').innerHTML=html||'<tr><td>no data yet</td></tr>';
   prevConfKeys=nowConf;
-  $$('#lvlTable .catck').forEach(c=>c.onchange=()=>setCat(c.dataset.cat,c.checked));
-  $$('#lvlTable .lvck').forEach(c=>c.onchange=()=>{
-    const k=c.dataset.key;lvlSty[k]=lvlSty[k]||{};lvlSty[k].on=c.checked;LS.lvlSty=lvlSty;drawLevels();});
+  $$('#lvlTable .catlabel').forEach(el=>{
+    const toggle=()=>setCat(el.dataset.cat,!el.classList.contains('on'));
+    el.onclick=toggle;
+    el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle();}};
+  });
+  $$('#lvlTable .lvlabel').forEach(el=>{
+    const toggle=()=>{
+      const k=el.dataset.key;lvlSty[k]=lvlSty[k]||{};
+      lvlSty[k].on=!el.classList.contains('on');LS.lvlSty=lvlSty;
+      el.classList.toggle('on');drawLevels();
+    };
+    el.onclick=toggle;
+    el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle();}};
+  });
   $$('#lvlTable .lvsw').forEach(swEl=>{
     const k=swEl.dataset.key;
     swEl.onclick=e=>{e.stopPropagation();
@@ -5794,10 +6205,10 @@ function parseGexRows(out,sourceNote){
   // dealer gamma amplifies it (price runs), so magnet vs air pocket is the honest split.
   // §1 line styling: magnets green / air pockets red, both thickness 1 solid; the gamma flip
   // grey, thickness 2 dashed. Colour+style ride on each level (see lvlStyleOf's dc/ds).
-  const MAG='#a7f1ca',AIR='#f1a7a7',FLIPC='#8e8e8e';
+  const MAG='#16884f',AIR='#af1d1d',FLIPC='#8e8e8e';
   const lv=[{price:maxG.strike,label:'Top magnet '+fmt(maxG.val),w:1,key:'MaxG',color:MAG,style:'solid'}];
   if(minG&&minG.strike!==maxG.strike)lv.push({price:minG.strike,label:'Top air pocket '+fmt(minG.val),w:1,key:'MinG',color:AIR,style:'solid'});
-  if(flip)lv.push({price:flip.price,label:'gamma flip',w:2,key:'Flip',color:FLIPC,style:'dashed'});
+  if(flip)lv.push({price:flip.price,label:'Gamma Flip',w:2,key:'Flip',color:FLIPC,style:'dashed'});
   above.forEach((x,i)=>{if(x.strike!==maxG.strike)lv.push({price:x.strike,label:'Magnet '+fmt(x.val),w:1,key:'CW'+(i+1),color:MAG,style:'solid'});});
   below.forEach((x,i)=>{if(!minG||x.strike!==minG.strike)lv.push({price:x.strike,label:'Air pocket '+fmt(x.val),w:1,key:'PW'+(i+1),color:AIR,style:'solid'});});
   LS.gex={t:Date.now(),levels:lv,heat:gexHeat,meta:{maxG:{strike:maxG.strike,val:maxG.val},minG:minG?{strike:minG.strike,val:minG.val}:null,flip:flip?flip.price:null,flipAbovePos:flip?flip.abovePos:null,
@@ -6208,7 +6619,11 @@ const TF_PRESETS={
  '10': {rsiLen:15,rsiSmType:'ema',rsiSmLen:3, divMin:10,divMax:90, swing:5, tolPct:0.30, maxSwings:40, patDev:0.35, minSwingATR:0.55, volFloor:0.12},
  '60': {rsiLen:16,rsiSmType:'sma',rsiSmLen:5, divMin:8, divMax:70, swing:4, tolPct:0.45, maxSwings:30, patDev:0.50, minSwingATR:0.50, volFloor:0.08},
  '240':{rsiLen:14,rsiSmType:'sma',rsiSmLen:5, divMin:8, divMax:70, swing:4, tolPct:0.70, maxSwings:24, patDev:0.70, minSwingATR:0.45, volFloor:0},
- 'D':  {rsiLen:12,rsiSmType:'sma',rsiSmLen:9, divMin:6, divMax:65, swing:3, tolPct:1.00, maxSwings:20, patDev:1.00, minSwingATR:0.40, volFloor:0}
+ 'D':  {rsiLen:12,rsiSmType:'sma',rsiSmLen:9, divMin:6, divMax:65, swing:3, tolPct:1.00, maxSwings:20, patDev:1.00, minSwingATR:0.40, volFloor:0},
+ // No spec'd tuning exists one step past 'D' — rather than extrapolate new numbers with no basis,
+ // this mirrors 'D' exactly, consistent with the comment above that fast-chart-specific tuning
+ // (volFloor especially) is already off by the 'D' level and stays off for something coarser still.
+ 'W':  {rsiLen:12,rsiSmType:'sma',rsiSmLen:9, divMin:6, divMax:65, swing:3, tolPct:1.00, maxSwings:20, patDev:1.00, minSwingATR:0.40, volFloor:0}
 };
 // Resolved per pane rather than written into global config, so two panes on different
 // timeframes no longer overwrite each other's structure and indicator settings.
@@ -6336,10 +6751,24 @@ function mergeBars(a,b,period){
   b.forEach(x=>{
     const prev=m.get(x.t);
     if(prev&&live!=null&&x.t===live&&prev._tick){
-      m.set(x.t,Object.assign({},x,{
+      // (named — not a behavior change — so the union result below can be captured verbatim
+      // instead of rebuilt; identical Object.assign call and result as before)
+      const _diagMerged=Object.assign({},x,{
         h:Math.max(x.h,prev.h),l:Math.min(x.l,prev.l),
-        c:prev.c,v:Math.max(x.v||0,prev.v||0),_restV:x.v||0,_cvolV:prev._cvolV,_fresh:prev._fresh,_tick:prev._tick}));
-    }else m.set(x.t,x);
+        c:prev.c,v:Math.max(x.v||0,prev.v||0),_restV:x.v||0,_cvolV:prev._cvolV,_fresh:prev._fresh,_tick:prev._tick});
+      m.set(x.t,_diagMerged);
+      // LOCAL-DIAG-ONLY
+      if(diagOn())diagLog('MERGE_UNION',{t:x.t,
+        fresh:{o:x.o,h:x.h,l:x.l,c:x.c,v:x.v},
+        prevInMemory:{o:prev.o,h:prev.h,l:prev.l,c:prev.c,v:prev.v},
+        merged:{o:_diagMerged.o,h:_diagMerged.h,l:_diagMerged.l,c:_diagMerged.c,v:_diagMerged.v}});
+      // LOCAL-DIAG-ONLY
+    }else{
+      // LOCAL-DIAG-ONLY
+      if(diagOn())diagLog('MERGE_REPLACE',{t:x.t,prevExisted:prev!==undefined,kind:prev!==undefined?'replace':'insert'});
+      // LOCAL-DIAG-ONLY
+      m.set(x.t,x);
+    }
   });
   return[...m.values()].sort((x,y)=>x.t-y.t);
 }
@@ -6355,9 +6784,23 @@ async function fetchTsRange(interval,startD,endD,sym){
   // RTH/ETH toggle filters at DISPLAY (sessKeep in seriesForTF), NOT at fetch, so one extended-hours
   // dataset backs both views and the live accumulation (gated 04:00-20:00 ET) matches it. FLAG: to
   // make the fetch itself vary with the toggle, this is the single line to change.
-  const j=await tradier(`/v1/markets/timesales?symbol=${sym||cfg.sym}&interval=${interval}&start=${encodeURIComponent(tsStamp(startD))}&end=${encodeURIComponent(tsStamp(endD))}&session_filter=all`);
-  const data=j.series&&j.series.data;const rows=Array.isArray(data)?data:data?[data]:[];
-  return rows.map(mapTsRow).filter(b=>isFinite(b.o));
+  // (named — not a behavior change — so the diagnostic capture below can log the exact real
+  // request URL verbatim instead of rebuilding it; identical string, same computation as before)
+  const _diagTsUrl=`/v1/markets/timesales?symbol=${sym||cfg.sym}&interval=${interval}&start=${encodeURIComponent(tsStamp(startD))}&end=${encodeURIComponent(tsStamp(endD))}&session_filter=all`;
+  const j=await tradier(_diagTsUrl);
+  const data=j.series&&j.series.data;
+  // LOCAL-DIAG-ONLY
+  if(diagOn()){
+    diagLog('RAW_FETCH',{url:_diagTsUrl,rawSeriesData:data});
+    diagLog('SESSION_CONTEXT',{sess:cfg.sess,symbol:(sym||cfg.sym),nowET:nowET()});
+  }
+  // LOCAL-DIAG-ONLY
+  const rows=Array.isArray(data)?data:data?[data]:[];
+  const mapped=rows.map(mapTsRow);
+  // LOCAL-DIAG-ONLY
+  if(diagOn())mapped.forEach(r=>diagLog('POST_MAP',{t:r.t,o:r.o,h:r.h,l:r.l,c:r.c,v:r.v,etYmd:r.etYmd,etMin:r.etMin,etHm:r.etHm}));
+  // LOCAL-DIAG-ONLY
+  return mapped.filter(b=>isFinite(b.o));
 }
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 // Walk backwards in chunks until Tradier stops returning data or the cap is reached,
@@ -6461,7 +6904,7 @@ async function refreshAlt(paneIdx){
 }
 // paneIdx: 1 = pane 2 (ids #lnkSym/#psym1, cfg.link/cfg.sym1, unchanged from before this was
 // generalized \u2014 kept as-is rather than renamed, so nothing else that already referenced them
-// had to change). 2 = pane 3 (ids #lnkSym2/#psym2, cfg.link2/cfg.sym2, new).
+// had to change). Pane 3 (paneIdx 2, #lnkSym2/#psym2, cfg.link2/cfg.sym2) has been removed.
 async function applyPaneSym(paneIdx){
   const idSuffix=paneIdx===1?'':paneIdx;
   const linkKey=paneIdx===1?'link':'link'+paneIdx,symKey=paneIdx===1?'sym1':'sym'+paneIdx;
@@ -6522,6 +6965,7 @@ function updateSymLogo(sym,suffix){
 }
 async function connect(){
   clearInterval(quoteTimer);clearInterval(barTimer);stopStream();
+  const prevSym=cfg.sym;
   cfg.sym=$('#symInput').value.trim().toUpperCase()||'QQQ';
   updateSymLogo(cfg.sym);
   $('#apiDot').className='dot warn';$('#mktTxt').textContent='connecting…';
@@ -6557,11 +7001,18 @@ async function connect(){
     // bars5 state, so nothing else needs a full re-render).
     loadQuote().then(()=>{visPanes().forEach(pp=>{try{paneTick(pp);}catch(e){}});}).catch(softFail);
     log(`Connected · ${bars5.length}×5m, ${dailyRows.length} daily bars`+(bars15.length?`, ${bars15.length}×15m`:' · 15m loading in background'),'long');
-    // Re-sync only the VISIBLE alt panes to the new pane-1 symbol (startAltPane: linked panes
-    // follow it with no API call, unlinked panes reload their own). Hidden panes (Layout 1, or
-    // Layout 2 for pane 3) are deliberately skipped so they issue no network calls at all until
-    // they are shown again — see setPaneN().
-    [1,2].forEach(idx=>{if(idx<cfg.paneN)startAltPane(idx);});
+    // Re-sync only the VISIBLE alt pane to the new pane-1 symbol (startAltPane: linked follows it
+    // with no API call, unlinked reloads its own). Hidden (Layout 1) is deliberately skipped so
+    // it issues no network calls at all until shown again — see setPaneN().
+    [1].forEach(idx=>{if(idx<cfg.paneN)startAltPane(idx);});
+    if(prevSym&&prevSym!==cfg.sym){
+      // A new ticker means the GEX board still describes the OLD symbol until its next
+      // scheduled refresh (up to 60s away) — clear it now so scheduleGexAuto() below fetches
+      // the new symbol's chain immediately instead of waiting out the old cadence.
+      LS.gex=null;gexLastT=0;gexSrc='';gexHeat=null;gexNextT=0;
+      $('#gexSummary').innerHTML='';renderGexHeat();computeLevels();gexStatus();
+      log('Ticker changed — GEX board cleared, fetching the new symbol\'s chain now','warn');
+    }
     startStream();scheduleGexAuto();deepenAll();
     // Restore the saved multi-pane layout ONCE, now that pane 1 is fully live — this is what
     // builds and starts panes 2/3 when the user last left the app in a 2/3-pane layout, kept off
@@ -6661,7 +7112,8 @@ function wireStyle(){
    const sw=$('#swCrossColor');
    if(sw)bindSwatch(sw,()=>cfg.crosshair.color,c=>{cfg.crosshair.color=c;saveCfg();applyCrosshairCfg();});}
   {const sw=$('#swAxisText');
-   if(sw)bindSwatch(sw,()=>cfg.axisTextColor,c=>{cfg.axisTextColor=c;saveCfg();applyAxisTextColor();});}
+   if(sw)bindSwatch(sw,()=>cfg.axisTextColor,c=>{cfg.axisTextColor=c;saveCfg();applyAxisTextColor();
+     const ap=$('#cfgApply');if(ap)ap.disabled=false;});}
   {
     // Custom preset picker: a native <select> can't render a per-theme candle preview inside
     // an <option>, so this is a button + absolutely-positioned popover instead, built off the
@@ -6699,6 +7151,7 @@ function wireStyle(){
         if(idx<0){nameEl.textContent='Custom (current colors)';setPreview(CUSTOM_PREVIEW);return;}
         const t=CHART_THEMES[idx];nameEl.textContent=t.name;setPreview(t);
         applyChartTheme(t);
+        const ap=$('#cfgApply');if(ap)ap.disabled=false;
       };
       setPreview(CUSTOM_PREVIEW);
     }
@@ -6720,11 +7173,11 @@ function wireHandles(){
       const wrap=$('#'+({rsi:'rsic',vol:'volc'})[t]+i+'wrap');
       const startY=e.clientY,startH=wrap.getBoundingClientRect().height;
       document.body.style.userSelect='none';document.body.style.cursor='ns-resize';
-      // While 2+ panes are showing, dragging Pane 1's handle mirrors the height to every OTHER
-      // visible pane's matching panel live, during the drag itself. One-directional only — Pane
-      // 1 is the source, panes 2/3 follow; dragging pane 2's or pane 3's own handle does exactly
-      // what it always did (resizes that pane alone, no effect on the others).
-      const others=(i===0)?[1,2].filter(o=>o<cfg.paneN&&panes[o]):[];
+      // While pane 2 is showing, dragging Pane 1's handle mirrors the height to pane 2's matching
+      // panel live, during the drag itself. One-directional only — Pane 1 is the source, pane 2
+      // follows; dragging pane 2's own handle does exactly what it always did (resizes that pane
+      // alone, no effect on the other).
+      const others=(i===0)?[1].filter(o=>o<cfg.paneN&&panes[o]):[];
       const otherWraps=others.map(o=>$('#'+({rsi:'rsic',vol:'volc'})[t]+o+'wrap')).filter(Boolean);
       // No explicit sizeAll() here: each pane already has its own ResizeObserver on this exact
       // wrap element, rAF-throttled (see makePane) to coalesce a burst of height changes into one
@@ -6804,20 +7257,24 @@ function paneIndexFromEvent(e){
   const wrap=e.target&&e.target.closest?e.target.closest('.panewrap'):null;
   if(!wrap)return 0;
   if(wrap.id==='pw1')return 1;
-  if(wrap.id==='pw2')return 2;
   return 0;
 }
 function hideCtx(){ctx.style.display='none';ctx.setAttribute('aria-hidden','true');}
 const MENU_ICONS={
   reset:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.6 6.4A5.7 5.7 0 1 1 2.2 9.4"/><path d="M1.3 2.6v3.9h3.9"/></svg>',
-  hline:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" aria-hidden="true"><path d="M1 8h14"/><circle cx="4.6" cy="8" r="1.7" fill="currentColor" stroke="none"/></svg>'
+  hline:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" aria-hidden="true"><path d="M1 8h14"/><circle cx="4.6" cy="8" r="1.7" fill="currentColor" stroke="none"/></svg>',
+  check:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.5l3 3 7-7"/></svg>',
+  checkoff:'<svg viewBox="0 0 16 16" aria-hidden="true"></svg>'
 };
-// The menu is built per invocation so different anchors can offer different actions:
-// right-click gives Reset view, the "+" beside the price gives Draw horizontal line.
+// The menu is built per invocation so different anchors can offer different actions: right-click
+// gives Reset view (plus Auto/Scale-price-only over the price chart specifically), the "+" beside
+// the price gives Draw horizontal line. An item with a `checked` boolean (not just truthy/falsy —
+// undefined means "not a checkbox at all") renders a checkmark/blank in the icon slot instead of
+// its own icon, TradingView's own convention for these two.
 function openMenu(x,y,items){
   ctx.innerHTML=items.map((it,i)=>
     '<div class="ci" role="menuitem" tabindex="-1" data-i="'+i+'">'
-    +(MENU_ICONS[it.icon]||'')
+    +(it.checked!=null?MENU_ICONS[it.checked?'check':'checkoff']:(MENU_ICONS[it.icon]||''))
     +'<span class="lbl">'+it.label+'</span>'
     +(it.kbd?'<span class="kbd">'+it.kbd+'</span>':'')+'</div>').join('');
   ctx.querySelectorAll('.ci').forEach(el=>el.addEventListener('click',()=>{
@@ -6838,9 +7295,23 @@ document.addEventListener('contextmenu',e=>{
   if(e.target.closest('.panebar'))return;              // leave the toolbar alone
   e.preventDefault();
   ctxPane=paneIndexFromEvent(e);
-  openMenu(e.clientX,e.clientY,[
-    {icon:'reset',label:'Reset view',kbd:'Alt + R',run:()=>resetView(panes[ctxPane])}
-  ]);
+  const items=[{icon:'reset',label:'Reset view',kbd:'Alt + R',run:()=>resetView(panes[ctxPane])}];
+  // Auto (fits data to screen) / Scale price chart only — TradingView's own price-axis
+  // right-click menu, replicated: verified live against tradingview.com that these are two
+  // INDEPENDENT checkboxes (both can be checked together), not a mutually-exclusive pair.
+  // Scoped to the price chart specifically (.pchart), not volume/RSI's own right-click.
+  const p=panes[ctxPane];
+  if(p&&p.chart&&e.target.closest('.pchart')){
+    let auto=true;
+    try{auto=!!p.chart.priceScale('right').options().autoScale;}catch(err){}
+    items.push({checked:auto,label:'Auto (fits data to screen)',run:()=>{
+      try{p.chart.priceScale('right').applyOptions({autoScale:!auto});}catch(err){}
+    }});
+    items.push({checked:cfg.scalePriceOnly!==false,label:'Scale price chart only',run:()=>{
+      cfg.scalePriceOnly=!(cfg.scalePriceOnly!==false);saveCfg();renderPane(p);
+    }});
+  }
+  openMenu(e.clientX,e.clientY,items);
 });
 ctx.addEventListener('mousedown',e=>e.stopPropagation());
 addEventListener('mousedown',hideCtx);
@@ -6855,18 +7326,13 @@ addEventListener('keydown',e=>{
   if(e.altKey&&!e.ctrlKey&&!e.metaKey&&(e.key==='r'||e.key==='R')){
     const el=document.querySelector('.panewrap:hover');
     e.preventDefault();hideCtx();
-    // was a binary pw1-or-0 check, a leftover from before pane 3 (pw2) existed - it silently
-    // reset pane 1 instead of pane 3 whenever the pointer was actually over the third pane.
-    const idx=el&&el.id==='pw1'?1:el&&el.id==='pw2'?2:0;
+    const idx=el&&el.id==='pw1'?1:0;
     resetView(panes[idx]);
   }
 });
 $('#lnkSym').onchange=()=>applyPaneSym(1);
 $('#psym1').onchange=()=>applyPaneSym(1);
 $('#psym1').onkeydown=e=>{if(e.key==='Enter')applyPaneSym(1);};
-$('#lnkSym2').onchange=()=>applyPaneSym(2);
-$('#psym2').onchange=()=>applyPaneSym(2);
-$('#psym2').onkeydown=e=>{if(e.key==='Enter')applyPaneSym(2);};
 $$('#sessSeg button').forEach(b=>b.onclick=()=>{
   cfg.sess=b.dataset.sess;saveCfg();
   $$('#sessSeg button').forEach(x=>x.classList.toggle('on',x===b));
@@ -6912,20 +7378,18 @@ function startAltPane(idx){
   }
 }
 function setPaneN(n){
-  n=Math.max(1,Math.min(3,n|0))||1;
+  n=Math.max(1,Math.min(2,n|0))||1;
   cfg.paneN=n;cfg.split=n>=2;saveCfg();
   $('#pw1').style.display=n>=2?'flex':'none';
   $('#p2cluster').style.display=n>=2?'flex':'none';
-  $('#pw2').style.display=n>=3?'flex':'none';
-  $('#p3cluster').style.display=n>=3?'flex':'none';
   $('#panerow').classList.toggle('split',n>=2);
-  $$('#pw0,#pw1,#pw2').forEach(w=>w&&w.classList.remove('pw-last'));
-  const lastId=n>=3?'#pw2':n>=2?'#pw1':'#pw0';$(lastId).classList.add('pw-last');
+  $$('#pw0,#pw1').forEach(w=>w&&w.classList.remove('pw-last'));
+  const lastId=n>=2?'#pw1':'#pw0';$(lastId).classList.add('pw-last');
   $$('.layopt').forEach(b=>b.classList.toggle('on',+b.dataset.n===n));
-  // Panes 2 (idx 1) and 3 (idx 2): create lazily the first time they are shown, start them when
-  // visible, stop them when hidden. Creation is deferred to here (not boot) so the opening load
-  // only ever pays for pane 1.
-  [1,2].forEach(idx=>{
+  // Pane 2 (idx 1): created lazily the first time it is shown, started when visible, stopped
+  // when hidden. Creation is deferred to here (not boot) so the opening load only ever pays for
+  // pane 1.
+  [1].forEach(idx=>{
     if(idx<n){
       if(!panes[idx]&&window.LightweightCharts)panes[idx]=makePane(idx);
       startAltPane(idx);
@@ -6938,7 +7402,7 @@ $$('.layopt').forEach(b=>b.onclick=()=>{setPaneN(+b.dataset.n);closeTfMenus();})
 // Pins each pane's own ticker/timeframe/chart-type cluster to sit directly above ITS chart
 // column, measured against the real DOM rather than assumed from the topbar's own flex flow
 // (which has no relationship to the panerow's column widths — see the comment on
-// #p1cluster/#p2cluster/#p3cluster in CSS for how this was proven, not guessed). rAF-batched
+// #p1cluster/#p2cluster in CSS for how this was proven, not guessed). rAF-batched
 // so a resize storm collapses to one measurement per frame instead of one per event.
 let _alignRaf=null;
 function alignPaneClusters(){
@@ -6947,7 +7411,7 @@ function alignPaneClusters(){
     _alignRaf=null;
     const topbar=document.querySelector('.topbar');if(!topbar)return;
     const tRect=topbar.getBoundingClientRect();
-    [['#p2cluster','#pw1'],['#p3cluster','#pw2']].forEach(([c,p])=>{
+    [['#p2cluster','#pw1']].forEach(([c,p])=>{
       const cl=$(c),pane=$(p);if(!cl||!pane)return;
       const pr=pane.getBoundingClientRect();
       if(!(pr.width>0))return;   // pane hidden (display:none) — its cluster is already hidden too
@@ -6967,6 +7431,7 @@ function openSetup(){$('#cfgKey').value=LS.k;$('#cfgProxy').checked=!!cfg.proxy;
   $('#cfgQuoteS').value=cfg.quoteS;$('#cfgBarS').value=cfg.barS;
   $('#cfgTfPresets').checked=cfg.tfPresets!==false;
   $('#cfgGexRfr').value=cfg.gexRfr;
+  $('#cfgApply').disabled=true;   // freshly populated fields start with nothing unsaved
   $('#setup').style.display='flex';}
 // collapsible Settings sections (state remembered between openings)
 cfg.setSec=Object.assign({appearance:1,conn:1,gex:1},cfg.setSec||{});
@@ -7039,21 +7504,43 @@ function setSidebar(hidden){
 $('#sbBtn').onclick=()=>setSidebar(cfg.sb!==0);
 $('#cfgCancel').onclick=()=>$('#setup').style.display='none';
 $('#keyEye').onclick=e=>{e.preventDefault();const i=$('#cfgKey');i.type=i.type==='password'?'text':'password';$('#keyEye').textContent=i.type==='password'?'show':'hide';};
-$('#cfgSave').onclick=()=>{
+// Apply owns the actual save: both Apply and Connect call this, so there is one save path, not
+// two. Only Connect goes on to close the dialog and (re)connect — Apply leaves the chart alone,
+// exactly the "save without reload/reconnect" split this settings dialog is built around now.
+function saveSettings(){
   LS.k=$('#cfgKey').value.trim();
   cfg=Object.assign(cfg,{proxy:$('#cfgProxy').checked,stream:$('#cfgStream').checked,quoteS:+$('#cfgQuoteS').value||2,barS:+$('#cfgBarS').value||10,tfPresets:$('#cfgTfPresets').checked,gexRfr:+$('#cfgGexRfr').value||3.70});
-  saveCfg();$('#setup').style.display='none';connect();
-};
+  saveCfg();
+}
+$('#cfgApply').onclick=()=>{saveSettings();$('#cfgApply').disabled=true;};
+$('#cfgConnect').onclick=()=>{saveSettings();$('#cfgApply').disabled=true;$('#setup').style.display='none';connect();};
+{const db=$('#diagRunBtn');if(db)db.onclick=()=>{
+  db.disabled=true;db.textContent='Diagnostics running — see the box in the corner';
+  diagOpenFromSettings();
+};}
+// Any real user edit anywhere in the dialog (not the programmatic .value/.checked sets in
+// openSetup(), which do not dispatch these events) marks Apply active. One delegated listener
+// on the whole dialog, rather than enumerating every field across every settings section, so a
+// field added to Appearance/GEX/etc. later is covered automatically.
+$('#setup').addEventListener('input',()=>{$('#cfgApply').disabled=false;});
+$('#setup').addEventListener('change',()=>{$('#cfgApply').disabled=false;});
 function openRsiModal(i){
   if(i!=null)dlgPane=+i||0;
   const R=cfg.rsi;
   $('#rsLen').value=R.len;$('#rsSrc').value=R.src;$('#rsDiv').checked=!!R.div;
   $('#rsAutoTune').checked=cfg.tfPresets!==false;
-  tuneNote('rsAuto',PP=>'RSI length <b>'+PP.rsiLen+'</b>, smoothing <b>'+String(PP.rsiSmType).toUpperCase()
-    +' '+PP.rsiSmLen+'</b>, divergence window <b>'+PP.divMin+'&ndash;'+PP.divMax+'</b> bars. '
-    +'The length is calibrated so RSI spends the same share of its life beyond 30/70 on every '
-    +'timeframe; the divergence window is counted in bars, so it has to scale or one number '
-    +'would mean ten hours on 5m and six months on the daily.');
+  // With auto-tune on, the boxes above are NOT what the chart is using — the note used to say
+  // so plainly and show the values actually in force, rather than leaving stale numbers on
+  // screen. Hidden per feedback; the computation is kept (dead) rather than deleted in case
+  // it's wanted back.
+  {const el=$('#rsAuto');el.style.display='none';
+  if(false){
+    tuneNote('rsAuto',PP=>'RSI length <b>'+PP.rsiLen+'</b>, smoothing <b>'+String(PP.rsiSmType).toUpperCase()
+      +' '+PP.rsiSmLen+'</b>, divergence window <b>'+PP.divMin+'&ndash;'+PP.divMax+'</b> bars. '
+      +'The length is calibrated so RSI spends the same share of its life beyond 30/70 on every '
+      +'timeframe; the divergence window is counted in bars, so it has to scale or one number '
+      +'would mean ten hours on 5m and six months on the daily.');
+  }else el.style.display='none';}
   {const D=divCfg();
    $('#rsDivReg').checked=D.regular!==false;$('#rsDivHid').checked=D.hidden!==false;
    $('#rsDivPx').value=D.minPriceATR;$('#rsDivRs').value=D.minRsiDelta;
@@ -7066,6 +7553,7 @@ function openRsiModal(i){
   $('#swRsUp').style.background=R.upC;$('#swRsMid').style.background=R.midC;
   $('#swRsLo').style.background=R.loC;$('#swRsFill').style.background=R.fillC;
   $('#swRsiMa').style.background=R.maC;$('#swRsBb').style.background=R.bbC;
+  $('#swRsOb').style.background=R.obC;$('#swRsOs').style.background=R.osC;
   {
     // LAST, after every field above has been written from config — an earlier pass gets
     // overwritten by the ones below it, which is exactly what happened the first time
@@ -7115,6 +7603,8 @@ bindSwatch($('#swRsFill'),()=>cfg.rsi.fillC,c=>{cfg.rsi.fillC=c;saveCfg();visPan
 bindLineSwatch($('#swRsiMa'),()=>({color:cfg.rsi.maC,width:cfg.rsi.maW,style:cfg.rsi.maSt}),
   st=>{cfg.rsi.maC=st.color;cfg.rsi.maW=st.width;cfg.rsi.maSt=st.style;saveCfg();renderAll();});
 bindSwatch($('#swRsBb'),()=>cfg.rsi.bbC,c=>{cfg.rsi.bbC=c;saveCfg();renderAll();});
+bindSwatch($('#swRsOb'),()=>cfg.rsi.obC,c=>{cfg.rsi.obC=c;saveCfg();renderAll();});
+bindSwatch($('#swRsOs'),()=>cfg.rsi.osC,c=>{cfg.rsi.osC=c;saveCfg();renderAll();});
 
 // Volume has no per-timeframe auto-tuning and no per-pane style (both panes share one
 // up/down color pair), so unlike the RSI gear this needs no dlgPane/auto-tune plumbing.
@@ -7148,7 +7638,7 @@ let dlgPane=0;
 function dlgP(){return panes[dlgPane]||panes[0];}
 function paneTag(){
   if(panes.length<2)return '';
-  const p=dlgP(),tf=({'5':'5m','10':'10m','60':'1H','240':'4H','D':'1D'})[p.tf]||p.tf;
+  const p=dlgP(),tf=({'5':'5m','10':'10m','60':'1H','240':'4H','D':'1D','W':'1W'})[p.tf]||p.tf;
   // p.sym is only set when a pane is on its OWN ticker; a linked pane leaves it undefined
   return '<span class="panetag">Pane '+(dlgPane+1)+' \u00b7 '+(p.sym||cfg.sym)+' '+tf+'</span>';
 }
@@ -7157,7 +7647,7 @@ function tuneNote(id,build){
   const p=dlgP();
   if(cfg.tfPresets===false||!p){el.style.display='none';return;}
   const PP=paneParams(p);
-  const tf=({'5':'5m','10':'10m','60':'1H','240':'4H','D':'1D'})[p.tf]||p.tf;
+  const tf=({'5':'5m','10':'10m','60':'1H','240':'4H','D':'1D','W':'1W'})[p.tf]||p.tf;
   el.innerHTML='<b>Auto-tune is on</b>, so the values above are overrides that only apply '
     +'with it off. On <b>'+tf+'</b> the chart is running: '+build(PP)
     +' Turn it off in Settings to use your own numbers everywhere.';
@@ -7179,13 +7669,13 @@ $$('.eye').forEach(b=>b.onclick=()=>{
   if(panes[i])renderPane(panes[i]);
   if(cfg[k+i]&&panes[i]){
     const p=panes[i];
-    if(k==='struct'&&p.sw)log(`Structure on (pane ${i+1}, ${p.tf==='D'?'1D':p.tf+'m'}) \u2014 ${p.sw.length} swings, trend ${p.trend||'n/a'}${p.pattern?', pattern: '+p.pattern.name+' ('+p.pattern.bias+')':''}${p.brks&&p.brks.length?', last '+(()=>{const b=p.brks[p.brks.length-1];return b.kind+' '+b.dir+' @ '+b.price.toFixed(2)+' ('+b.state+')';})():''}`,'warn');
+    if(k==='struct'&&p.sw)log(`Structure on (pane ${i+1}, ${p.tf==='D'?'1D':p.tf==='W'?'1W':p.tf+'m'}) \u2014 ${p.sw.length} swings, trend ${p.trend||'n/a'}${p.pattern?', pattern: '+p.pattern.name+' ('+p.pattern.bias+')':''}${p.brks&&p.brks.length?', last '+(()=>{const b=p.brks[p.brks.length-1];return b.kind+' '+b.dir+' @ '+b.price.toFixed(2)+' ('+b.state+')';})():''}`,'warn');
   }
 });
 // Collapse arrow under the on-chart indicator list (.chartcorner). Toggling it hides/shows
 // .indlist in normal flow, so .satyinfo (appended into the same .chartcorner below it) slides
 // up/down on its own \u2014 no manual repositioning needed. Starts expanded (caret up, .on).
-[0,1,2].forEach(i=>{
+[0,1].forEach(i=>{
   const btn=$('#indcollapse'+i),list=$('#indlist'+i);
   if(!btn||!list)return;
   btn.onclick=()=>{
@@ -7213,7 +7703,7 @@ function syncChartTypeBtns(){
 }
 // Wires the per-pane Line colour-mode row (Solid/Gradient + the two gradient swatches).
 function wireLineColorMode(){
-  [0,1,2].forEach(i=>{
+  [0,1].forEach(i=>{
     const sel=document.querySelector('.ctlcmode[data-pane="'+i+'"]');
     if(!sel)return;
     sel.value=cfg['lineColorMode'+i]||'solid';
@@ -7269,9 +7759,10 @@ function openStructModal(i){
   // With auto-tune on, the three boxes above are NOT what the chart is using — say so
   // plainly and show the values actually in force, rather than leaving stale numbers on screen.
   const el=$('#stAuto');
-  if(cfg.tfPresets!==false){
+  el.style.display='none';
+  if(false){
     const p=dlgP(),PP=paneParams(p);
-    const tf=({'5':'5m','10':'10m','60':'1H','240':'4H','D':'1D'})[p.tf]||p.tf;
+    const tf=({'5':'5m','10':'10m','60':'1H','240':'4H','D':'1D','W':'1W'})[p.tf]||p.tf;
     el.innerHTML=`<b>Auto-tune is on</b>, so the three values above are overrides that only apply with it off. `
       +`On <b>${tf}</b> the chart is running: swing strength <b>${PP.swing}</b>, max swings <b>${PP.maxSwings}</b>, `
       +`tolerance <b>${PP.tolPct}%</b>, trendline fit <b>${PP.patDev}%</b>, minimum swing <b>${PP.minSwingATR}×ATR</b>, `
@@ -7332,6 +7823,7 @@ function satyRedraw(){saveCfg();visPanes().forEach(p=>{drawSatyOn(p);positionSat
 // Says what the length actually is right now and why, so "Auto" is never a black box.
 function satyLenNote(){
   const el=$('#syLenNote');if(!el)return;
+  el.style.display='none';
   const C=satyC(),box=$('#syLen');
   if(C.autoLen===false){
     autoBind('#syLen',null,false);
@@ -7610,19 +8102,18 @@ $$('#sessSeg button').forEach(x=>{
 });
 if(!cfg.paneN)cfg.paneN=cfg.split?2:1;   // migrate an existing install's old boolean once
 // Boot ALWAYS opens single-pane, no matter the saved layout, so the opening load only ever pays
-// for pane 1 — panes 2/3 are never created or fetched on the critical boot path. The saved
-// layout (_savedPaneN) is restored by setPaneN() at the end of the first connect(), which is
-// what lazily builds and starts panes 2/3.
+// for pane 1 — pane 2 is never created or fetched on the critical boot path. The saved layout
+// (_savedPaneN) is restored by setPaneN() at the end of the first connect(), which is what
+// lazily builds and starts pane 2. (cfg.paneN is clamped to at most 2 by setPaneN(), so a saved
+// 3 from before pane 3's removal downgrades to 2 automatically the first time it is restored.)
 const _savedPaneN=cfg.paneN;   // restored once, at the end of the first connect (see connect())
 let _layoutRestored=false;
 cfg.paneN=1;                   // boot is single-pane until pane 1 is live
 {
   $('#pw1').style.display='none';
   $('#p2cluster').style.display='none';
-  $('#pw2').style.display='none';
-  $('#p3cluster').style.display='none';
   $('#panerow').classList.remove('split');
-  $$('#pw0,#pw1,#pw2').forEach(w=>w&&w.classList.remove('pw-last'));
+  $$('#pw0,#pw1').forEach(w=>w&&w.classList.remove('pw-last'));
   $('#pw0').classList.add('pw-last');
   $$('.layopt').forEach(b=>b.classList.toggle('on',+b.dataset.n===1));
 }
@@ -7630,16 +8121,12 @@ $('#lnkSym').checked=cfg.link!==false;
 $('#psym1').value=cfg.link===false?(cfg.sym1||''):cfg.sym;
 $('#psym1').disabled=cfg.link!==false;
 updateSymLogo($('#psym1').value,1);
-$('#lnkSym2').checked=cfg.link2!==false;
-$('#psym2').value=cfg.link2===false?(cfg.sym2||''):cfg.sym;
-$('#psym2').disabled=cfg.link2!==false;
-updateSymLogo($('#psym2').value,2);
 syncTfButtons();syncIndTogs();
 if(cfg.sb===0)setSidebar(true);
 ensureLWC(function(ok){
   if(ok){try{
-    // Only pane 1 is built at boot. Panes 2/3 are created lazily by setPaneN(), which the first
-    // connect() calls to restore the saved layout — so the opening load never pays for them.
+    // Only pane 1 is built at boot. Pane 2 is created lazily by setPaneN(), which the first
+    // connect() calls to restore the saved layout — so the opening load never pays for it.
     panes[0]=makePane(0);
     alignPaneClusters();setTimeout(alignPaneClusters,60);
   }catch(e){showErr('Chart init failed: '+e.message+' — data and alerts still work');}}

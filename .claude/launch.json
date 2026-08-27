@@ -4,8 +4,8 @@
     {
       "name": "swagino",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "8642"],
-      "port": 8642
+      "runtimeArgs": ["proxy.py"],
+      "port": 8787
     }
   ]
 }
