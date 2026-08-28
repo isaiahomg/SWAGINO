@@ -5258,7 +5258,7 @@ async function startStream(){
     log('WebSocket blocked ('+e.message+') — staying on polling','warn');return;
   }
   ws.onopen=()=>{
-    ws.send(JSON.stringify({symbols:[wsWantSym],sessionid:sid,linebreak:true,filter:['trade']}));
+    ws.send(JSON.stringify({symbols:[wsWantSym],sessionid:sid,linebreak:true,filter:['trade','quote']}));
     wsAlive=true;wsRetryMs=1000;setStatus();
     _cvolPrev=null;Object.keys(_volBase).forEach(k=>delete _volBase[k]);   // (re)connect: cvol boundary unknown until the next clean bucket
     log('WebSocket streaming live · '+wsWantSym+' · per-trade updates','long');
@@ -5289,6 +5289,18 @@ async function startStream(){
         if(!_tradeSampled){log('Trade stream raw sample: '+JSON.stringify(d).slice(0,300),'warn');_tradeSampled=true;}
         const px=+(d.price!==undefined?d.price:d.last);
         if(isFinite(px)){lastPx=px;paintPx();updateForming(px,+d.size||0,false,(d.cvol!=null&&isFinite(+d.cvol))?+d.cvol:null);}
+      }else if(d.type==='quote'&&d.symbol===wsWantSym){
+        // Extended-hours trade prints are sparse to nonexistent for a lot of symbols - confirmed
+        // via LOCAL-DIAG capture: 30 straight minutes of pre-market 'trade' ticks for MU, all
+        // size 0 and pinned to the prior regular close (the same non-print the guard above
+        // rejects). Relying on trade prints alone leaves the ticker frozen for the whole pre/
+        // post-market session even though the stock is genuinely moving. Bid/ask keeps updating
+        // with real price discovery even when nothing actually prints, so its midpoint is what
+        // drives the ticker whenever a trade isn't available. Quotes carry no size/volume, so
+        // this only ever touches lastPx/paintPx - never updateForming's bars or volume, which
+        // stay trade-driven only, same as before.
+        const bid=+d.bid,ask=+d.ask;
+        if(isFinite(bid)&&isFinite(ask)&&bid>0&&ask>0){lastPx=(bid+ask)/2;paintPx();}
       }
     });
   };
@@ -7094,8 +7106,6 @@ async function loadQuote(){
   const j=await tradier(`/v1/markets/quotes?symbols=${cfg.sym}`);
   const q=j.quotes&&j.quotes.quote;if(!q)return;
   if(wsAlive)return paintPx(); // WS is the tick source; poll is just a safety net
-  lastPx=+q.last;
-  paintPx();
   // `last` is the last TRADE, not a live pre-market price. Before the session's first
   // extended-hours print it is still the PREVIOUS session's close, and pushing that into
   // the bar being built stamps a high or low from another session onto a pre-market
@@ -7109,7 +7119,16 @@ async function loadQuote(){
   // exists to cover) fell through the && chain and pushed the stale close anyway, which is
   // what actually produced the giant pre-market candle this guard was meant to prevent.
   const td=+q.trade_date;
-  if(!(isFinite(td)&&td>0&&td/1000>=Math.floor(Math.floor(Date.now()/1000)/300)*300))return;
+  const tradeFresh=isFinite(td)&&td>0&&td/1000>=Math.floor(Math.floor(Date.now()/1000)/300)*300;
+  // The ticker itself has no bar to corrupt, so it doesn't need trade freshness the way the bar
+  // update below does — but showing a trade price that's frozen on a prior session's close is
+  // exactly the "outside market hours never updates" symptom this exists to fix. When the trade
+  // isn't fresh, fall back to the bid/ask midpoint (real, moving price discovery even when
+  // nothing prints) instead of the stale last-trade value.
+  const bid=+q.bid,ask=+q.ask;
+  lastPx=(!tradeFresh&&isFinite(bid)&&isFinite(ask)&&bid>0&&ask>0)?(bid+ask)/2:+q.last;
+  paintPx();
+  if(!tradeFresh)return;
   updateForming(lastPx,0,true);           // poll: close only, never the extremes
 }
 async function loadAlt(sym,paneIdx){
