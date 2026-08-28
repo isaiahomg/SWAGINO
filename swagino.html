@@ -4075,6 +4075,11 @@ function renderPane(p){
   p.sw=null;
   try{p.sw=findSwings(data,Math.max(2,PP.swing),causalMinMove(data,PP.minSwingATR),
     structVolFloor(data,PP.volFloor));}catch(e){p.sw=[];}
+  // The tail bar's time as of THIS render, so paneTick can tell (cheaply, without re-deriving
+  // the series) when a genuinely new bucket has started since structure was last resolved -
+  // see the trigger next to it in paneTick for why comparing against wall-clock time cannot
+  // work for this.
+  p._structTailT=data.length?data[data.length-1].time:null;
   // MODULE 1 value. FLAG: with TF presets ON (the default), PP.rsiLen is 13/15/16/14/12 by
   // timeframe, NOT Pine's fixed 14 — a TradingView chart on length=14 will only match when presets
   // are off (or set to 14). Source is cfg.rsi.src (default 'close'). Neither is silently changed.
@@ -5327,16 +5332,13 @@ async function startStream(){
 function paneTick(p){
   if(!p||!p.candles)return;
   if(p.sym&&p.sym!==cfg.sym)return;
-  // barT0 (raw epoch anchor of the forming bucket) and barPrevClose (close of the bar right
-  // before it) used to come from calling seriesForTF() twice per tick. seriesForTF's memo key
-  // includes the tail bar's own OHLC (by design, so a real edit invalidates it) - but a live
-  // tick's whole point IS editing the tail bar, so it invalidated on nearly every single print,
-  // forcing a full re-aggregation of the entire backfilled history (thousands of bars) per tick.
-  // Measured: ~33ms per re-aggregation, alternating with a fast path whenever the traded price
-  // happened to repeat and the memo key held. Both call sites only ever needed the bar this
-  // function had already computed below (or, for barPrevClose, one bar before it), which every
-  // branch's own existing tail-walk can hand over for free while it's already there.
-  let bar=null,barT0=null,barPrevClose=null;
+  // barPrevClose (close of the bar right before the forming one) used to come from calling
+  // seriesForTF() on every tick. seriesForTF's memo key includes the tail bar's own OHLC (by
+  // design, so a real edit invalidates it) — but a live tick's whole point IS editing the tail
+  // bar, so it invalidated on nearly every single print, forcing a full re-aggregation of the
+  // entire backfilled history (thousands of bars) per tick. Measured: ~33ms per re-aggregation.
+  // Every branch's own existing tail-walk can hand this over for free while it's already there.
+  let bar=null,barPrevClose=null;
   if(p.tf==='D'){
     const r=dailyRows[dailyRows.length-1];
     if(r&&r.date===nowET().ymd){
@@ -5386,7 +5388,6 @@ function paneTick(p){
       o=b.o;h=Math.max(h,b.h);l=Math.min(l,b.l);t0=b.t;vol+=(b.v||0);ymd=b.etYmd;
     }
     if(t0==null)return;
-    barT0=t0;
     bar={time:toChartTime(t0),open:o,high:h,low:l,close:lastB.c,volume:vol,ymd};
   }
   if(!bar)return;
@@ -5531,20 +5532,22 @@ function paneTick(p){
     }
   }
   p.lastClose=bar.close;p.lastOpen=bar.open;
-  // Market Structure (swings, HH/HL/LH/LL, BOS/CHoCH) is resolved only inside renderPane(),
-  // which otherwise only runs when the ~10s barTimer poll happens to notice a bar closed — up
-  // to that long AFTER the close actually happened, while every other indicator above (RSI,
-  // Ribbon, candles, volume) is already live every print. Same "the tick that MAKES the change
-  // triggers the recompute directly" rule as touchSessionExtremes() above: detect THIS pane's
-  // OWN bar crossing its real close boundary (identical check to renderPane's own closedLen
-  // gate — same p.tf==='D' vs epoch-time branch) and render it immediately, guarded so it
-  // fires once per bar close, not on every subsequent print.
+  // Market Structure (swings, HH/HL/LH/LL, BOS/CHoCH, pattern trendlines) is resolved only
+  // inside renderPane(). The previous trigger here compared wall-clock time against this
+  // bucket's OWN closing boundary (Date.now() >= barT0+tf*60) — but by the time this line runs,
+  // bar/barT0 are already derived from bars5/bars15 AFTER updateForming's own upd() call (same
+  // synchronous tick) rolled them onto the NEW bucket, so it was really asking "has the bucket
+  // I just started closed" — never true. Verified live: watched a real 5-minute boundary cross
+  // on an actively-trading symbol and this fired zero times, leaving Market Structure to rely
+  // entirely on the ~10s barTimer poll — which, for the identical reason, is itself also
+  // usually too late (the WS tick stream beats a 10s REST poll to the rollover).
+  // Detect the transition directly instead: p._structTailT is the tail bar's time as of the
+  // LAST full render (set in renderPane, right next to findSwings). The instant this tick's
+  // bar belongs to a newer bucket than that, the bar renderPane last saw has definitively
+  // closed — render immediately. renderPane updates p._structTailT to the new bucket itself,
+  // so this cannot re-fire on later ticks within the same still-forming bucket.
   try{
-    const closed=p.tf==='D'?(bar.ymd!==nowET().ymd)
-      :p.tf==='W'?(bar.ymd!==satyPeriodKey('multiday',nowET().ymd))
-      :(barT0!=null?(Math.floor(Date.now()/1000)>=barT0+(+p.tf||5)*60):false);
-    if(closed&&p._structClosedT!==barT0){p._structClosedT=barT0;lockView(p,()=>renderPane(p));}
-    else if(!closed)p._structClosedT=null;
+    if(p._structTailT!=null&&bar.time!==p._structTailT)lockView(p,()=>renderPane(p));
   }catch(e){}
   // Overlay-label repositioning (positionTips) + the bar countdown do NOT run here on every tick.
   // Measured: that pair cost ~3.5ms of forced-layout DOM work per pane per trade print -- the
