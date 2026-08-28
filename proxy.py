@@ -28,7 +28,9 @@ Speed notes (this is why start-up used to drag):
 import hashlib
 import http.client
 import http.server
+import json
 import threading
+import time
 import os
 from urllib.parse import unquote
 
@@ -89,6 +91,62 @@ STATIC_TYPES = {
     ".mp4": "video/mp4",
     ".webm": "video/webm",
 }
+
+# GEX's Black-Scholes gamma solve needs a risk-free rate r. This used to be a number the user
+# had to look up and re-type in Settings by hand as the real 13-week T-bill rate moved. It is
+# now fetched here, server-side, from the U.S. Treasury's own published auction results —
+# https://www.treasurydirect.gov/TA_WS/securities/auctioned — a public, unauthenticated,
+# no-API-key endpoint, so this needs nothing from the user and never touches their Tradier
+# token. 13-week bills are auctioned every Monday, so the true rate can only ever move about
+# once a week; a 6-hour cache is far shorter than that cadence (never serves a materially stale
+# number) while keeping this off the hot path and off Treasury's servers on every page load —
+# and, in shared-server mode, one fetch here serves every visitor instead of one each.
+TREASURY_HOST = "www.treasurydirect.gov"
+TREASURY_PATH = "/TA_WS/securities/auctioned?type=Bill&days=30&format=json"
+_RFR_CACHE_TTL = 6 * 3600
+_rfr_lock = threading.Lock()
+_rfr_cache = {"data": None, "ts": 0.0}
+
+
+def _fetch_risk_free_rate():
+    with _rfr_lock:
+        now = time.time()
+        cached = _rfr_cache["data"]
+        if cached is not None and (now - _rfr_cache["ts"]) < _RFR_CACHE_TTL:
+            return cached
+        conn = http.client.HTTPSConnection(TREASURY_HOST, timeout=TIMEOUT)
+        try:
+            conn.request("GET", TREASURY_PATH,
+                         headers={"Accept": "application/json", "Host": TREASURY_HOST})
+            r = conn.getresponse()
+            raw = r.read()
+            if r.status != 200:
+                raise RuntimeError(f"treasurydirect returned HTTP {r.status}")
+            rows = json.loads(raw)
+            # "days=30" already limits the response to recent auctions across every bill term
+            # (4/6/8/13/17/26/52-week); a 13-week bill is auctioned weekly, so 30 days always
+            # contains at least one, generally several. highDiscountRate is the stop-out rate
+            # every winning bidder (competitive and non-competitive alike) received at that
+            # single-price auction - the same figure Treasury and financial media report as
+            # "the 13-week bill was auctioned at X%", and the convention this app's own
+            # previously-manual default (3.70%) already matched.
+            bills = [row for row in rows
+                     if row.get("securityTerm") == "13-Week" and row.get("highDiscountRate")]
+            if not bills:
+                raise RuntimeError("no completed 13-week bill auction in the last 30 days")
+            bills.sort(key=lambda row: row.get("auctionDate", ""), reverse=True)
+            latest = bills[0]
+            result = {
+                "rate": float(latest["highDiscountRate"]),
+                "auctionDate": latest.get("auctionDate", "")[:10],
+                "cusip": latest.get("cusip", ""),
+            }
+        finally:
+            conn.close()
+        _rfr_cache["data"] = result
+        _rfr_cache["ts"] = now
+        return result
+
 
 # one upstream connection per worker thread, reused across requests
 _local = threading.local()
@@ -197,8 +255,13 @@ class Proxy(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         # /healthz is answered locally (no upstream) so Docker's healthcheck never touches
         # Tradier and never counts against the rate limit.
-        if self.path.split("?", 1)[0] == "/healthz":
+        path = self.path.split("?", 1)[0]
+        if path == "/healthz":
             self._send(200, "text/plain; charset=utf-8", b"ok")
+        elif path == "/rfr":
+            # Public U.S. Treasury data, not Tradier - no token involved, so this is served
+            # in every mode (local and shared-server alike) with no allowlist gate.
+            self._handle_rfr()
         elif self._is_api():
             if self._api_allowed("GET"):
                 self._proxy("GET")
@@ -206,6 +269,14 @@ class Proxy(http.server.BaseHTTPRequestHandler):
                 self._send(403, "text/plain", b"forbidden")
         else:
             self._serve_static()
+
+    def _handle_rfr(self):
+        try:
+            result = _fetch_risk_free_rate()
+            self._send(200, "application/json", json.dumps(result).encode(),
+                       extra=[("Cache-Control", "public, max-age=1800")])
+        except Exception as e:
+            self._send(502, "application/json", json.dumps({"error": str(e)}).encode())
 
     def _proxy(self, method):
         try:

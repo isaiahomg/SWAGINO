@@ -1797,8 +1797,9 @@ table.lv td{padding:6px 10px}
     </div>
     <button class="explainhdr setsec" data-sec="gex" aria-expanded="false"><svg class="sec-ic" viewBox="0 0 20 20" fill="none"><path d="M4 16V9M10 16V4M16 16v-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span class="caret">&#9662;</span> GEX</button>
     <div class="setbody" data-sec="gex" style="display:none">
-    <div class="row"><label>Risk-free rate (%)</label><input id="cfgGexRfr" value="3.70" style="width:70px">
-      <span class="hint" style="margin:0;flex:1">Used as r in the Black-Scholes gamma solve (implied vol from each contract's live bid/ask). Not fetched automatically — update it yourself as the real 13-week T-bill rate moves.</span></div>
+    <div class="row"><label>Risk-free rate (%)</label><input id="cfgGexRfr" value="3.70" style="width:70px" disabled>
+      <label style="min-width:0;font-size:11px"><input type="checkbox" id="cfgGexRfrAuto" checked> Auto</label>
+      <span class="hint" style="margin:0;flex:1" id="gexRfrHint">Used as r in the Black-Scholes gamma solve (implied vol from each contract's live bid/ask). Auto-fetches the real 13-week T-bill rate from the U.S. Treasury's own published auction results — uncheck Auto to enter one by hand instead.</span></div>
     </div>
     <button class="explainhdr setsec open" data-sec="conn" aria-expanded="true"><svg class="sec-ic" viewBox="0 0 20 20" fill="none"><path d="M7 13l-2.5 2.5a2.4 2.4 0 01-3.4-3.4L3.6 9.6M13 7l2.5-2.5a2.4 2.4 0 013.4 3.4L16.4 10.4M7.5 12.5l5-5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="caret">&#9662;</span> Connection</button>
     <div class="setbody" data-sec="conn">
@@ -1947,10 +1948,13 @@ function diagRenderDownloadLink(box,blob){
 // never commit a value changed for a test run. Grep POLL-DEFAULTS before touching these.
 let cfg=Object.assign({proxy:true,quoteS:2,barS:10,
   // gexRfr: risk-free rate for the GEX Black-Scholes gamma solve, as a PERCENTAGE (3.70 = 3.70%),
-  // divided by 100 before use. Seeded 2026-08-20 from the 13-week T-bill (Yahoo Finance ^IRX,
-  // 3.70% — previous close 3.7000, intraday 3.7030). Not fetched live; edit it in Settings > GEX
-  // as the real rate moves, so the GEX board never silently prices off a stale value nobody set.
-  gexRfr:3.70,
+  // divided by 100 before use. Auto-fetched (see fetchRiskFreeRate()) from the U.S. Treasury's
+  // own published 13-week bill auction results whenever gexRfrAuto is on (the default) — no
+  // API key, no Tradier token involved, just the government's own public data. 3.70 here is
+  // only the seed for the instant between page load and that first fetch landing (or for the
+  // rare case it fails and gexRfrAuto is off), not a value meant to go stale unnoticed the way
+  // the old manual-only field could.
+  gexRfr:3.70,gexRfrAuto:true,
   sym:'QQQ',sess:'eth',split:false,paneN:1,tf0:'5',tf1:'60',rsiH0:76,rsiH1:76,volH0:70,volH1:70,stream:true,satyCfg:null,link:true,sym1:'',tfPresets:true,struct0:false,struct1:false,saty0:false,saty1:false,ribbon0:false,ribbon1:false,
   chartType0:'candles',chartType1:'candles',  // per-pane main series type, same cfg[key+i] pattern as struct0/saty0/ribbon0
   axisTextColor:'#ffffff',  // price/volume/RSI axis tick-label colour (all three share one lightweight-charts layout.textColor)
@@ -6554,9 +6558,11 @@ addEventListener('resize',()=>{if(gexHeat)renderGexHeat();});
      - Dividend yield q = 0 (GEX_DIV_YIELD below). Not measured, not fetched — a flat
        assumption per explicit instruction, not a silent default.
      - Risk-free rate r comes from cfg.gexRfr, a PERCENTAGE set in Settings > GEX (divided by
-       100 below). NOT fetched live — seeded once (2026-08-20, 13-week T-bill / Yahoo ^IRX,
-       3.70%) and left for the user to update by hand; computeChainGex refuses to run rather
-       than silently substitute a number if it is ever unset. */
+       100 below). Auto-fetched from the U.S. Treasury's own 13-week bill auction results
+       (fetchRiskFreeRate(), gexRfrAuto on by default) — see proxy.py's /rfr for the server
+       side of that fetch. A manual override is still available (uncheck Auto in Settings) for
+       anyone who wants to force a specific number; computeChainGex refuses to run rather than
+       silently substitute a number if it is ever unset either way. */
 const GEX_DIV_YIELD=0;   // ASSUMPTION: 0% dividend yield — see comment block above
 function normPdf(x){return Math.exp(-0.5*x*x)/Math.sqrt(2*Math.PI);}
 // Standard normal CDF, Abramowitz & Stegun 7.1.26 (max abs error ~1.5e-7) — well inside the
@@ -7731,12 +7737,55 @@ setInterval(()=>{
   paintMarketPhase();
   visPanes().forEach(p=>{positionTips(p);updateCountdown(p);});},1000);
 paintMarketPhase();   // don't wait a second for the first paint
+// GEX's risk-free rate, kept current automatically from the U.S. Treasury's own published
+// 13-week bill auction results (proxy.py's /rfr — public data, no API key, never touches the
+// Tradier token) instead of the user having to look one up and re-type it in Settings as it
+// moves. 13-week bills auction weekly, so this only needs to run a couple of times a day; the
+// server already caches its own upstream call for 6h regardless of how often this fires.
+let _rfrLastFetch=0;
+async function fetchRiskFreeRate(force){
+  if(cfg.gexRfrAuto===false&&!force)return;
+  const now=Date.now();
+  if(!force&&_rfrLastFetch&&(now-_rfrLastFetch)<6*3600*1000)return;
+  try{
+    const res=await fetch('/rfr');
+    const j=await res.json();
+    if(!res.ok||!isFinite(j.rate))throw new Error(j.error||('HTTP '+res.status));
+    cfg.gexRfr=j.rate;cfg.gexRfrAsOf=j.auctionDate;
+    _rfrLastFetch=now;
+    saveCfg();
+    if($('#setup').style.display==='flex'){$('#cfgGexRfr').value=cfg.gexRfr;syncGexRfrUI();}
+    log('Risk-free rate auto-updated: '+j.rate+'% (13-week T-bill, auctioned '+j.auctionDate+')','long');
+  }catch(e){
+    log('Risk-free rate auto-fetch failed ('+e.message+') — keeping the last known value','warn');
+  }
+}
+fetchRiskFreeRate();
+setInterval(fetchRiskFreeRate,6*3600*1000);
 function openSetup(){$('#cfgKey').value=LS.k;$('#cfgProxy').checked=!!cfg.proxy;$('#cfgStream').checked=cfg.stream!==false;
   $('#cfgQuoteS').value=cfg.quoteS;$('#cfgBarS').value=cfg.barS;
   $('#cfgTfPresets').checked=cfg.tfPresets!==false;
   $('#cfgGexRfr').value=cfg.gexRfr;
+  $('#cfgGexRfrAuto').checked=cfg.gexRfrAuto!==false;
+  syncGexRfrUI();
   $('#cfgApply').disabled=true;   // freshly populated fields start with nothing unsaved
   $('#setup').style.display='flex';}
+// Auto keeps #cfgGexRfr disabled as a read-only reflection of the last Treasury fetch;
+// unchecking it hands control back to the user — the same box.disabled=linked pattern
+// applyPaneSym() already uses for the alt-pane ticker box.
+function syncGexRfrUI(){
+  const auto=$('#cfgGexRfrAuto').checked;
+  $('#cfgGexRfr').disabled=auto;
+  const hint=$('#gexRfrHint');
+  if(!hint)return;
+  if(auto&&cfg.gexRfrAsOf)hint.textContent='Auto: '+(+cfg.gexRfr).toFixed(3)+'% — 13-week T-bill, auctioned '+cfg.gexRfrAsOf+'.';
+  else if(auto)hint.textContent='Auto-fetches the real 13-week T-bill rate from the U.S. Treasury’s own published auction results.';
+  else hint.textContent='Used as r in the Black-Scholes gamma solve (implied vol from each contract’s live bid/ask). Manual — recheck Auto to resume tracking the U.S. Treasury’s published rate.';
+}
+$('#cfgGexRfrAuto').onchange=()=>{
+  syncGexRfrUI();
+  if($('#cfgGexRfrAuto').checked)fetchRiskFreeRate(true);
+};
 // collapsible Settings sections (state remembered between openings)
 cfg.setSec=Object.assign({appearance:1,conn:1,gex:1},cfg.setSec||{});
 $$('.setsec').forEach(h=>{
@@ -7822,7 +7871,7 @@ $('#keyEye').onclick=e=>{e.preventDefault();const i=$('#cfgKey');i.type=i.type==
 // exactly the "save without reload/reconnect" split this settings dialog is built around now.
 function saveSettings(){
   LS.k=$('#cfgKey').value.trim();
-  cfg=Object.assign(cfg,{proxy:$('#cfgProxy').checked,stream:$('#cfgStream').checked,quoteS:+$('#cfgQuoteS').value||2,barS:+$('#cfgBarS').value||10,tfPresets:$('#cfgTfPresets').checked,gexRfr:+$('#cfgGexRfr').value||3.70});
+  cfg=Object.assign(cfg,{proxy:$('#cfgProxy').checked,stream:$('#cfgStream').checked,quoteS:+$('#cfgQuoteS').value||2,barS:+$('#cfgBarS').value||10,tfPresets:$('#cfgTfPresets').checked,gexRfr:+$('#cfgGexRfr').value||3.70,gexRfrAuto:$('#cfgGexRfrAuto').checked});
   saveCfg();
 }
 $('#cfgApply').onclick=()=>{saveSettings();$('#cfgApply').disabled=true;};
