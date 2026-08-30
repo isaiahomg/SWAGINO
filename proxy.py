@@ -25,6 +25,7 @@ Speed notes (this is why start-up used to drag):
      handshake. A pooled socket can go stale between calls, so a failed reuse
      is retried once on a fresh connection before giving up.
 """
+import gzip
 import hashlib
 import http.client
 import http.server
@@ -91,6 +92,23 @@ STATIC_TYPES = {
     ".mp4": "video/mp4",
     ".webm": "video/webm",
 }
+
+# Text-ish types worth gzipping. Images/fonts/video are already compressed formats -
+# re-gzipping them wastes CPU for zero (sometimes negative) size benefit.
+COMPRESSIBLE_TYPES = (
+    "text/html", "text/css", "text/javascript", "application/javascript",
+    "application/json", "image/svg+xml", "text/plain",
+)
+
+# swagino.html is ~900KB of hand-written source (kept uncompressed and heavily commented on
+# disk - see CLAUDE.md/memory notes on why: this file has no build step, so the comments ARE
+# the only record of past bugs/decisions for whoever - human or Claude - edits it next).
+# Gzip cuts it to roughly a third on the wire with zero effect on that source. Recompressing
+# the same ~900KB on every single request would be wasteful, especially once more than one
+# visitor is loading it at once in shared-server mode, so the gzip bytes are cached here keyed
+# by the file's mtime and only recomputed when swagino.html (or any other static file) actually
+# changes on disk - i.e. after a real redeploy, not on every request.
+_static_cache = {}
 
 # GEX's Black-Scholes gamma solve needs a risk-free rate r. This used to be a number the user
 # had to look up and re-type in Settings by hand as the real 13-week T-bill rate moved. It is
@@ -298,32 +316,56 @@ class Proxy(http.server.BaseHTTPRequestHandler):
             return
         ctype = STATIC_TYPES.get(os.path.splitext(full)[1].lower(), "application/octet-stream")
         try:
-            with open(full, "rb") as f:
-                body = f.read()
+            mtime = os.path.getmtime(full)
         except OSError as e:
             self._send(500, "text/plain", str(e).encode())
             return
-        # In shared-server mode, drop the bootstrap into the served HTML right after <head>
-        # so visitors connect through this proxy without ever seeing the token dialog.
-        if SHARED_TOKEN and ctype.startswith("text/html"):
-            i = body.lower().find(b"<head")
-            if i != -1:
-                j = body.find(b">", i)
-                if j != -1:
-                    body = body[:j + 1] + _BOOTSTRAP + body[j + 1:]
-        # ETag over the FINAL bytes (post-injection) lets a returning browser revalidate with a
-        # tiny 304 instead of re-downloading the ~800 KB app. HTML is no-cache (must revalidate)
-        # so a redeploy shows up on the next refresh; other assets get a short max-age.
-        etag = '"' + hashlib.md5(body).hexdigest() + '"'
-        if self.headers.get("If-None-Match") == etag:
+        entry = _static_cache.get(full)
+        if entry is None or entry["mtime"] != mtime:
+            try:
+                with open(full, "rb") as f:
+                    body = f.read()
+            except OSError as e:
+                self._send(500, "text/plain", str(e).encode())
+                return
+            # In shared-server mode, drop the bootstrap into the served HTML right after <head>
+            # so visitors connect through this proxy without ever seeing the token dialog.
+            # SHARED_TOKEN is fixed for the life of the process, so this is safe to bake into
+            # the cached body rather than redoing it per request.
+            if SHARED_TOKEN and ctype.startswith("text/html"):
+                i = body.lower().find(b"<head")
+                if i != -1:
+                    j = body.find(b">", i)
+                    if j != -1:
+                        body = body[:j + 1] + _BOOTSTRAP + body[j + 1:]
+            # ETag over the FINAL bytes (post-injection) lets a returning browser revalidate
+            # with a tiny 304 instead of re-downloading the ~900 KB app. HTML is no-cache (must
+            # revalidate) so a redeploy shows up on the next refresh; other assets get a short
+            # max-age.
+            etag = '"' + hashlib.md5(body).hexdigest() + '"'
+            gz = None
+            if ctype.split(";", 1)[0].strip().lower() in COMPRESSIBLE_TYPES:
+                gz = gzip.compress(body, compresslevel=6)
+            entry = {"mtime": mtime, "body": body, "etag": etag, "gz": gz}
+            _static_cache[full] = entry
+        if self.headers.get("If-None-Match") == entry["etag"]:
             self.send_response(304)
             self._cors()
-            self.send_header("ETag", etag)
+            self.send_header("ETag", entry["etag"])
             self.send_header("Content-Length", "0")
             self.end_headers()
             return
         cache = "no-cache" if ctype.startswith("text/html") else "public, max-age=3600"
-        self._send(200, ctype, body, extra=[("ETag", etag), ("Cache-Control", cache)])
+        extra = [("ETag", entry["etag"]), ("Cache-Control", cache)]
+        accept_enc = self.headers.get("Accept-Encoding", "")
+        if entry["gz"] is not None and "gzip" in accept_enc:
+            # Vary tells any cache in front of this (browser or CDN) that the response differs
+            # by Accept-Encoding, so a gzip-capable and a non-gzip client never share one entry.
+            extra.append(("Content-Encoding", "gzip"))
+            extra.append(("Vary", "Accept-Encoding"))
+            self._send(200, ctype, entry["gz"], extra=extra)
+        else:
+            self._send(200, ctype, entry["body"], extra=extra)
 
     def log_message(self, fmt, *args):
         # print path only, never headers (keeps your token out of the console)
