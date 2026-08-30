@@ -5786,11 +5786,36 @@ function drawLevels(){visPanes().forEach(p=>{drawLevelsOn(p);positionLvlTags(p);
       landing together is just pivot arithmetic agreeing with itself, not confirmation.
    Strength = how many distinct families agree, and that drives the glow intensity. */
 let confTol=0;
+// ind5.atr is Wilder ATR(14) over bars5 UNFILTERED — every session included, per session_filter=
+// all (see fetchTsRange). That's correct for what ind5.atr otherwise backs (Market Structure's
+// break buffer, retest zone, probe pierce, stop pad — extended-hours gaps are real information
+// there). It is the WRONG input for confTolerance(): every family this tolerance compares
+// (Session, Previous Day, Institutional) is itself RTH-only, so sizing "are these the same
+// level" off a noise band that extended-hours can quietly dilute compares RTH numbers against a
+// non-RTH yardstick. Confirmed live on NVDA: at 4:00pm ET (RTH close, genuinely volatile day —
+// the stock had just closed -4.58%) the RTH-only ATR(14) was 0.60. Read again at 7:55pm, after
+// three hours of thin, calm post-market drift folded into the same Wilder smoothing, ind5.atr
+// had decayed to 0.096 — a 6x difference describing what should still be "the same" current
+// volatility for RTH-level comparison purposes. So confTolerance() gets its own RTH-only
+// ATR(14) below instead of reusing ind5.atr — ind5.atr and everything else built on it (Market
+// Structure's triggers) are untouched by this.
+function rthAtr14(){
+  if(!bars5.length)return null;
+  const rth=bars5.filter(b=>b.etMin>=570&&b.etMin<960);
+  if(rth.length<15)return null;
+  const trA=[];
+  for(let i=0;i<rth.length;i++){
+    if(i===0||rth[i].etYmd!==rth[i-1].etYmd){trA.push(null);continue;}
+    trA.push(Math.max(rth[i].h-rth[i].l,Math.abs(rth[i].h-rth[i-1].c),Math.abs(rth[i].l-rth[i-1].c)));
+  }
+  const series=rmaSeries(trA,14);
+  for(let i=series.length-1;i>=0;i--)if(series[i]!=null)return series[i];
+  return null;
+}
 function confTolerance(){
   const px=lastPx||(bars5.length?bars5[bars5.length-1].c:0);
   if(!px)return 0.40;
-  let atr=null;
-  if(ind5.ready&&ind5.atr)for(let i=ind5.atr.length-1;i>=0;i--){if(ind5.atr[i]!=null){atr=ind5.atr[i];break;}}
+  const atr=rthAtr14();
   const base=atr?0.30*atr:px*0.0010;
   return Math.max(px*0.0004,Math.min(px*0.0030,base));
 }
@@ -6234,15 +6259,47 @@ function positionSatyInfo(p){
 
 // "Institutional" levels: the two highest-volume price nodes over a rolling lookback of daily
 // bars, split into Ceiling (above the current price) and Floor (below it) — a lightweight
-// volume-by-price profile, spreading each day's volume across its own [low,high] range since
-// there's no intrabar tick data to work from. Verified against real QQQ history first: this
-// exact method (distribute-across-range, ~100 self-scaling bins) picked out the actual
-// multi-month consolidation zone and a separately-confirmed repeat-test zone, not noise.
+// volume-by-price profile. Where 5-minute bars (bars5, RTH-only) cover a day, that day's volume
+// is spread across each 5-min bar's own [low,high] sub-range instead of the whole day's range.
+// This matters: whole-day spreading was verified (real QQQ/NVDA/MRVL/COIN/PYPL data) to produce
+// multi-dollar-wide FLAT plateaus wherever no day's H/L boundary happens to fall — every bin in
+// an unbroken stretch gets literally identical weight, so the single price this function used to
+// report was effectively arbitrary (whichever tied bin a Map iterates to first), not a genuine
+// peak. bars5 already gets backfilled to Tradier's real intraday retention limit (~57 calendar
+// days, discovered by deepen()) well past this 25-trading-day window, so real coverage is the
+// normal case, not the exception — whole-day spreading now only runs as the explicit fallback
+// below, for whatever a given boot/symbol genuinely doesn't have intraday bars for yet.
+//
+// RTH-only bars5 is used, not the raw all-session stream (which includes pre/post-market): the
+// daily bar this whole feature is anchored to (dailyRows, Tradier's daily /history endpoint) is
+// itself RTH-only — confirmed by its H/L matching RTH-filtered bars5 exactly, day after day.
+// Their VOLUME figures do not match, though (RTH 5-min sum consistently runs ~11-22% under the
+// daily total, checked across four separate days) — a known mismatch between a real-time
+// time-and-sales feed and the end-of-day consolidated tape (which folds in late/off-exchange
+// prints a continuous intraday feed doesn't carry), not a defect in either endpoint. So bars5 is
+// used only for its SHAPE — each bar's % share of that day's own RTH bar volume — applied to the
+// day's true total from dailyRows. That never invents volume and never discards any of the
+// authoritative daily figure the rest of the app already relies on elsewhere (e.g. relative
+// volume).
+//
+// A day needs at least 40 of a normal session's 78 RTH 5-min bars (roughly half) to use this
+// path — a day with only a handful of bars captured (a genuine data gap, not just a shortened
+// holiday session, which still clears 40) would otherwise have that day's ENTIRE true volume
+// piled onto just those few bars' narrow price range: a worse, more misleading distortion than
+// the whole-day fallback it would otherwise have used. Confirmed live: every day in the current
+// 25-day window has full 78-bar coverage, so this floor is a guard for the boot/gap case, not
+// something presently in effect.
+//
 // 25 trading days balances staying actionable (not a stale multi-month zone irrelevant to
 // today) against having enough bars for the histogram to mean anything.
 const INST_LOOKBACK_DAYS=25;
+const INST_MIN_RTH_BARS=40;
 function computeInstitutionalLevels(push){
-  if(!isFinite(lastPx))return;
+  // isFinite(lastPx) alone is NOT a safe null-check: isFinite(null)===true (null coerces to 0
+  // for the comparison), so with lastPx freshly reset to null this guard would otherwise let
+  // every positive-priced bin register as "above" a phantom $0 reference — a Ceiling built from
+  // the WHOLE lookback with no real Floor, not the "nothing yet" this guard is meant to produce.
+  if(lastPx==null||!isFinite(lastPx))return;
   const todayYmd=nowET().ymd;
   const rows=dailyRows.filter(r=>r.date<todayYmd).slice(-INST_LOOKBACK_DAYS);
   if(rows.length<5)return;   // too little history for the histogram to mean anything yet
@@ -6253,25 +6310,57 @@ function computeInstitutionalLevels(push){
   // instead of a fixed dollar width that would be too coarse on a cheap ticker or too fine
   // (and noisy) on an expensive one.
   const binSize=(hi-lo)/100;
+  // Bins are keyed by INTEGER index from a single shared origin (lo), not by the raw float
+  // boundary price. Keying by price (Math.floor(x/binSize)*binSize) was tried first and is
+  // WRONG: with ~2,000 independent addRange() calls now (one per 5-min bar, versus 25 when this
+  // only ran once per day), floating-point rounding in that repeated float multiply produces two
+  // near-identical-but-not-bit-equal keys for what is physically the same bin often enough to
+  // matter — verified directly: 113 of ~212 gaps between sorted bin keys on a real run came back
+  // as 0 (a floating-point "duplicate" a few micro-cents apart), silently splitting that bin's
+  // true weight across two Map entries instead of summing it into one. Integer indices computed
+  // from one fixed origin cannot do this: the same input always floors to the same integer.
   const bins=new Map();
+  const addRange=(rlow,rhigh,vol)=>{
+    const range=Math.max(0.01,rhigh-rlow);
+    const i0=Math.floor((rlow-lo)/binSize),i1=Math.floor((rhigh-lo)/binSize);
+    for(let bi=i0;bi<=i1;bi++){
+      const b=lo+bi*binSize;
+      const ov=Math.max(0,Math.min(rhigh,b+binSize)-Math.max(rlow,b));
+      if(ov>0)bins.set(bi,(bins.get(bi)||0)+vol*(ov/range));
+    }
+  };
   rows.forEach(r=>{
-    const range=Math.max(0.01,r.high-r.low);
-    const b0=Math.floor(r.low/binSize)*binSize,b1=Math.floor(r.high/binSize)*binSize;
-    for(let b=b0;b<=b1;b+=binSize){
-      const ov=Math.max(0,Math.min(r.high,b+binSize)-Math.max(r.low,b));
-      if(ov>0)bins.set(b,(bins.get(b)||0)+r.volume*(ov/range));
+    const dayBars=bars5.filter(b=>b.etYmd===r.date&&b.etMin>=570&&b.etMin<960);
+    const dayBarVol=dayBars.reduce((s,b)=>s+(b.v||0),0);
+    if(dayBars.length>=INST_MIN_RTH_BARS&&dayBarVol>0){
+      // Shape from 5-min bars, rescaled to the day's true (dailyRows) total — see comment above.
+      dayBars.forEach(b=>addRange(b.l,b.h,r.volume*((b.v||0)/dayBarVol)));
+    }else{
+      // No usable intraday coverage for this day (outside bars5's backfilled depth, backfill
+      // still running, or a genuine data gap) — fall back to the original whole-day spread.
+      addRange(r.low,r.high,r.volume);
     }
   });
-  let ceil=null,floor=null;
-  bins.forEach((v,p)=>{
-    if(p>lastPx){if(!ceil||v>ceil.v)ceil={p,v};}
-    else{if(!floor||v>floor.v)floor={p,v};}
-  });
+  // Pick the top bin per side, but when several adjacent bins are tied at the max (the whole-day
+  // fallback above can still produce this on a day with no intraday coverage), report the tied
+  // span's own center instead of whichever bin a Map happens to iterate to first — an arbitrary
+  // edge of a genuine tie is not a more accurate answer than that tie's center.
+  const idxPrice=bi=>lo+bi*binSize+binSize/2;
+  const pickPeak=(above)=>{
+    const side=[...bins.entries()].filter(([bi])=>above?idxPrice(bi)>lastPx:idxPrice(bi)<=lastPx);
+    if(!side.length)return null;
+    const maxV=Math.max(...side.map(([,v])=>v));
+    const tied=side.filter(([,v])=>v===maxV).map(([bi])=>bi).sort((a,b)=>a-b);
+    let i=0;while(i+1<tied.length&&tied[i+1]-tied[i]===1)i++;
+    const run=tied.slice(0,i+1);
+    return{p:idxPrice((run[0]+run[run.length-1])/2),v:maxV};
+  };
+  const ceil=pickPeak(true),floor=pickPeak(false);
   // Explicit solid style (ds): lvlStyleOf()'s default otherwise falls back to dashed for any
   // non-confluent level, but these are meant to read as solid from the start regardless of
   // whether they happen to land on another family's price.
-  if(ceil)push(ceil.p+binSize/2,'Ceiling','inst',1,'InstCeil',null,'solid');
-  if(floor)push(floor.p+binSize/2,'Floor','inst',1,'InstFloor',null,'solid');
+  if(ceil)push(ceil.p,'Ceiling','inst',1,'InstCeil',null,'solid');
+  if(floor)push(floor.p,'Floor','inst',1,'InstFloor',null,'solid');
 }
 function computeLevels(){
   levels=[];
@@ -7252,6 +7341,18 @@ async function connect(){
   clearInterval(quoteTimer);clearInterval(barTimer);stopStream();
   const prevSym=cfg.sym;
   cfg.sym=$('#symInput').value.trim().toUpperCase()||'QQQ';
+  // lastPx is a global and was NEVER reset here — computeLevels() below runs (for the FIRST
+  // PAINT, see the comment a few lines down) before loadQuote() has any chance to set a real
+  // price for the NEW symbol, so it was running with the OLD symbol's stale price still sitting
+  // in lastPx. computeInstitutionalLevels() is the only level category that reads lastPx (every
+  // other category — Prev H/L, session H/L, GEX — doesn't touch it), so it was the only one that
+  // came out wrong: reproduced live switching SPY(769.41)->NVDA, where every NVDA bin necessarily
+  // satisfied price<=769.41, producing a Floor with NO Ceiling at all — not a slow calculation,
+  // a stale reference price silently describing the WRONG ticker until the next periodic poll
+  // (cfg.barS, as little as 10s) happened to call computeLevels() again with a real quote in.
+  // Resetting it here means computeInstitutionalLevels() correctly shows nothing for a moment
+  // (via its isFinite/null guard just below) rather than confidently showing a wrong split.
+  lastPx=null;
   updateSymLogo(cfg.sym);
   $('#apiDot').className='dot warn';$('#mktTxt').textContent='connecting…';
   try{
@@ -7283,8 +7384,13 @@ async function connect(){
     setStatus();
     // Quote is off the critical path: it lands after the chart is already up and only refreshes
     // the price readout + the forming bar (paneTick re-derives that bar from the just-updated
-    // bars5 state, so nothing else needs a full re-render).
-    loadQuote().then(()=>{visPanes().forEach(pp=>{try{paneTick(pp);}catch(e){}});}).catch(softFail);
+    // bars5 state, so nothing else needs a full re-render). computeLevels() IS also re-run here,
+    // though: lastPx was just reset to null above so the first paint's Institutional levels
+    // correctly showed nothing (see the comment there) rather than the old symbol's stale split —
+    // this is what actually fills them in, within one quote round-trip, instead of leaving them
+    // blank until the next periodic poll (cfg.barS, as much as tens of seconds later) happens to
+    // call computeLevels() again.
+    loadQuote().then(()=>{computeLevels();visPanes().forEach(pp=>{try{paneTick(pp);}catch(e){}});}).catch(softFail);
     log(`Connected · ${bars5.length}×5m, ${dailyRows.length} daily bars`+(bars15.length?`, ${bars15.length}×15m`:' · 15m loading in background'),'long');
     // Re-sync only the VISIBLE alt pane to the new pane-1 symbol (startAltPane: linked follows it
     // with no API call, unlinked reloads its own). Hidden (Layout 1) is deliberately skipped so
