@@ -664,6 +664,11 @@ input:disabled,select:disabled{opacity:.45;cursor:not-allowed}
   box-shadow:inset 0 1px .5px rgba(255,255,255,.6),0 1px 3px rgba(0,0,0,.4)}
 #picker .lg{width:22px;border-top-color:#d1d4dc;border-top-style:solid}
 #picker .pbtns button.on .lg{border-top-color:#fff}
+/* Text-tab-only text size dropdown (8-40px) — same dark chip look as the rest of the picker,
+   shown only while editing a label's text colour (see pkSwitchTab/openStyler's pTextSec gating). */
+#pTextSec select{width:100%;background:#1c2030;border:1px solid #2a2e39;border-radius:9px;
+  color:#fff;padding:7px 8px;font-size:12px;font-family:var(--mono);cursor:pointer}
+#pTextSec select:focus{outline:none;border-color:#2962ff}
 /* Levels list: one grouped tree instead of a separate master-switch panel. The group header
    carries the family's master checkbox; unchecking it dims its rows in place rather than
    hiding them, so you can still see and restyle a family you have temporarily turned off. */
@@ -701,6 +706,12 @@ input:disabled,select:disabled{opacity:.45;cursor:not-allowed}
 .satysr select{padding:3px 4px;font-size:11px;width:100%}
 .satysr input[type=checkbox]{margin:0}
 #satyModal .satysr .sw{width:22px;height:16px;border-radius:4px}
+.vwsr-wrap{border:none;border-radius:8px;padding:8px 10px;background:rgba(255,255,255,.02)}
+.vwsr{display:grid;grid-template-columns:16px 1fr 26px;align-items:center;
+  gap:8px;min-height:30px;font-size:12px}
+.vwsr .n{color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vwsr input[type=checkbox]{margin:0}
+#vwapModal .vwsr .sw,#kcModal .vwsr .sw{width:22px;height:16px;border-radius:4px}
 .satysty{border:none;border-radius:8px;padding:8px 10px;
   max-height:250px;overflow-y:auto;background:rgba(0,0,0,.22)}
 /* market phase pill: sits between the price and the Tradier connection state */
@@ -1188,10 +1199,10 @@ table.lv td{padding:6px 10px}
    checkbox/select/.sw markup verbatim. Saty's own dense 31-row rung grid (.satysr, a 16px
    checkbox column) is the one exception carved back out below -- a full-size toggle switch
    would blow out that grid, so it keeps a small styled checkbox instead. ═══════════════════ */
-#rsiModal h3,#stModal h3,#satyModal h3,#rbModal h3{
+#rsiModal h3,#stModal h3,#satyModal h3,#rbModal h3,#alertEditModal h3,#vwapModal h3,#kcModal h3{
   display:flex;align-items:center;gap:8px;color:var(--faint)!important;
 }
-#rsiModal h3::after,#stModal h3::after,#satyModal h3::after,#rbModal h3::after{
+#rsiModal h3::after,#stModal h3::after,#satyModal h3::after,#rbModal h3::after,#alertEditModal h3::after,#vwapModal h3::after,#kcModal h3::after{
   content:'';flex:1;height:1px;
   background:var(--line);
 }
@@ -1199,36 +1210,78 @@ table.lv td{padding:6px 10px}
 #rsiModal input:not([type=checkbox]):not([type=file]),#rsiModal select,
 #stModal input:not([type=checkbox]):not([type=file]),#stModal select,
 #satyModal input:not([type=checkbox]):not([type=file]),#satyModal select,
-#rbModal input:not([type=checkbox]):not([type=file]),#rbModal select{
+#rbModal input:not([type=checkbox]):not([type=file]),#rbModal select,
+#alertEditModal input:not([type=checkbox]):not([type=file]),#alertEditModal select,#alertEditModal textarea,
+#vwapModal input:not([type=checkbox]):not([type=file]),#vwapModal select,
+#kcModal input:not([type=checkbox]):not([type=file]),#kcModal select{
   background:#0a0b0d;
   border:1px solid var(--line);border-radius:9px;
 }
 #rsiModal input:focus,#rsiModal select:focus,#stModal input:focus,#stModal select:focus,
-#satyModal input:focus,#satyModal select:focus,#rbModal input:focus,#rbModal select:focus{
+#satyModal input:focus,#satyModal select:focus,#rbModal input:focus,#rbModal select:focus,
+#alertEditModal input:focus,#alertEditModal select:focus,#alertEditModal textarea:focus,
+#vwapModal input:focus,#vwapModal select:focus,#kcModal input:focus,#kcModal select:focus{
   border-color:#0a84ff;
   box-shadow:0 0 0 3px rgba(10,132,255,.18);
 }
 
 #rsiModal input[type=checkbox],#stModal input[type=checkbox],
-#satyModal input[type=checkbox],#rbModal input[type=checkbox]{
+#satyModal input[type=checkbox],#rbModal input[type=checkbox],#alertEditModal input[type=checkbox],
+#vwapModal input[type=checkbox],#kcModal input[type=checkbox]{
   appearance:none;-webkit-appearance:none;margin:0;padding:0;position:relative;flex:none;
   width:38px;height:22px;border-radius:12px;cursor:pointer;vertical-align:middle;
   background:#26282e;border:1px solid var(--line2);
   transition:background .18s ease,border-color .18s ease;
 }
 #rsiModal input[type=checkbox]::after,#stModal input[type=checkbox]::after,
-#satyModal input[type=checkbox]::after,#rbModal input[type=checkbox]::after{
+#satyModal input[type=checkbox]::after,#rbModal input[type=checkbox]::after,#alertEditModal input[type=checkbox]::after,
+#vwapModal input[type=checkbox]::after,#kcModal input[type=checkbox]::after{
   content:'';position:absolute;top:1px;left:1px;width:16px;height:16px;border-radius:50%;
   background:#fff;
   transition:left .18s cubic-bezier(.2,.8,.3,1);
 }
 #rsiModal input[type=checkbox]:checked,#stModal input[type=checkbox]:checked,
-#satyModal input[type=checkbox]:checked,#rbModal input[type=checkbox]:checked{
+#satyModal input[type=checkbox]:checked,#rbModal input[type=checkbox]:checked,#alertEditModal input[type=checkbox]:checked,
+#vwapModal input[type=checkbox]:checked,#kcModal input[type=checkbox]:checked{
   background:#0a84ff;
   border-color:#0a84ff;
 }
 #rsiModal input[type=checkbox]:checked::after,#stModal input[type=checkbox]:checked::after,
-#satyModal input[type=checkbox]:checked::after,#rbModal input[type=checkbox]:checked::after{left:17px}
+#satyModal input[type=checkbox]:checked::after,#rbModal input[type=checkbox]:checked::after,#alertEditModal input[type=checkbox]:checked::after,
+#vwapModal input[type=checkbox]:checked::after,#kcModal input[type=checkbox]:checked::after{left:17px}
+/* VWAP/Keltner's per-row checkboxes are compact (fit the .vwsr grid's 16px column), same idiom
+   as Saty ATR Levels' .satysr rows use for the same reason. */
+#vwapModal .vwsr input[type=checkbox],#kcModal .vwsr input[type=checkbox]{
+  appearance:none;-webkit-appearance:none;width:15px;height:15px;border-radius:4px;margin:0;padding:0;
+  background:#1a1c22;border:1px solid var(--line2);cursor:pointer;position:relative;
+}
+#vwapModal .vwsr input[type=checkbox]:checked,#kcModal .vwsr input[type=checkbox]:checked{background:#0a84ff;border-color:#0a84ff}
+#vwapModal .vwsr input[type=checkbox]:checked::after,#kcModal .vwsr input[type=checkbox]:checked::after{
+  content:'';position:absolute;left:4px;top:1px;width:4px;height:8px;
+  border:solid #fff;border-width:0 1.6px 1.6px 0;transform:rotate(45deg);
+}
+/* Keltner's own six "Automated" fields (Length/Multiplier/Source/Use Exponential MA/Bands Style/
+   ATR Length) — shown so the values driving the calculation stay visible, but permanently
+   disabled since none of them are user-editable per instruction. */
+#kcModal .kcauto{opacity:.5}
+#kcModal .kcauto input,#kcModal .kcauto select{cursor:not-allowed}
+
+/* ── Alerts (topbar bell + list/log panel + create/edit dialog) ── */
+#alertBellBtn{position:relative}
+.albadge{position:absolute;top:1px;right:1px;background:var(--short);color:#fff;font-size:9px;line-height:1;
+  border-radius:8px;padding:2px 4px;min-width:14px;text-align:center;pointer-events:none}
+.altab{opacity:.55;border-radius:0!important;border-bottom:2px solid transparent!important}
+.altab.on{opacity:1;border-bottom:2px solid #0a84ff!important}
+.alrow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 4px;border-bottom:1px solid var(--line)}
+.altitle{font-size:12px}
+.alsub{font-size:11px;color:var(--dim)}
+.alst.act{color:var(--long)}
+.alst.trig{color:var(--warn)}
+.alst.exp{color:var(--dim)}
+.alactions{display:flex;gap:2px;flex:none}
+.alicon{background:none;border:none;color:var(--dim);cursor:pointer;font-size:13px;padding:2px 6px;border-radius:6px}
+.alicon:hover{color:var(--text);background:rgba(255,255,255,.08)}
+.aldatehdr{font-size:10px;letter-spacing:.1em;color:var(--dim);text-transform:uppercase;margin:10px 0 4px;padding-left:4px}
 
 /* Saty's per-rung grid: too tight for a full toggle (16px checkbox column) -- a compact
    checkbox instead, sized to actually fit the grid track. */
@@ -1251,7 +1304,7 @@ table.lv td{padding:6px 10px}
   border:1px solid var(--line2);
   transition:transform .12s cubic-bezier(.2,.8,.3,1);
 }
-#rsiModal .sw:hover,#stModal .sw:hover,#rbModal .sw:hover,#satyModal .sw:hover{transform:translateY(-1px) scale(1.06)}
+#rsiModal .sw:hover,#stModal .sw:hover,#rbModal .sw:hover,#satyModal .sw:hover,#vwapModal .sw:hover,#kcModal .sw:hover{transform:translateY(-1px) scale(1.06)}
 /* Same hover animation as the Saty ATR Levels & Style table's swatches, applied to the Levels
    table's own (only the transform+transition — .lvsw keeps its existing compact 18x14 size,
    this doesn't pull in the modals' 24x24 sizing rule above). */
@@ -1290,7 +1343,7 @@ table.lv td{padding:6px 10px}
    smudge of tiny controls rather than three separate, clickable things. The gear buttons' own
    margin-left is set inline per instance (repeated 9x across 3 panes), so !important is the only
    way to raise it here without touching every one of those instances individually. */
-.indlist{gap:6px}
+.indlist{gap:6px;align-items:flex-start}
 .indtog{gap:9px;padding:2px 4px;border-radius:4px;border:1px solid transparent;transition:background .12s ease,border-color .12s ease}
 /* TradingView wraps its own on-chart indicator row (name + eye + settings) in one bordered
    plate on hover — reproduced here on .indtog itself so the border wraps the label AND both
@@ -1307,7 +1360,7 @@ table.lv td{padding:6px 10px}
   background:none!important;border:none!important;box-shadow:none!important;border-radius:0!important}
 /* Indicator gear icons (Saty ATR/Ribbon/Market Structure, plus Volume/RSI) match the same
    chart/axis text color as the labels next to them, instead of the generic .mini dim gray. */
-.satygear,.rbgear,.stgear,.volgear,.rsigear{color:var(--axistext)}
+.satygear,.rbgear,.stgear,.volgear,.rsigear,.vwgear,.kcgear{color:var(--axistext)}
 .satygear:hover,.rbgear:hover,.stgear:hover,.volgear:hover,.rsigear:hover{color:var(--axistext)}
 .indcollapse{width:23px;height:18px}
 .indcollapse svg{width:11px;height:11px}
@@ -1497,6 +1550,7 @@ table.lv td{padding:6px 10px}
         <button class="layopt" data-n="2" title="2 charts"><span class="layn">2</span><svg viewBox="0 0 20 14" width="26" height="18.2" fill="none"><rect x="1" y="1" width="18" height="12" rx="2" stroke="currentColor" stroke-width="1.4"/><line x1="10" y1="1" x2="10" y2="13" stroke="currentColor" stroke-width="1.4"/></svg></button>
       </div>
     </div>
+    <button class="tbtn setupIconBtn" id="alertBellBtn" title="Alerts"><svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2.5c-2.2 0-4 1.8-4 4v2.3c0 .5-.2 1-.5 1.4L4 12.5A1 1 0 0 0 4.8 14h10.4a1 1 0 0 0 .8-1.5l-1.5-2.3c-.3-.4-.5-.9-.5-1.4V6.5c0-2.2-1.8-4-4-4Z"/><path d="M8.2 16.5a1.8 1.8 0 0 0 3.6 0"/></svg><span id="alertBellBadge" class="albadge" style="display:none">0</span></button>
     <button class="tbtn setupIconBtn" id="setupBtn" title="Settings"><svg viewBox="0 0 90 90" width="20" height="20" fill="currentColor"><path d="M 79.199 45 c 0 -2.017 -0.185 -3.99 -0.52 -5.912 l 10.238 -8.021 l -9.893 -17.135 l -12.065 4.856 c -3.016 -2.53 -6.473 -4.552 -10.242 -5.926 L 54.893 0 H 35.107 l -1.825 12.862 c -3.769 1.375 -7.225 3.397 -10.242 5.926 l -12.065 -4.856 L 1.083 31.067 l 10.238 8.021 c -0.335 1.921 -0.52 3.894 -0.52 5.912 s 0.185 3.99 0.52 5.912 L 1.083 58.933 l 9.893 17.135 l 12.065 -4.856 c 3.016 2.53 6.473 4.552 10.242 5.926 L 35.107 90 h 19.785 l 1.825 -12.862 c 3.769 -1.375 7.225 -3.397 10.242 -5.926 l 12.065 4.856 l 9.893 -17.135 l -10.238 -8.021 C 79.014 48.99 79.199 47.017 79.199 45 z M 45 66.659 c -11.962 0 -21.659 -9.697 -21.659 -21.659 S 33.038 23.341 45 23.341 S 66.659 33.038 66.659 45 S 56.962 66.659 45 66.659 z"/></svg></button>
     <button class="tbtn setupIconBtn" id="sbBtn" title="Hide side panel"><svg id="sbIcon" viewBox="0 0 16 16" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3.5 3 8 8 3.5 13"/><polyline points="7.5 3 12 8 7.5 13"/></svg></button>
   </div>
@@ -1504,14 +1558,14 @@ table.lv td{padding:6px 10px}
     <div class="chartcol">
      <div class="panerow" id="panerow">
       <div class="panewrap" id="pw0">
-        <div class="pchart"><div class="chartcorner" data-pane="0"><div class="indlist" id="indlist0"><span class="indtog" id="stylab0">Saty ATR Levels<button class="eye" data-ind="saty" data-pane="0" title="Saty ATR Levels"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini satygear" data-pane="0" style="padding:0 5px;margin-left:2px">&#9881;</button></span><span class="indtog" id="rblab0">Saty Pivot Ribbon<button class="eye" data-ind="ribbon" data-pane="0" title="Saty Pivot Ribbon"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini rbgear" data-pane="0" style="padding:0 5px;margin-left:2px">&#9881;</button></span><span class="indtog" id="stlab0">Market Structure<button class="eye" data-ind="struct" data-pane="0" title="Swing structure &amp; patterns"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini stgear" data-pane="0" style="padding:0 5px;margin-left:2px">⚙</button></span></div><button class="indcollapse on" id="indcollapse0" title="Show/hide overlay indicators"><svg viewBox="0 0 12 12" fill="none"><path d="M2.5 4.5L6 8l3.5-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div><div class="cinner" id="pc0"></div><div class="tips" id="tips0"></div><div class="cdown" id="cd0"></div><div class="tfdrop sessdrop" id="sessDrop" title="RTH = 9:30 AM–4:00 PM ET · ETH = everything Tradier serves, 4:00 AM–8:00 PM ET"><button class="tfbtn" id="sessBtn"><span id="sessBtnLabel">ETH</span><svg viewBox="0 0 12 12" fill="none"><path d="M2.5 4.5L6 8l3.5-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button><div class="tfmenu"><div class="seg" id="sessSeg"><button data-sess="rth">RTH</button><button data-sess="eth" class="on">ETH</button></div></div></div></div>
+        <div class="pchart"><div class="chartcorner" data-pane="0"><div class="indlist" id="indlist0"><span class="indtog" id="stylab0">Saty ATR Levels<button class="eye" data-ind="saty" data-pane="0" title="Saty ATR Levels"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini satygear" data-pane="0" style="padding:0 5px;margin-left:2px">&#9881;</button></span><span class="indtog" id="rblab0">Saty Pivot Ribbon<button class="eye" data-ind="ribbon" data-pane="0" title="Saty Pivot Ribbon"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini rbgear" data-pane="0" style="padding:0 5px;margin-left:2px">&#9881;</button></span><span class="indtog" id="stlab0">Market Structure<button class="eye" data-ind="struct" data-pane="0" title="Swing structure &amp; patterns"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini stgear" data-pane="0" style="padding:0 5px;margin-left:2px">⚙</button></span><span class="indtog" id="kclab0">Keltner Channels<button class="eye" data-ind="kc" data-pane="0" title="Keltner Channels"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini kcgear" data-pane="0" style="padding:0 5px;margin-left:2px">&#9881;</button></span><span class="indtog" id="vwlab0">VWAP<button class="eye" data-ind="vwap" data-pane="0" title="VWAP"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini vwgear" data-pane="0" style="padding:0 5px;margin-left:2px">&#9881;</button></span></div><button class="indcollapse on" id="indcollapse0" title="Show/hide overlay indicators"><svg viewBox="0 0 12 12" fill="none"><path d="M2.5 4.5L6 8l3.5-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div><div class="cinner" id="pc0"></div><div class="tips" id="tips0"></div><div class="cdown" id="cd0"></div><div class="tfdrop sessdrop" id="sessDrop" title="RTH = 9:30 AM–4:00 PM ET · ETH = everything Tradier serves, 4:00 AM–8:00 PM ET"><button class="tfbtn" id="sessBtn"><span id="sessBtnLabel">ETH</span><svg viewBox="0 0 12 12" fill="none"><path d="M2.5 4.5L6 8l3.5-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button><div class="tfmenu"><div class="seg" id="sessSeg"><button data-sess="rth">RTH</button><button data-sess="eth" class="on">ETH</button></div></div></div></div>
         <div class="phandle" data-pane="0" data-t="vol" title="Drag to resize Volume panel"></div>
         <div class="subpane" id="volc0wrap"><span class="ptag">Volume <button class="mini volgear" data-pane="0" style="padding:0 5px;margin-left:4px">&#9881;</button></span><div class="cinner" id="volc0"></div></div>
         <div class="phandle" data-pane="0" data-t="rsi" title="Drag to resize RSI panel"></div>
         <div class="subpane" id="rsic0wrap"><span class="ptag">RSI <button class="mini rsigear" data-pane="0" style="padding:0 5px;margin-left:4px">⚙</button></span><div class="cinner" id="rsic0"></div></div>
       </div>
       <div class="panewrap" id="pw1" style="display:none">
-        <div class="pchart"><div class="chartcorner" data-pane="1"><div class="indlist" id="indlist1"><span class="indtog" id="stylab1">Saty ATR Levels<button class="eye" data-ind="saty" data-pane="1" title="Saty ATR Levels"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini satygear" data-pane="1" style="padding:0 5px;margin-left:2px">&#9881;</button></span><span class="indtog" id="rblab1">Saty Pivot Ribbon<button class="eye" data-ind="ribbon" data-pane="1" title="Saty Pivot Ribbon"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini rbgear" data-pane="1" style="padding:0 5px;margin-left:2px">&#9881;</button></span><span class="indtog" id="stlab1">Market Structure<button class="eye" data-ind="struct" data-pane="1" title="Swing structure &amp; patterns"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini stgear" data-pane="1" style="padding:0 5px;margin-left:2px">⚙</button></span></div><button class="indcollapse on" id="indcollapse1" title="Show/hide overlay indicators"><svg viewBox="0 0 12 12" fill="none"><path d="M2.5 4.5L6 8l3.5-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div><div class="cinner" id="pc1"></div><div class="tips" id="tips1"></div><div class="cdown" id="cd1"></div></div>
+        <div class="pchart"><div class="chartcorner" data-pane="1"><div class="indlist" id="indlist1"><span class="indtog" id="stylab1">Saty ATR Levels<button class="eye" data-ind="saty" data-pane="1" title="Saty ATR Levels"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini satygear" data-pane="1" style="padding:0 5px;margin-left:2px">&#9881;</button></span><span class="indtog" id="rblab1">Saty Pivot Ribbon<button class="eye" data-ind="ribbon" data-pane="1" title="Saty Pivot Ribbon"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini rbgear" data-pane="1" style="padding:0 5px;margin-left:2px">&#9881;</button></span><span class="indtog" id="stlab1">Market Structure<button class="eye" data-ind="struct" data-pane="1" title="Swing structure &amp; patterns"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini stgear" data-pane="1" style="padding:0 5px;margin-left:2px">⚙</button></span><span class="indtog" id="kclab1">Keltner Channels<button class="eye" data-ind="kc" data-pane="1" title="Keltner Channels"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini kcgear" data-pane="1" style="padding:0 5px;margin-left:2px">&#9881;</button></span><span class="indtog" id="vwlab1">VWAP<button class="eye" data-ind="vwap" data-pane="1" title="VWAP"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini vwgear" data-pane="1" style="padding:0 5px;margin-left:2px">&#9881;</button></span></div><button class="indcollapse on" id="indcollapse1" title="Show/hide overlay indicators"><svg viewBox="0 0 12 12" fill="none"><path d="M2.5 4.5L6 8l3.5-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div><div class="cinner" id="pc1"></div><div class="tips" id="tips1"></div><div class="cdown" id="cd1"></div></div>
         <div class="phandle" data-pane="1" data-t="vol" title="Drag to resize Volume panel"></div>
         <div class="subpane" id="volc1wrap"><span class="ptag">Volume <button class="mini volgear" data-pane="1" style="padding:0 5px;margin-left:4px">&#9881;</button></span><div class="cinner" id="volc1"></div></div>
         <div class="phandle" data-pane="1" data-t="rsi" title="Drag to resize RSI panel"></div>
@@ -1676,6 +1730,10 @@ table.lv td{padding:6px 10px}
       <button data-s="dotted"><span class="lg" style="border-top-width:2px;border-top-style:dotted"></span></button>
     </div>
   </div>
+  <div id="pTextSec" style="display:none">
+    <div class="psec">Text size</div>
+    <select id="pTSize"></select>
+  </div>
 </div>
 
 <div id="rsiModal" style="position:fixed;inset:0;background:rgba(6,9,15,.85);z-index:120;display:none;align-items:center;justify-content:center">
@@ -1734,6 +1792,42 @@ table.lv td{padding:6px 10px}
     <div class="row" style="justify-content:flex-end"><button class="tbtn" id="voCancel">Close</button><button class="tbtn primary" id="voOk">OK</button></div>
   </div>
 </div>
+<div id="vwapModal" style="position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:120;display:none;align-items:center;justify-content:center">
+  <div class="card" style="width:420px">
+    <h1>VWAP <span id="vwapPaneTag"></span></h1>
+    <div class="hint" style="margin:0 0 8px">Volume Weighted Average Price, cumulative since each line's own anchor resets. Ported from TradingView's built-in VWAP with its Bands removed entirely — this app keeps only the VWAP line itself, as three independently-anchored lines instead of one.</div>
+    <div class="row"><label style="min-width:0"><input type="checkbox" id="vwapHideDWM"> Hide VWAP on 1D or above</label></div>
+    <h3 class="setsub">Lines</h3>
+    <div class="hint" style="margin:0 0 8px">One line per anchor — Session, Week, and Month, permanently fixed since those are the only three anchors this app supports. Toggle each on/off and style its color, width, and line style below.</div>
+    <div id="vwapRows" class="vwsr-wrap"></div>
+    <div class="row" style="justify-content:flex-end;margin-top:12px">
+      <button class="tbtn" id="vwapDefaults">Defaults</button><span style="flex:1"></span>
+      <button class="tbtn" id="vwapCancel">Cancel</button>
+      <button class="tbtn primary" id="vwapOk">OK</button></div>
+  </div>
+</div>
+<div id="kcModal" style="position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:120;display:none;align-items:center;justify-content:center">
+  <div class="card" style="width:420px">
+    <h1>Keltner Channels <span id="kcPaneTag"></span></h1>
+    <div class="hint" style="margin:0 0 8px">Ported from TradingView's built-in Keltner Channels. Basis (the middle EMA line) and Background (the fill) are removed entirely — only the Upper and Lower channel lines are drawn.</div>
+    <h3 class="setsub">Automated</h3>
+    <div class="hint" style="margin:0 0 8px">Length, Multiplier and ATR Length are fit automatically to THIS symbol and timeframe — re-measured every time either changes, not fixed to TradingView's static defaults — so the values below move on their own and are not user-editable.</div>
+    <div class="kcauto">
+      <div class="row"><label style="min-width:120px">Length</label><input id="kcAutoLen" value="20" disabled style="width:60px"></div>
+      <div class="row"><label style="min-width:120px">Multiplier</label><input id="kcAutoMult" value="2.0" disabled style="width:60px"></div>
+      <div class="row"><label style="min-width:120px">Source</label><input value="Close" disabled style="width:100px"></div>
+      <div class="row"><label style="min-width:0;flex:1"><input type="checkbox" checked disabled> Use Exponential MA</label></div>
+      <div class="row"><label style="min-width:120px">Bands Style</label><input value="Average True Range" disabled style="width:180px"></div>
+      <div class="row"><label style="min-width:120px">ATR Length</label><input id="kcAutoAtrLen" value="10" disabled style="width:60px"></div>
+    </div>
+    <h3 class="setsub">Lines</h3>
+    <div id="kcRows" class="vwsr-wrap"></div>
+    <div class="row" style="justify-content:flex-end;margin-top:12px">
+      <button class="tbtn" id="kcDefaults">Defaults</button><span style="flex:1"></span>
+      <button class="tbtn" id="kcCancel">Cancel</button>
+      <button class="tbtn primary" id="kcOk">OK</button></div>
+  </div>
+</div>
 <div id="stModal" style="position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:120;display:none;align-items:center;justify-content:center">
   <div class="card" style="width:560px">
     <h1>Market Structure <span id="stPaneTag"></span></h1>
@@ -1754,6 +1848,70 @@ table.lv td{padding:6px 10px}
     <div class="row"><label style="min-width:0"><input type="checkbox" id="stPat"></label><span style="font-size:12px">Pattern trendlines</span><span class="sw" id="swStPat"></span></div>
     <div class="hint">Shapes like triangles and channels appear when price is actually forming one, and disappear once it breaks out. Click a pattern's name on the chart to highlight it, or to remove it for good.</div>
     <div class="row" style="justify-content:flex-end"><button class="tbtn" id="stCancel">Cancel</button><button class="tbtn primary" id="stOk">OK</button></div>
+  </div>
+</div>
+<div id="alertsModal" style="position:fixed;inset:0;background:rgba(6,9,15,.85);z-index:125;display:none;align-items:center;justify-content:center">
+  <div class="card" style="width:420px">
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <h1 style="margin:0">Alerts</h1>
+      <button class="tbtn" id="alertsAddBtn" title="Create alert">+</button>
+    </div>
+    <div class="row" style="gap:0;border-bottom:1px solid var(--line);margin-bottom:8px">
+      <button class="tbtn altab on" id="alertsTabActive">Alerts</button>
+      <button class="tbtn altab" id="alertsTabLog">Log</button>
+    </div>
+    <div id="alertsListBody" style="max-height:50vh;overflow-y:auto"></div>
+    <div id="alertLogBody" style="max-height:50vh;overflow-y:auto;display:none"></div>
+    <div class="row" style="justify-content:flex-end"><button class="tbtn" id="alertsCloseBtn">Close</button></div>
+  </div>
+</div>
+<div id="alertEditModal" style="position:fixed;inset:0;background:rgba(6,9,15,.85);z-index:130;display:none;align-items:center;justify-content:center">
+  <div class="card" style="width:420px">
+    <h1><span id="alEditTitle">Create alert on</span> <select id="alEditSym" style="font:inherit;font-size:18px;font-weight:700;background:none;border:none;color:inherit;padding:0"></select></h1>
+    <div class="row"><label style="min-width:70px">Condition</label>
+      <select id="alCondSrc" style="flex:1"><option value="price">Price</option></select></div>
+    <div class="row"><select id="alCondType" style="flex:1"></select></div>
+    <div id="alValRow1" class="row"><span id="alValLabel1" style="min-width:90px;font-size:12px">Value</span><input id="alVal1" style="flex:1"></div>
+    <div id="alValRow2" class="row" style="display:none"><span id="alValLabel2" style="min-width:90px;font-size:12px">Lower bound</span><input id="alVal2" style="flex:1"></div>
+    <div id="alMovingRow" class="row" style="display:none">
+      <span style="font-size:12px">in</span><input id="alBars" style="width:50px"><span style="font-size:12px">bar(s)</span>
+      <select id="alInterval" style="flex:1">
+        <option value="chart">Same as chart</option>
+        <option value="5">5 minutes</option><option value="15">15 minutes</option>
+        <option value="60">1 hour</option><option value="240">4 hours</option><option value="D">1 day</option>
+      </select>
+    </div>
+    <h3 class="setsub">Trigger</h3>
+    <div class="row"><select id="alTrigger" style="flex:1">
+      <option value="once">Once only — triggers once when condition is met</option>
+      <option value="onceBar" class="alTrigMoving" style="display:none">Once per bar — triggers once per bar when condition is met</option>
+      <option value="onceBarClose" class="alTrigMoving" style="display:none">Once per bar close — triggers every time condition is met at bar close</option>
+      <option value="every">Once per minute — triggers once per minute while condition remains met</option>
+    </select></div>
+    <h3 class="setsub">Expiration</h3>
+    <div class="row"><select id="alExpChoice" style="flex:1">
+      <option value="open">Open-ended — won't expire</option>
+      <option value="eod">End of day</option>
+      <option value="1w">1 week</option>
+      <option value="1m">1 month</option>
+      <option value="custom">Custom date</option>
+    </select></div>
+    <div class="row" id="alExpCustomRow" style="display:none"><input type="datetime-local" id="alExpCustom" style="flex:1"></div>
+    <h3 class="setsub">Message</h3>
+    <div class="row"><input id="alName" placeholder="Alert name (optional)" style="flex:1"></div>
+    <div class="row"><textarea id="alMessage" rows="2" style="flex:1;font:inherit;background:var(--bg2,#0f1520);color:inherit;border:1px solid var(--line);border-radius:6px;padding:6px" placeholder="Auto-generated from the condition unless you type your own"></textarea></div>
+    <h3 class="setsub">Notifications</h3>
+    <div class="row"><label style="min-width:0"><input type="checkbox" id="alNotifyToast" checked> Show toast notification</label></div>
+    <div class="row"><label style="min-width:0"><input type="checkbox" id="alNotifySound"> Play sound</label></div>
+    <div class="row"><label style="min-width:0"><input type="checkbox" id="alNotifyBrowser"> Browser notification</label></div>
+    <div class="row"><label style="min-width:0"><input type="checkbox" id="alNotifyWebhook"> Webhook URL</label><input id="alWebhookUrl" placeholder="https://…" style="flex:1;display:none"></div>
+    <div class="hint">Email and SMS aren't offered — they need a mail server this app doesn't run.</div>
+    <div class="row" style="justify-content:space-between">
+      <button class="tbtn" id="alDeleteBtn" style="display:none;color:var(--short)">Delete</button>
+      <span style="flex:1"></span>
+      <button class="tbtn" id="alCancelBtn">Cancel</button>
+      <button class="tbtn primary" id="alSaveBtn">Create</button>
+    </div>
   </div>
 </div>
 <div id="setup">
@@ -2080,6 +2238,47 @@ if(!cfg.rbV6){
     bullArrowC:'#4CAF50',bearArrowC:'#FF5252',showFastConv:false,fastConvC:'#FFEB3B'});
   cfg.rbV6=1;
 }
+// Ported from TradingView's built-in "Volume Weighted Average Price" indicator — stripped of its
+// Bands entirely (per instruction: VWAP only, no Upper/Lower/Bands anywhere) and extended from one
+// line to three, each independently anchored. Anchor Period is reduced to the three that make
+// sense without a request.* call this app has no equivalent of (Earnings/Dividends/Splits) or that
+// are redundant at this app's own timeframes (Quarter/Year/Decade/Century) — Session/Week/Month
+// only, exactly per instruction. With exactly three anchors and three lines, each line is
+// permanently fixed to its own anchor (session/week/month) — no per-line anchor picker; only
+// on/off, colour, width and style are user-editable per line.
+cfg.vwap=Object.assign({
+  hideOnDWM:false,   // ports the original script's "Hide VWAP on 1D or Above" input verbatim
+  lines:[
+    {on:true,anchor:'session',color:'#2962FF',width:2,style:'solid'},   // TradingView's own default VWAP blue
+    {on:true,anchor:'week',   color:'#FF9800',width:2,style:'solid'},
+    {on:true,anchor:'month',  color:'#AB47BC',width:2,style:'solid'}
+  ]
+},cfg.vwap||{});
+// Object.assign above replaces the whole `lines` array wholesale when a saved cfg.vwap already
+// exists (e.g. from before width/style existed) — backfill per-line so older saved configs don't
+// end up with undefined lineWidth/lineStyle.
+cfg.vwap.lines.forEach(L=>{if(L.width==null)L.width=2;if(L.style==null)L.style='solid';});
+// Ported from TradingView's built-in "Keltner Channels" (Pine v6) — basis = EMA(close,length),
+// range = ATR(atrLength) (the only Bands Style this app ports — True Range and plain Range are
+// not exposed), upper/lower = basis +/- range*mult. Per instruction: Length, Multiplier and ATR
+// Length are NOT fixed to Pine's static defaults — they are fit per PANE (i.e. per symbol AND
+// timeframe at once, since that is exactly what a pane's own bar data already is) by
+// kcAutoParams/kcFitLength/kcFitAtrLen/kcFitMult below, the same walk-forward measured-error
+// idiom this file already uses for Saty's auto ATR length (satyAutoLen) — not stored in cfg at
+// all, since a stored number would stop being "automated" the moment it stopped tracking the
+// current symbol/timeframe. Source (close) and Use Exponential MA (true) stay fixed — this port
+// has no alternate source or SMA/EMA toggle to optimize between — and Bands Style stays fixed to
+// Average True Range, the only style this app ports. Basis (the middle line) and Background (the
+// fill) are wiped entirely, per instruction — only Upper and Lower are ever drawn.
+cfg.kc=Object.assign({
+  source:'close',useEma:true,bandsStyle:'atr',
+  lines:[
+    {on:true,color:'#2962FF',width:1,style:'solid'},   // Upper — TradingView's own default KC blue
+    {on:true,color:'#2962FF',width:1,style:'solid'}    // Lower
+  ]
+},cfg.kc||{});
+delete cfg.kc.length;delete cfg.kc.mult;delete cfg.kc.atrLen;   // migrate off any previously-saved fixed values
+cfg.kc.lines.forEach(L=>{if(L.width==null)L.width=1;if(L.style==null)L.style='solid';});
 const LSTYLE={solid:0,dotted:1,dashed:2};
 
 /* ---------- time ---------- */
@@ -2152,7 +2351,7 @@ function rgbaStr(o){return o.a>=1?'#'+[o.r,o.g,o.b].map(x=>Math.round(+x).toStri
 // Same color, alpha 0 — the transparent stop of a two-stop gradient fill (RSI OB/OS shading)
 // whose opaque stop is user-configurable; the fade-out end always matches it, not a fixed hue.
 function fadeOut(c){const o=parseColor(c);return rgbaStr({r:o.r,g:o.g,b:o.b,a:0});}
-let pkCb=null,pkAnchor=null,pkState={h:0,s:0,v:1,a:1,w:1,st:'solid'};
+let pkCb=null,pkAnchor=null,pkState={h:0,s:0,v:1,a:1,w:1,st:'solid',ts:10};
 // Level styler carries an independent label-text colour alongside the price-line colour, edited via
 // the Style / Text tabs. pkText = level (tabbed) mode; pkTab = active tab; pkLineCol / pkTextCol hold
 // the two colours across tab switches. Other swatches (candles, MAs, structure) leave pkText false.
@@ -2281,6 +2480,11 @@ function buildPicker(){
     syncPicker();emitPick();};
   $$('#pW button').forEach(b=>b.onclick=()=>{pkState.w=+b.dataset.w;syncPickerBtns();emitPick();});
   $$('#pS button').forEach(b=>b.onclick=()=>{pkState.st=b.dataset.s;syncPickerBtns();emitPick();});
+  const tsel=$('#pTSize');
+  if(tsel){
+    for(let i=8;i<=40;i++){const o=document.createElement('option');o.value=i;o.textContent=i+'px';tsel.appendChild(o);}
+    tsel.onchange=()=>{pkState.ts=+tsel.value;emitPick();};
+  }
   $$('#pTabs button').forEach(b=>b.onclick=()=>pkSwitchTab(b.dataset.tab));
   // Clicking anywhere outside closes it, and clicking the SWATCH THAT OPENED IT closes it
   // too — it was the one thing on screen that could not dismiss its own popup, so the only
@@ -2295,12 +2499,13 @@ function buildPicker(){
 function syncPickerBtns(){
   $$('#pW button').forEach(b=>b.classList.toggle('on',+b.dataset.w===pkState.w));
   $$('#pS button').forEach(b=>b.classList.toggle('on',b.dataset.s===pkState.st));
+  const tsel=$('#pTSize');if(tsel)tsel.value=pkState.ts;
 }
 function emitPick(){const c=pkRgb();const cur=rgbaStr({r:c.r,g:c.g,b:c.b,a:pkState.a});
   if(!pkCb)return;
   if(pkText){
     if(pkTab==='text')pkTextCol=cur;else pkLineCol=cur;   // write the edit back to the active slot
-    pkCb({color:pkLineCol,tc:pkTextCol,width:pkState.w,style:pkState.st});
+    pkCb({color:pkLineCol,tc:pkTextCol,width:pkState.w,style:pkState.st,textSize:pkState.ts});
   }else pkCb({color:cur,width:pkState.w,style:pkState.st});
 }
 // Switch the level styler between the price-line colour (Style) and the label-text colour (Text).
@@ -2314,6 +2519,7 @@ function pkSwitchTab(tab){
   const o=parseColor(tab==='text'?pkTextCol:pkLineCol),hs=rgb2hsv(o.r,o.g,o.b);
   pkState.h=hs.h;pkState.s=hs.s;pkState.v=hs.v;pkState.a=o.a;
   const ls=$('#pLineSec');if(ls)ls.style.display=(tab==='style'&&pkShowLine)?'block':'none';
+  const ts=$('#pTextSec');if(ts)ts.style.display=(tab==='text')?'block':'none';
   $$('#pTabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
   syncPicker();
 }
@@ -2332,12 +2538,13 @@ function openStyler(anchor,state,showLine,cb){
   pkText=(state.tc!==undefined);pkTab='style';pkLineCol=state.color;
   if(pkText)pkTextCol=state.tc;
   const o=parseColor(state.color),hs=rgb2hsv(o.r,o.g,o.b);
-  pkState={h:hs.h,s:hs.s,v:hs.v,a:o.a,w:state.width||1,st:state.style||'solid'};
+  pkState={h:hs.h,s:hs.s,v:hs.v,a:o.a,w:state.width||1,st:state.style||'solid',ts:state.textSize||10};
   const tabsEl=$('#pTabs');
   if(tabsEl){tabsEl.style.display=pkText?'flex':'none';
     $$('#pTabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab==='style'));}
   pkShowLine=!!showLine;
   $('#pLineSec').style.display=showLine?'block':'none';
+  $('#pTextSec').style.display='none';   // always reopens on the Style tab first; Text tab reveals it
   syncPicker();
   const p=$('#picker');
   // Measure the REAL rendered size (content is already synced above) instead of guessing a
@@ -2641,6 +2848,17 @@ function makePane(idx){
   const candles=chart.addCandlestickSeries({lastValueVisible:false});
   const rbLine=()=>makeRibbonLine(chart);
   const rbFast=rbLine(),rbPivot=rbLine(),rbSlow=rbLine(),rbFastConv=rbLine(),rbSlowConv=rbLine();
+  // VWAP: three independently-anchored lines, same shared factory (and so the same NO_SCALE /
+  // no-price-line / no-crosshair-marker treatment) as the ribbon's EMAs, for the aesthetic the
+  // rest of this file already establishes for an overlay line. Created after the ribbon lines so
+  // VWAP draws on top of them, which is the conventional "VWAP always visible over everything
+  // else" look.
+  const vwLine=()=>makeRibbonLine(chart);
+  const vwLines=[vwLine(),vwLine(),vwLine()];
+  // Keltner Channels: Upper/Lower only (Basis and Background removed per instruction), same
+  // shared line factory, created after VWAP so it draws on top.
+  const kcLine=()=>makeRibbonLine(chart);
+  const kcLines=[kcLine(),kcLine()];
   /* Volume sits ON the price chart now, the way TradingView draws it: its own overlay
      price scale ('volume'), pushed into the bottom fifth of the pane so the bars sit under
      the candles without stealing any of their height. An overlay scale is invisible and
@@ -2691,7 +2909,7 @@ function makePane(idx){
      the RSI under the cursor. */
   try{rchart.applyOptions({crosshair:{horzLine:{visible:false,labelVisible:true}}});}catch(e){}
   const pane={idx,chart,candles,vol,vchart,rchart,rsi,rsiMa,rsiFill,rsiOB,rsiOS,rsiBBu,rsiBBl,
-    rbCloudFast,rbCloudSlow,rbFast,rbPivot,rbSlow,rbFastConv,rbSlowConv,rbArrows:[],rbTail:null,rsiDivLines:[],rsiBands:[],priceLines:[],tf:cfg['tf'+idx]||'5',tips:{},last:{},
+    rbCloudFast,rbCloudSlow,rbFast,rbPivot,rbSlow,rbFastConv,rbSlowConv,rbArrows:[],rbTail:null,vwLines,vwapTail:null,vwSets:null,vwLast:null,kcLines,kcTail:null,kcSets:null,kcLast:null,rsiDivLines:[],rsiBands:[],priceLines:[],alertLines:[],tf:cfg['tf'+idx]||'5',tips:{},last:{},
     _chartType:'candles'};   // matches the candlestick series just created above; ensureChartType() swaps both together
   // The 'close' entry uses a LIVE getter, not the captured `candles` value: ensureChartType() can
   // later reassign pane.candles to a different series object (chart-type swap), and a plain
@@ -2757,9 +2975,13 @@ function makePane(idx){
   const ro=new ResizeObserver(()=>{cancelAnimationFrame(raf);raf=requestAnimationFrame(sizeAll);});
   ro.observe(pEl.parentElement);ro.observe(rEl.parentElement);ro.observe(vEl.parentElement);
   const tipsEl=$('#tips'+idx);
-  tipsEl.innerHTML=['fast','piv','slow','fc','sc'].map(k=>`<div class="tip rbtip" data-rk="${k}"></div>`).join('');
-  tipsEl.querySelectorAll('.tip:not(.rbtip)').forEach(t=>pane.tips[t.dataset.k]=t);
+  tipsEl.innerHTML=['fast','piv','slow','fc','sc'].map(k=>`<div class="tip rbtip" data-rk="${k}"></div>`).join('')
+    +[0,1,2].map(k=>`<div class="tip vwtip" data-vk="${k}"></div>`).join('')
+    +[0,1].map(k=>`<div class="tip kctip" data-kk="${k}"></div>`).join('');
+  tipsEl.querySelectorAll('.tip:not(.rbtip):not(.vwtip):not(.kctip)').forEach(t=>pane.tips[t.dataset.k]=t);
   pane.rbTips={};tipsEl.querySelectorAll('.rbtip').forEach(t=>pane.rbTips[t.dataset.rk]=t);
+  pane.vwTips={};tipsEl.querySelectorAll('.vwtip').forEach(t=>pane.vwTips[t.dataset.vk]=t);
+  pane.kcTips={};tipsEl.querySelectorAll('.kctip').forEach(t=>pane.kcTips[t.dataset.kk]=t);
   return pane;
 }
 // Lock the right axis to a width derived from the PRICE MAGNITUDE, never from whatever is
@@ -3922,6 +4144,332 @@ function renderRibbon(p,data){
   const rbLastDef=a=>{for(let i=a.length-1;i>=0;i--)if(a[i]!=null)return{time:data[i].time,value:a[i]};return null;};
   p.rbLast={fast:rbLastDef(fast),piv:rbLastDef(piv),slow:rbLastDef(slow),fc:rbLastDef(fc),sc:rbLastDef(sc)};
 }
+
+/* ================================ VWAP ===================================================
+   Ported from TradingView's own "Volume Weighted Average Price" (Pine v6): cumulative
+   sum(hlc3*volume)/sum(volume) since the anchor's last reset, source fixed to hlc3 exactly as
+   the original script's default (it exposes a Source input; this port does not, matching the
+   instruction to keep this to VWAP itself with no extra surface). Bands are not ported at all —
+   removed per instruction, not just hidden. */
+// Monday-anchored week key and a plain YYYY-MM month key, from a day's own ET calendar date
+// (data[i].ymd on every intraday/daily bar seriesForTF hands back). Noon UTC sidesteps any
+// DST-boundary date-shift risk from constructing a Date at local midnight.
+function vwapWeekKey(ymd){
+  const d=new Date(ymd+'T12:00:00Z');
+  const dow=d.getUTCDay();
+  d.setUTCDate(d.getUTCDate()+(dow===0?-6:1-dow));
+  return d.toISOString().slice(0,10);
+}
+function vwapAnchorKey(anchor,ymd){
+  // seriesForTFRaw's 'W' branch (chart timeframe itself set to Weekly) hands back a bar whose
+  // own `ymd` is ALREADY a period key (from satyPeriodKey), not a real calendar date — there is
+  // no meaningful sub-weekly Week/Month anchor to derive from that, so every anchor just resets
+  // every bar in that one specific case, which is the only sane behavior when a single bar
+  // already spans a whole week.
+  if(!ymd||!/^\d{4}-\d{2}-\d{2}$/.test(ymd))return ymd;
+  if(anchor==='week')return vwapWeekKey(ymd);
+  if(anchor==='month')return ymd.slice(0,7);
+  return ymd;   // session
+}
+// Returns both the full per-bar series (for plotting) and a "tail" snapshot — the cumulative
+// totals EXCLUDING the last bar, plus the last bar's own (cumPV,cumV) contribution kept apart —
+// so a live tick can update just that one slice in O(1) (see the paneTick block below) instead
+// of re-summing the whole anchor period on every tick, the same reasoning as the ribbon's own
+// EMA tail (rbTail).
+function computeVwapSeries(data,anchor){
+  const n=data.length,out=new Array(n).fill(null);
+  let cumPV=0,cumV=0,prevKey=null;
+  let tailCumPV=0,tailCumV=0,tailKey=null,tailLastPV=0,tailLastV=0;
+  for(let i=0;i<n;i++){
+    const d=data[i],key=vwapAnchorKey(anchor,d.ymd);
+    if(key!==prevKey){cumPV=0;cumV=0;prevKey=key;}
+    const tp=(d.high+d.low+d.close)/3,vol=d.volume||0;
+    if(i===n-1){tailCumPV=cumPV;tailCumV=cumV;tailKey=key;tailLastPV=tp*vol;tailLastV=vol;}
+    cumPV+=tp*vol;cumV+=vol;
+    out[i]=cumV>0?cumPV/cumV:null;
+  }
+  return{values:out,tail:{cumPV:tailCumPV,cumV:tailCumV,key:tailKey,lastPV:tailLastPV,lastV:tailLastV}};
+}
+function renderVwap(p,data){
+  const V=cfg.vwap,on=!!cfg['vwap'+p.idx];
+  if(!p.vwLines)return;
+  const hide=()=>{p.vwLines.forEach(sr=>{try{sr.setData([]);}catch(e){}});p.vwapTail=null;p.vwSets=null;p.vwLast=null;};
+  // Ports the original script's "Hide VWAP on 1D or Above" verbatim: a cumulative-since-anchor
+  // average stops being a meaningful concept once a single bar already spans a day or more.
+  if(!on||!data.length||(V.hideOnDWM&&(p.tf==='D'||p.tf==='W')))return hide();
+  const computed=V.lines.map(L=>computeVwapSeries(data,L.anchor));
+  computed.forEach((res,k)=>{
+    const L=V.lines[k];
+    p.vwLines[k].applyOptions({visible:!!L.on,color:L.color,lineWidth:+L.width||2,lineStyle:lwcStyle(L.style||'solid')});
+    p.vwLines[k].setData(L.on?padSeries(data,res.values):[]);
+  });
+  p.vwapTail={t:data.length?data[data.length-1].time:null,lines:computed.map(res=>Object.assign({},res.tail))};
+  p.vwSets=computed.map(res=>res.values);
+  const vwLastDef=arr=>{for(let i=arr.length-1;i>=0;i--)if(arr[i]!=null)return{time:data[i].time,value:arr[i]};return null;};
+  p.vwLast=p.vwSets.map(vwLastDef);
+}
+function vwapRedrawAll(){
+  saveCfg();
+  visPanes().forEach(p=>{try{renderVwap(p,seriesForTF(p.tf,paneData(p)));positionVwapTags(p);}catch(e){}});
+}
+// Dynamic 3-row builder, modeled directly on Saty ATR Levels' satyBuildStyle(): one row per
+// VWAP line — checkbox, name (its permanently-fixed anchor, spelled out in full), colour+width+
+// style swatch (bindLineSwatch — same combined picker RSI's MA line uses). No anchor picker:
+// with exactly three anchors and three lines, each line IS its anchor, so there is nothing to
+// pick — only on/off and styling are ever user-editable per row.
+function vwapBuildRows(){
+  const host=$('#vwapRows');if(!host)return;
+  const V=cfg.vwap;
+  host.innerHTML='';
+  V.lines.forEach((L,k)=>{
+    const row=document.createElement('div');row.className='vwsr';
+    row.innerHTML='<input type="checkbox"'+(L.on?' checked':'')+'>'
+      +'<span class="n">VWAP ('+(VWAP_ANCHOR_NAME[L.anchor]||'?')+')</span>'
+      +'<span class="sw"></span>';
+    const [cb,,sw]=row.children;
+    bindLineSwatch(sw,()=>({color:L.color,width:L.width,style:L.style}),st=>{
+      const cc=cfg.vwap;cc.lines[k]=Object.assign({},cc.lines[k],{color:st.color,width:st.width,style:st.style});vwapRedrawAll();
+    });
+    cb.onchange=()=>{const cc=cfg.vwap;cc.lines[k]=Object.assign({},cc.lines[k],{on:cb.checked});vwapRedrawAll();};
+    host.appendChild(row);
+  });
+}
+let vwapSnap=null;
+function openVwapModal(i){
+  if(i!=null)dlgPane=+i||0;
+  vwapSnap=JSON.stringify(cfg.vwap);
+  $('#vwapHideDWM').checked=!!cfg.vwap.hideOnDWM;
+  vwapBuildRows();
+  {const t=$('#vwapPaneTag');if(t)t.innerHTML=paneTag();}
+  $('#vwapModal').style.display='flex';
+}
+function closeVwapModal(){$('#vwapModal').style.display='none';}
+
+/* ================================ Keltner Channels =========================================
+   Ported from TradingView's built-in "Keltner Channels" (Pine v6): basis = EMA(close,length),
+   range = ta.atr(atrLength), upper/lower = basis +/- range*mult. Reuses this app's existing
+   Pine-accurate primitives (emaCalc = ta.ema, taRma = ta.rma — both already verified elsewhere
+   in this file) rather than a bespoke implementation, so the math is provably the same one this
+   app already ports for the ribbon (emaCalc) and RSI/divergence (taRma). Basis and Background are
+   not computed at all — only the two channel lines exist, per instruction. */
+function kcTrSeries(data){
+  const out=new Array(data.length).fill(null);
+  for(let i=0;i<data.length;i++){
+    if(i===0){out[i]=data[i].high-data[i].low;continue;}
+    const pc=data[i-1].close;
+    out[i]=Math.max(data[i].high-data[i].low,Math.abs(data[i].high-pc),Math.abs(data[i].low-pc));
+  }
+  return out;
+}
+function computeKcSeries(data,length,atrLen,mult){
+  const closes=data.map(d=>d.close);
+  const ma=emaCalc(closes,length);
+  const atr=taRma(kcTrSeries(data),atrLen);
+  const n=data.length,upper=new Array(n).fill(null),lower=new Array(n).fill(null);
+  for(let i=0;i<n;i++){
+    if(ma[i]==null||atr[i]==null)continue;
+    upper[i]=ma[i]+atr[i]*mult;lower[i]=ma[i]-atr[i]*mult;
+  }
+  return{ma,atr,upper,lower,closes};
+}
+/* ---- Automated, per-symbol/per-timeframe parameter fit --------------------------------------
+   Length, ATR Length and Multiplier are fit from the PANE'S OWN bar data — which is already
+   both symbol- and timeframe-specific, so fitting against it gets "per ticker and per timeframe"
+   for free, with no separate lookup table to keep in sync.
+
+   Length and ATR Length are driven by Kaufman's EFFICIENCY RATIO — |net move| over |total path
+   length| across the trailing window, 1 = a straight-line trend, 0 = pure back-and-forth chop.
+   This is the actual mechanism behind Kaufman's Adaptive Moving Average, not a bespoke measure:
+   a trending regime can run a shorter, more responsive smoothing length without getting
+   whipsawed, while a choppy one needs a longer one to avoid reacting to every reversal — both
+   the trend-following EMA and the volatility ATR reasonably move the SAME direction together,
+   which is why one shared regime reading drives both bands.
+   A first version tried the more obvious "which candidate length best predicts the NEXT bar"
+   contest (the same idiom this file already uses for Saty's auto ATR length, satyAutoLen) —
+   verified LIVE against this app's own real QQQ/NVDA data and rejected: less lag mechanically
+   wins a one-step-ahead race almost regardless of the series, so it kept collapsing to the
+   SHORTEST candidate for every symbol and timeframe tried, which is not "per ticker, optimized"
+   at all — just a constant wearing a fitted-looking label. The Efficiency Ratio does not have
+   that failure mode since it measures the SHAPE of the recent tape, not a smoothing contest.
+   Raw ER also skews low on real tape (verified: 0.009-0.18 across QQQ 5m/1H and NVDA 1H in the
+   same live check) — sqrt-compressed before mapping to the band so realistic ER values spread
+   across the whole candidate range instead of bunching at the "choppy" end.
+
+   Multiplier has no "next value" to predict OR a trend/chop shape to read, so it is calibrated
+   on its own axis: to a coverage target, the fraction of closes that stay inside the channel —
+   the actual thing a channel multiplier controls. ~90% keeps it anchored near TradingView's own
+   mult=2 default for a typical liquid instrument while adapting to how fat- or thin-tailed THIS
+   symbol's own recent closes are. The candidate band this calibrates over (KC_MULT_BAND, just
+   below) went through the same measure-don't-assume process as Length/ATR Length — see its own
+   comment for the real coverage curves that caught a narrower band silently maxing out.
+
+   All three are cached per pane, keyed off the bar data's own shape (symbol+timeframe+bar count+
+   last bar time), so a fit computed once per closed bar is reused by every render and every tick
+   until the data actually changes — the same "refits when the series does, not on every render"
+   discipline satyLen already established. */
+const KC_LEN_BAND=[10,14,20,26,34,50];
+const KC_ATRLEN_BAND=[5,7,10,14,20];
+// Verified LIVE across QQQ/TSLA/SOFI/IWM (5m and 60m, real coverage-vs-mult curves measured, not
+// assumed): the mult that actually reaches the 90% target ranges from ~2.25 up to ~4.0 depending
+// on the symbol and timeframe. An earlier [1.5..3.0] band was too narrow to bracket that whole
+// range — coverage never reached 90% inside it for several real instruments (TSLA/IWM/SOFI on
+// 5m all measured under 86% even at the band's own ceiling of 3.0), so kcFitMult silently always
+// picked that ceiling regardless of symbol: the exact same "collapses to one edge" failure mode
+// the Length/ATR Length fit was rejected for, just showing up on the multiplier's axis instead.
+// Widened past the full observed range with headroom on both sides.
+const KC_MULT_BAND=[1.25,1.5,1.75,2.0,2.25,2.5,2.75,3.0,3.5,4.0,4.5,5.0];
+const KC_COVERAGE_TARGET=0.90;
+const KC_ER_WINDOW=30;
+function kcEfficiencyRatio(data,window){
+  const n=data.length;
+  if(n<window+1)return 0.5;
+  const closes=data.map(d=>d.close),start=n-1-window;
+  const net=Math.abs(closes[n-1]-closes[start]);
+  let path=0;
+  for(let i=start+1;i<n;i++)path+=Math.abs(closes[i]-closes[i-1]);
+  return path>0?Math.min(1,net/path):0;
+}
+function kcSnapBand(v,band){return band.reduce((a,b)=>Math.abs(b-v)<Math.abs(a-v)?b:a);}
+function kcFitLength(data){
+  const n=data.length;
+  if(n<40)return 20;
+  const er=Math.sqrt(kcEfficiencyRatio(data,Math.min(KC_ER_WINDOW,n-1)));
+  return kcSnapBand(10+(1-er)*40,KC_LEN_BAND);   // ER->1 (trend): 10; ER->0 (chop): 50
+}
+function kcFitAtrLen(data){
+  const n=data.length;
+  if(n<40)return 10;
+  const er=Math.sqrt(kcEfficiencyRatio(data,Math.min(KC_ER_WINDOW,n-1)));
+  return kcSnapBand(5+(1-er)*15,KC_ATRLEN_BAND);   // ER->1 (trend): 5; ER->0 (chop): 20
+}
+function kcFitMult(data,length,atrLen){
+  const n=data.length;
+  if(n<60)return 2;
+  const{ma,atr}=computeKcSeries(data,length,atrLen,1);   // mult=1 baseline; scale per candidate below
+  const lo=Math.max(0,n-250);
+  let best=null;
+  for(const M of KC_MULT_BAND){
+    let inside=0,c=0;
+    for(let i=lo;i<n;i++){
+      if(ma[i]==null||atr[i]==null)continue;
+      const u=ma[i]+atr[i]*M,l=ma[i]-atr[i]*M;
+      if(data[i].close<=u&&data[i].close>=l)inside++;
+      c++;
+    }
+    if(c<30)continue;
+    const cov=inside/c,d=Math.abs(cov-KC_COVERAGE_TARGET);
+    if(best===null||d<best.d)best={d,M};
+  }
+  return best?best.M:2;
+}
+function kcAutoParams(p,data){
+  const n=data.length;
+  const key=(p.sym||cfg.sym)+':'+p.tf+':'+n+':'+(n?data[n-1].time:0);
+  if(p._kcAutoCache&&p._kcAutoCache.key===key)return p._kcAutoCache.val;
+  const length=kcFitLength(data);
+  const atrLen=kcFitAtrLen(data);
+  const mult=kcFitMult(data,length,atrLen);
+  const val={length,atrLen,mult};
+  p._kcAutoCache={key,val};
+  return val;
+}
+function renderKc(p,data){
+  const K=cfg.kc,on=!!cfg['kc'+p.idx];
+  if(!p.kcLines)return;
+  const hide=()=>{p.kcLines.forEach(sr=>{try{sr.setData([]);}catch(e){}});p.kcTail=null;p.kcSets=null;p.kcLast=null;p.kcAuto=null;};
+  if(!on||!data.length)return hide();
+  const auto=kcAutoParams(p,data);
+  p.kcAuto=auto;
+  const{ma,atr,upper,lower,closes}=computeKcSeries(data,auto.length,auto.atrLen,auto.mult);
+  [upper,lower].forEach((arr,k)=>{
+    const L=K.lines[k];
+    p.kcLines[k].applyOptions({visible:!!L.on,color:L.color,lineWidth:+L.width||1,lineStyle:lwcStyle(L.style||'solid')});
+    p.kcLines[k].setData(L.on?padSeries(data,arr):[]);
+  });
+  // Tail so a live tick can advance basis (EMA) and range (Wilder RMA) each in O(1) from the
+  // last closed bar — same pair-seeded idiom as the ribbon's rbTail and VWAP's vwapTail. Uses
+  // THIS render's fitted length/atrLen/mult — a tick never re-fits mid-bar, only a full render does.
+  const n=data.length,pair=a=>[n>=2?a[n-2]:null,n>=1?a[n-1]:null];
+  p.kcTail={t:n?data[n-1].time:null,len:auto.length,atrLen:auto.atrLen,mult:auto.mult,
+    ma:pair(ma),atr:pair(atr),prevClose:pair(closes)};
+  p.kcSets={upper,lower};
+  const kcLastDef=arr=>{for(let i=arr.length-1;i>=0;i--)if(arr[i]!=null)return{time:data[i].time,value:arr[i]};return null;};
+  p.kcLast=[kcLastDef(upper),kcLastDef(lower)];
+}
+function kcRedrawAll(){
+  saveCfg();
+  visPanes().forEach(p=>{try{renderKc(p,seriesForTF(p.tf,paneData(p)));positionKcTags(p);}catch(e){}});
+}
+// Two-row builder (Upper/Lower only — no Basis, no Background, no anchor/length picker: those six
+// inputs are fixed and shown disabled in the modal's own "Automated" block instead).
+function kcBuildRows(){
+  const host=$('#kcRows');if(!host)return;
+  const K=cfg.kc;
+  host.innerHTML='';
+  const names=['Upper','Lower'];
+  K.lines.forEach((L,k)=>{
+    const row=document.createElement('div');row.className='vwsr';
+    row.innerHTML='<input type="checkbox"'+(L.on?' checked':'')+'>'
+      +'<span class="n">'+names[k]+'</span>'
+      +'<span class="sw"></span>';
+    const [cb,,sw]=row.children;
+    bindLineSwatch(sw,()=>({color:L.color,width:L.width,style:L.style}),st=>{
+      const cc=cfg.kc;cc.lines[k]=Object.assign({},cc.lines[k],{color:st.color,width:st.width,style:st.style});kcRedrawAll();
+    });
+    cb.onchange=()=>{const cc=cfg.kc;cc.lines[k]=Object.assign({},cc.lines[k],{on:cb.checked});kcRedrawAll();};
+    host.appendChild(row);
+  });
+}
+let kcSnap=null;
+// Shows THIS pane's currently-fitted Length/Multiplier/ATR Length — not a constant, so it has to
+// be read fresh off the pane every time the modal opens rather than baked into the HTML once.
+function kcFillAuto(){
+  const p=dlgP(),auto=p&&p.kcAuto;
+  const set=(id,v)=>{const el=$(id);if(el)el.value=v;};
+  set('#kcAutoLen',auto?auto.length:'—');
+  set('#kcAutoMult',auto?auto.mult.toFixed(2):'—');
+  set('#kcAutoAtrLen',auto?auto.atrLen:'—');
+}
+function openKcModal(i){
+  if(i!=null)dlgPane=+i||0;
+  kcSnap=JSON.stringify(cfg.kc);
+  kcBuildRows();
+  kcFillAuto();
+  {const t=$('#kcPaneTag');if(t)t.innerHTML=paneTag();}
+  $('#kcModal').style.display='flex';
+}
+function closeKcModal(){$('#kcModal').style.display='none';}
+// Same labeling dynamic as the ribbon/VWAP tags: anchored to whichever bar is right-most
+// currently ON SCREEN, following it as the user pans/zooms.
+function positionKcTags(p){
+  if(!p||!p.kcTips)return;
+  const K=cfg.kc,on=!!cfg['kc'+p.idx];
+  const pc=$('#pc'+p.idx);if(!pc)return;
+  const w=pc.clientWidth,h=pc.clientHeight;
+  let r=null;try{r=p.chart.timeScale().getVisibleLogicalRange();}catch(e){}
+  const names=['Upper','Lower'];
+  [0,1].forEach(k=>{
+    const el=p.kcTips[k];if(!el)return;
+    const L=K.lines[k];
+    if(!on||!L||!L.on||!p.kcSets||!p.kcLines||!p.kcLines[k]){el.style.display='none';return;}
+    const arr=k===0?p.kcSets.upper:p.kcSets.lower;
+    if(!arr){el.style.display='none';return;}
+    let lp=p.kcLast?p.kcLast[k]:null;
+    if(p.tms&&p.tms.length&&r&&r.to<p.tms.length-1){
+      let i=Math.min(p.tms.length-1,Math.max(0,Math.floor(r.to)));
+      while(i>0&&arr[i]==null)i--;
+      if(arr[i]!=null)lp={time:p.tms[i],value:arr[i]};
+    }
+    if(!lp){el.style.display='none';return;}
+    let x=null,y=null;
+    try{x=pxRound(p.chart.timeScale().timeToCoordinate(lp.time));y=pxRound(p.kcLines[k].priceToCoordinate(lp.value));}catch(e){}
+    if(x==null||y==null||y<0||y>h){el.style.display='none';return;}
+    el.textContent=names[k];
+    el.style.display='block';el.style.color=L.color;
+    el.style.left=Math.min(x+8,w-90)+'px';el.style.top=y+'px';el.dataset.y=y;
+  });
+}
+
 // Swap the pane's main series between candlestick and line, per cfg.chartType0/1 (the same
 // cfg[key+idx] pattern struct0/saty0/ribbon0 already use). lightweight-charts has no z-index/
 // move-series API (verified: neither the chart nor a series instance expose one) — series draw in
@@ -3937,11 +4485,15 @@ function ensureChartType(p){
   if(p._chartType===want)return;
   try{p.chart.removeSeries(p.candles);}catch(e){}
   [p.rbFast,p.rbPivot,p.rbSlow,p.rbFastConv,p.rbSlowConv].forEach(s=>{try{p.chart.removeSeries(s);}catch(e){}});
+  (p.vwLines||[]).forEach(s=>{try{p.chart.removeSeries(s);}catch(e){}});
+  (p.kcLines||[]).forEach(s=>{try{p.chart.removeSeries(s);}catch(e){}});
   p.candles=want==='line'
     ?p.chart.addLineSeries({lastValueVisible:false,lineWidth:2})
     :p.chart.addCandlestickSeries({lastValueVisible:false});
   p.rbFast=makeRibbonLine(p.chart);p.rbPivot=makeRibbonLine(p.chart);p.rbSlow=makeRibbonLine(p.chart);
   p.rbFastConv=makeRibbonLine(p.chart);p.rbSlowConv=makeRibbonLine(p.chart);
+  p.vwLines=[makeRibbonLine(p.chart),makeRibbonLine(p.chart),makeRibbonLine(p.chart)];
+  p.kcLines=[makeRibbonLine(p.chart),makeRibbonLine(p.chart)];
   p._chartType=want;
 }
 // Push p._lastBars (built fresh by renderPane, and possibly rewritten by renderRibbon's Candle
@@ -4060,6 +4612,18 @@ function renderPane(p){
   // pure waste on the common no-ribbon path, measured as roughly a third of renderPane's time
   // on a fully-deepened history. The push at the top of renderPane already stands on its own.
   if(cfg['ribbon'+p.idx]){p.candles.setData([]);pushMainSeriesData(p);}
+  try{renderVwap(p,data);}catch(e){}
+  // Same wedge as the ribbon's, and by the exact same mechanism the comment above documents: it
+  // was pinned to three overlay line series carrying real data simultaneously, which three
+  // independently-anchored VWAP lines is. Applying the identical clear+repopulate remedy here,
+  // gated on VWAP being on, rather than assuming three lines from a DIFFERENT indicator can't
+  // also trigger it.
+  if(cfg['vwap'+p.idx]){p.candles.setData([]);pushMainSeriesData(p);}
+  try{renderKc(p,data);}catch(e){}
+  // Same wedge, same remedy, gated on Keltner being on — see the ribbon/VWAP comments above for
+  // why this is applied per-indicator rather than assumed safe just because KC only adds two
+  // lines of its own (a different indicator's lines already on the same pane can combine with it).
+  if(cfg['kc'+p.idx]){p.candles.setData([]);pushMainSeriesData(p);}
   p.tIndex=new Map();
   data.forEach((d,i)=>p.tIndex.set(typeof d.time==='string'?d.time:String(d.time),i));
   p.vals={close:data.map(d=>d.close),vol:data.map(d=>d.volume)};
@@ -4356,7 +4920,7 @@ function positionLvlTags(p){
     const L={y,color:t.color,w:t.w,style:t.style};   // line params; the visible line is drawn later
     if(t.name){
       const d=document.createElement('div');
-      d.className='lvltag';d.style.color=t.tc||'var(--axistext)';d.style.top=y+'px';
+      d.className='lvltag';d.style.color=t.tc||'var(--axistext)';d.style.fontSize=(t.size||10)+'px';d.style.top=y+'px';
       d.style.right=(axisW+22)+'px';d.dataset.y=y;
       d.textContent=t.name;d.__line=L;
       host.appendChild(d);
@@ -4873,7 +5437,37 @@ function positionRbTags(p){
     if(x==null||y==null||y<0||y>h){el.style.display='none';return;}
     el.textContent=label;
     el.style.display='block';el.style.color=colf(idx);
-    el.style.left=Math.min(x+8,w-72)+'px';el.style.top=y+'px';el.dataset.y=y;
+    el.style.left=Math.min(x+8,w-80)+'px';el.style.top=y+'px';el.dataset.y=y;
+  });
+}
+const VWAP_ANCHOR_NAME={session:'Session',week:'Week',month:'Month'};
+// Same labeling dynamic as the ribbon's EMA tags above (positionRbTags): anchored to whichever
+// bar is right-most currently ON SCREEN (not necessarily the last bar in the data), following it
+// as the user pans/zooms. Label text is the anchor period's own full name (Session/Week/Month)
+// instead of an EMA length, per instruction.
+function positionVwapTags(p){
+  if(!p||!p.vwTips)return;
+  const V=cfg.vwap,on=!!cfg['vwap'+p.idx];
+  const pc=$('#pc'+p.idx);if(!pc)return;
+  const w=pc.clientWidth,h=pc.clientHeight;
+  let r=null;try{r=p.chart.timeScale().getVisibleLogicalRange();}catch(e){}
+  [0,1,2].forEach(k=>{
+    const el=p.vwTips[k];if(!el)return;
+    const L=V.lines[k];
+    if(!on||!L||!L.on||!p.vwSets||!p.vwSets[k]||!p.vwLines||!p.vwLines[k]){el.style.display='none';return;}
+    let lp=p.vwLast?p.vwLast[k]:null;
+    if(p.tms&&p.tms.length&&r&&r.to<p.tms.length-1){
+      let i=Math.min(p.tms.length-1,Math.max(0,Math.floor(r.to)));
+      while(i>0&&p.vwSets[k][i]==null)i--;
+      if(p.vwSets[k][i]!=null)lp={time:p.tms[i],value:p.vwSets[k][i]};
+    }
+    if(!lp){el.style.display='none';return;}
+    let x=null,y=null;
+    try{x=pxRound(p.chart.timeScale().timeToCoordinate(lp.time));y=pxRound(p.vwLines[k].priceToCoordinate(lp.value));}catch(e){}
+    if(x==null||y==null||y<0||y>h){el.style.display='none';return;}
+    el.textContent=VWAP_ANCHOR_NAME[L.anchor]||'?';
+    el.style.display='block';el.style.color=L.color;
+    el.style.left=Math.min(x+8,w-108)+'px';el.style.top=y+'px';el.dataset.y=y;
   });
 }
 // The axis backing panels (.axisback-r/.axisback-b — see their own comment) and the RTH/ETH
@@ -4920,6 +5514,8 @@ function positionTips(p){
   positionSatyInfo(p);
   positionRbArrows(p);
   positionRbTags(p);
+  positionVwapTags(p);
+  positionKcTags(p);
   positionLvlTags(p);
   positionAxisChrome(p);
   deoverlapLabels($('#tips'+p.idx));
@@ -5307,7 +5903,7 @@ async function startStream(){
         // correction fidelity — that path WOULD need seq-based dedupe.
         if(!_tradeSampled){log('Trade stream raw sample: '+JSON.stringify(d).slice(0,300),'warn');_tradeSampled=true;}
         const px=+(d.price!==undefined?d.price:d.last);
-        if(isFinite(px)){lastPx=px;lastPxAt=Date.now();paintPx();updateForming(px,+d.size||0,false,(d.cvol!=null&&isFinite(+d.cvol))?+d.cvol:null);}
+        if(isFinite(px)){lastPx=px;lastPxAt=Date.now();paintPx();updateForming(px,+d.size||0,false,(d.cvol!=null&&isFinite(+d.cvol))?+d.cvol:null);evaluateAlerts(px);}
       }else if(d.type==='quote'&&d.symbol===wsWantSym){
         // Extended-hours trade prints are sparse to nonexistent for a lot of symbols - confirmed
         // via LOCAL-DIAG capture: 30 straight minutes of pre-market 'trade' ticks for MU, all
@@ -5319,7 +5915,7 @@ async function startStream(){
         // this only ever touches lastPx/paintPx - never updateForming's bars or volume, which
         // stay trade-driven only, same as before.
         const bid=+d.bid,ask=+d.ask;
-        if(isFinite(bid)&&isFinite(ask)&&bid>0&&ask>0){lastPx=(bid+ask)/2;lastPxAt=Date.now();paintPx();}
+        if(isFinite(bid)&&isFinite(ask)&&bid>0&&ask>0){lastPx=(bid+ask)/2;lastPxAt=Date.now();paintPx();evaluateAlerts(lastPx);}
       }
     });
   };
@@ -5484,6 +6080,59 @@ function paneTick(p){
         color:nf>=np?RT.colors.bullF:RT.colors.bearF});}catch(e){}}
       if(np!=null&&ns!=null){try{p.rbCloudSlow.update({time:bar.time,a:+np,b:+ns,
         color:np>=ns?RT.colors.bullS:RT.colors.bearS});}catch(e){}}
+    }
+    // VWAP — O(1) per tick, same reasoning as the ribbon's tail above: the forming bar's own
+    // (price*volume, volume) contribution is kept apart from the anchor period's running total so
+    // an intrabar tick only ever replaces that one slice instead of re-summing the whole period.
+    // A genuinely NEW bar (bar.time !== VT.t) first folds the bar that JUST closed permanently
+    // into the running total, then checks whether ITS OWN anchor key differs from the bar before
+    // it — that's the actual reset moment (a new session/week/month beginning on this bar).
+    const VT=p.vwapTail;
+    if(VT&&cfg['vwap'+p.idx]&&p.vwLines){
+      const V=cfg.vwap,sameBar=bar.time===VT.t;
+      const tp=(bar.high+bar.low+bar.close)/3,vol=bar.volume||0;
+      VT.lines.forEach((L,k)=>{
+        const Lc=V.lines[k];if(!Lc)return;
+        if(!sameBar){
+          L.cumPV+=L.lastPV;L.cumV+=L.lastV;
+          const newKey=vwapAnchorKey(Lc.anchor,bar.ymd);
+          if(newKey!==L.key){L.cumPV=0;L.cumV=0;}
+          L.key=newKey;
+        }
+        L.lastPV=tp*vol;L.lastV=vol;
+        const totalV=L.cumV+L.lastV;
+        if(totalV>0&&Lc.on){
+          const v=(L.cumPV+L.lastPV)/totalV;
+          try{p.vwLines[k].update({time:bar.time,value:+v.toFixed(2)});}catch(e){}
+          if(p.vwLast)p.vwLast[k]={time:bar.time,value:v};
+        }
+      });
+      VT.t=bar.time;
+    }
+    // Keltner Channels — O(1) per tick: basis (EMA) is a one-step recursion same as the ribbon's;
+    // range (Wilder RMA of True Range) is exactly as recursive, needing only the previous bar's
+    // ATR value and this bar's own True Range (which itself only needs the previous bar's CLOSE).
+    // sd picks which "previous" to seed from: 0 = still the same forming bar as last render (seed
+    // from two bars back, since the forming bar itself was tentative and must be recomputed fresh
+    // each tick, not accumulated onto), 1 = a genuinely new bar started (seed from the bar that
+    // just closed) — identical seeding rule to the ribbon's rbTail above.
+    const KT=p.kcTail;
+    if(KT&&cfg['kc'+p.idx]&&p.kcLines){
+      const sd=bar.time!==KT.t?1:0;
+      const maSeed=KT.ma[sd],atrSeed=KT.atr[sd],pcSeed=KT.prevClose[sd];
+      if(maSeed!=null&&atrSeed!=null&&pcSeed!=null){
+        const k=2/(KT.len+1);
+        const newMa=bar.close*k+maSeed*(1-k);
+        const tr=Math.max(bar.high-bar.low,Math.abs(bar.high-pcSeed),Math.abs(bar.low-pcSeed));
+        const newAtr=(tr+(KT.atrLen-1)*atrSeed)/KT.atrLen;
+        const newUpper=newMa+newAtr*KT.mult,newLower=newMa-newAtr*KT.mult;
+        const K=cfg.kc;
+        if(K.lines[0].on){try{p.kcLines[0].update({time:bar.time,value:+newUpper.toFixed(2)});}catch(e){}
+          if(p.kcLast)p.kcLast[0]={time:bar.time,value:newUpper};}
+        if(K.lines[1].on){try{p.kcLines[1].update({time:bar.time,value:+newLower.toFixed(2)});}catch(e){}
+          if(p.kcLast)p.kcLast[1]={time:bar.time,value:newLower};}
+      }
+      KT.t=bar.time;
     }
     // MODULE 2 provisional RSI — one Wilder step from the CONFIRMED snapshot (rsiTail) + the forming
     // bar's live source value. Updates ONLY the forming bar's plotted point; rsiTail is read-only
@@ -5713,7 +6362,7 @@ function lvlStyleOf(l){const s=lvlSty[l.key]||{};
   // user picks a colour of their own on the Text tab.
   const color=s.color||l.dc||CATCOLOR[l.cat];
   return{color,tc:s.tc||'var(--axistext)',width:s.width||(l.w>=2?2:1),
-    style:s.style||l.ds||(l.conf?'solid':'dashed'),on:s.on!==false};}
+    style:s.style||l.ds||(l.conf?'solid':'dashed'),size:s.size||10,on:s.on!==false};}
 function drawLevelsOn(p){
   if(!p||!p.candles)return;
   if(p.sym&&p.sym!==cfg.sym){
@@ -5753,7 +6402,7 @@ function drawLevelsOn(p){
   groups.forEach(g=>{
     const nm=g.names.join(', ');
     p.lvlTags.push({price:g.price,color:g.st.color,tc:g.st.tc||g.st.color,axisOn:g.axisOn,name:nm,conf:g.conf.join(', '),
-                    w:g.st.width||1,style:g.st.style||'solid'});
+                    w:g.st.width||1,style:g.st.style||'solid',size:g.st.size||10});
     p.priceLines.push(p.candles.createPriceLine({
       price:g.price,color:'rgba(0,0,0,0)',lineWidth:g.st.width,
       lineStyle:lwcStyle(g.st.style),
@@ -5768,7 +6417,7 @@ function drawLevelsOn(p){
   });
 }
 function drawLevels(){visPanes().forEach(p=>{drawLevelsOn(p);positionLvlTags(p);positionConfLabels(p);
-  deoverlapLabels($('#tips'+p.idx));drawLevelSegments(p);});}
+  deoverlapLabels($('#tips'+p.idx));drawLevelSegments(p);});drawAlertLines();}
 /* ---------- levels engine ---------- */
 /* ---------- confluence ----------
    A level is tagged CONFLUENCE when independent level families land on the same price.
@@ -5853,6 +6502,469 @@ function catShown(){
 function setCat(k,on){
   cfg.catOn=Object.assign({},catShown(),{[k]:!!on});
   saveCfg();drawLevels();renderLevelTable();
+}
+
+/* ================================ Price Alerts ==========================================
+   Modeled directly on TradingView's own "Create alert" flow — every field, option, and the
+   trigger/notification/logging behavior below was verified live against tradingview.com
+   (2026-08-29): the Condition dropdown's 13 exact options (including the bar/interval fields
+   under Moving Up/Down and the two-value Upper/Lower bound fields under the four Channel
+   conditions), the Trigger options (Once only / Every time — once per minute while met), the
+   five Expiration choices, the Message editor, and the Notifications panel — then a real alert
+   was created on live BTCUSD and its actual trigger observed (a toast in the page corner, the
+   status flipping from "Active" to "Stopped — Triggered", a dated Log entry, an unread badge).
+   Scoped to PRICE conditions only: TradingView also lets an alert watch any indicator's plotted
+   value, which needs a generic "read this indicator's current output" hook this app doesn't
+   have — a real gap, not something silently dropped.
+   Two of TradingView's six notification channels have no equivalent here and are left out of
+   the dialog entirely rather than shown as inert checkboxes: Send email and Send plain text
+   both need an SMTP/mail relay this self-hosted app has no infrastructure for. Everything else
+   maps onto a real mechanism already in this file or the platform: Notify in app -> the
+   browser's own Notification API (the closest a web page gets to a mobile push), Show toast
+   notification -> toast(), Play sound -> beep(), Webhook URL -> a real fetch() POST. */
+const ALERT_CONDITIONS=[
+  {v:'crossing',l:'Crossing',kind:'single'},
+  {v:'crossingUp',l:'Crossing Up',kind:'single'},
+  {v:'crossingDown',l:'Crossing Down',kind:'single'},
+  {v:'greaterThan',l:'Greater Than',kind:'single'},
+  {v:'lessThan',l:'Less Than',kind:'single'},
+  {v:'enteringChannel',l:'Entering Channel',kind:'channel'},
+  {v:'exitingChannel',l:'Exiting Channel',kind:'channel'},
+  {v:'insideChannel',l:'Inside Channel',kind:'channel'},
+  {v:'outsideChannel',l:'Outside Channel',kind:'channel'},
+  {v:'movingUp',l:'Moving Up',kind:'moving'},
+  {v:'movingDown',l:'Moving Down',kind:'moving'},
+  {v:'movingUpPct',l:'Moving Up %',kind:'moving'},
+  {v:'movingDownPct',l:'Moving Down %',kind:'moving'},
+];
+const ALERT_COND_LABEL=Object.fromEntries(ALERT_CONDITIONS.map(c=>[c.v,c.l]));
+const ALERT_COND_KIND=Object.fromEntries(ALERT_CONDITIONS.map(c=>[c.v,c.kind]));
+const ALERT_INTERVAL_MS={'5':300000,'15':900000,'60':3600000,'240':14400000,'D':86400000};
+let alerts=[],alertLog=[],priceHistBySym={};
+let alertUnseenLog=+(localStorage.getItem('lc_alertUnseen')||0);
+function loadAlerts(){
+  try{alerts=JSON.parse(localStorage.getItem('lc_alerts'))||[];}catch(e){alerts=[];}
+  try{alertLog=JSON.parse(localStorage.getItem('lc_alertLog'))||[];}catch(e){alertLog=[];}
+}
+function saveAlertsLS(){localStorage.setItem('lc_alerts',JSON.stringify(alerts));}
+function saveAlertLogLS(){
+  if(alertLog.length>300)alertLog=alertLog.slice(0,300);
+  localStorage.setItem('lc_alertLog',JSON.stringify(alertLog));
+}
+loadAlerts();
+function newAlertId(){return 'al_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);}
+function alertIntervalMs(a){
+  if(a.interval&&a.interval!=='chart')return ALERT_INTERVAL_MS[a.interval]||300000;
+  // "Same as chart" has to mean the chart actually showing this alert's OWN symbol, not just
+  // pane 0 unconditionally — an alert on a ticker sitting in pane 2 (or nowhere at all, watched
+  // only by the background poll below) has no reason to inherit pane 0's timeframe.
+  let tf='5';
+  for(const p of panes){
+    const psym=p.idx===0?cfg.sym:(p.sym||cfg.sym);
+    if(psym===a.sym){tf=p.tf||'5';break;}
+  }
+  return ALERT_INTERVAL_MS[tf]||300000;
+}
+function alertDefaultMessage(a){
+  const k=ALERT_COND_KIND[a.condition];
+  if(k==='channel')return `${a.sym} ${ALERT_COND_LABEL[a.condition]} (Upper Bound: ${a.value}, Lower Bound: ${a.value2})`;
+  if(k==='moving')return `${a.sym} ${ALERT_COND_LABEL[a.condition]} ${a.value}${a.condition.endsWith('Pct')?'%':''} in ${a.bars} bar${a.bars==1?'':'s'}`;
+  return `${a.sym} ${ALERT_COND_LABEL[a.condition]} ${a.value}`;
+}
+function fillAlertPlaceholders(tpl,a,px){
+  return String(tpl||'').replace(/\{\{ticker\}\}/g,a.sym).replace(/\{\{time\}\}/g,nowET().hms)
+    .replace(/\{\{value\}\}/g,String(a.value)).replace(/\{\{close\}\}/g,px!=null?(+px).toFixed(2):'');
+}
+function expirationFromChoice(choice,customDate){
+  if(choice==='open')return null;
+  if(choice==='eod')return parseEtStamp(nowET().ymd+' 23:59:59');
+  if(choice==='1w')return Date.now()+7*86400000;
+  if(choice==='1m')return Date.now()+30*86400000;
+  if(choice==='custom')return customDate?+new Date(customDate):null;
+  return null;
+}
+function recordPriceHist(px,sym){
+  // Keyed per-symbol, not one flat array: this now also records ticks for symbols the
+  // background alert poll fetches (see pollBackgroundAlerts) that are never the active chart
+  // symbol at all. A single shared buffer would do the exact cross-symbol contamination the
+  // lastPx staleness fix earlier in this file was written to prevent, just for Moving Up/Down's
+  // reference lookup instead of Institutional levels.
+  const arr=priceHistBySym[sym]||(priceHistBySym[sym]=[]);
+  const now=Date.now();
+  arr.push({t:now,px});
+  const cutoff=now-30*86400000;   // generous headroom past the widest interval (1D) x any sane bar count
+  while(arr.length&&arr[0].t<cutoff)arr.shift();
+  if(arr.length>20000)arr.splice(0,arr.length-20000);
+}
+function priceNBarsAgo(a){
+  const arr=priceHistBySym[a.sym];
+  if(!arr||!arr.length)return null;
+  const ms=alertIntervalMs(a)*(+a.bars||1);
+  const target=Date.now()-ms;
+  for(let i=arr.length-1;i>=0;i--)if(arr[i].t<=target)return arr[i].px;
+  return arr[0].px;
+}
+function bumpUnseenLog(){alertUnseenLog++;localStorage.setItem('lc_alertUnseen',alertUnseenLog);}
+function clearUnseenLog(){alertUnseenLog=0;localStorage.setItem('lc_alertUnseen','0');renderAlertsPanel();}
+function fireAlert(a,px){
+  // Every state mutation that a concurrent evaluateAlerts() call could race against (lastFireAt,
+  // status, the log) is committed synchronously, BEFORE the one genuinely async step (the
+  // optional webhook POST). Awaiting the webhook first — the original order — left a real gap: a
+  // second tick arriving while that fetch was still in flight would see status still 'active'
+  // and lastFireAt already set but not yet checked against, and could fire the same alert twice.
+  const now=Date.now();
+  a.lastFireAt=now;
+  if(a.trigger==='once')a.status='stopped';   // every/onceBar/onceBarClose all legitimately re-fire later
+  const msg=fillAlertPlaceholders(a.message||alertDefaultMessage(a),a,px);
+  const n=a.notify||{};
+  alertLog.unshift({id:a.id,sym:a.sym,message:msg,at:now});
+  saveAlertLogLS();bumpUnseenLog();
+  log(`Alert fired: ${msg}`,'warn');
+  if(n.toast!==false)toast(`🔔 Alert · ${a.sym}`,msg,'warn');
+  if(n.sound)beep('short');
+  if(n.browserNotif&&window.Notification&&Notification.permission==='granted'){
+    try{new Notification(`Alert on ${a.sym}`,{body:msg});}catch(e){}
+  }
+  if(n.webhookUrl){
+    fetch(n.webhookUrl,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ticker:a.sym,condition:a.condition,value:a.value,value2:a.value2,price:px,message:msg,time:new Date(now).toISOString()})})
+      .catch(e=>log('Alert webhook failed: '+e.message,'warn'));
+  }
+}
+function evaluateAlerts(px,sym){
+  // sym defaults to cfg.sym so every EXISTING call site (the WS trade/quote handlers, loadQuote)
+  // keeps working unchanged — they're always reporting the primary pane's own symbol. The
+  // explicit-sym form is what pollBackgroundAlerts (below) uses for every other symbol.
+  sym=sym||cfg.sym;
+  if(!isFinite(px))return;
+  recordPriceHist(px,sym);
+  const now=Date.now();
+  let changed=false;
+  alerts.forEach(a=>{
+    if(a.sym!==sym)return;
+    if(a.status!=='active')return;
+    if(a.expiresAt&&now>a.expiresAt){a.status='expired';changed=true;return;}
+    const kind=ALERT_COND_KIND[a.condition];
+    let hit=false;
+    // STATE conditions (Greater/Less Than, Inside/Outside Channel) fire whenever the condition
+    // is CURRENTLY true, with no transition required — verified live on tradingview.com: a fresh
+    // "Greater Than" alert set well below the live price (so already true at creation, no crossing
+    // possible) fired within ~10 seconds anyway. Originally implemented these as edge/transition
+    // checks (matching Crossing's own semantics), which is wrong — that version would never have
+    // fired in the scenario just verified. EDGE conditions (Crossing variants, Entering/Exiting
+    // Channel) still correctly require a transition — "crossing"/"entering"/"exiting" are directional
+    // verbs describing a boundary being crossed, not a static comparison, and the original Crossing
+    // implementation already matched observed TradingView behavior (a live BTCUSD test fired only
+    // once price genuinely moved across the alert level, not on creation).
+    const prev=a.prevPx;
+    a.prevPx=px;
+    if(kind==='moving'){
+      const ref=priceNBarsAgo(a);
+      if(ref==null)return;
+      const d=px-ref,dp=ref?d/ref*100:0;
+      if(a.condition==='movingUp')hit=d>=a.value;
+      else if(a.condition==='movingDown')hit=d<=-a.value;
+      else if(a.condition==='movingUpPct')hit=dp>=a.value;
+      else if(a.condition==='movingDownPct')hit=dp<=-a.value;
+    }else if(a.condition==='greaterThan'){
+      hit=px>a.value;
+    }else if(a.condition==='lessThan'){
+      hit=px<a.value;
+    }else if(kind==='channel'){
+      const lo=Math.min(a.value,a.value2),hi=Math.max(a.value,a.value2);
+      const isIn=px>=lo&&px<=hi;
+      if(a.condition==='insideChannel')hit=isIn;
+      else if(a.condition==='outsideChannel')hit=!isIn;
+      else{
+        if(prev==null)return;   // entering/exiting are transitions and need a prior sample
+        const wasIn=prev>=lo&&prev<=hi;
+        if(a.condition==='enteringChannel')hit=!wasIn&&isIn;
+        else if(a.condition==='exitingChannel')hit=wasIn&&!isIn;
+      }
+    }else{
+      if(prev==null)return;   // crossing variants are transitions and need a prior sample
+      if(a.condition==='crossing')hit=(prev<a.value&&px>=a.value)||(prev>a.value&&px<=a.value);
+      else if(a.condition==='crossingUp')hit=prev<a.value&&px>=a.value;
+      else if(a.condition==='crossingDown')hit=prev>a.value&&px<=a.value;
+    }
+    if(!hit)return;
+    if(a.trigger==='every'&&a.lastFireAt&&now-a.lastFireAt<60000)return;
+    if(a.trigger==='onceBar'||a.trigger==='onceBarClose'){
+      // Verified live: these two only exist as Trigger options for Moving Up/Down(%), and both
+      // are bar-boundary-gated ("once per bar" / "at bar close"). This app evaluates on live
+      // ticks, not a discrete bar-close event, so both are implemented identically here — at
+      // most one fire per bar boundary of the alert's own interval — rather than claiming a
+      // finer distinction between "sometime during the bar" and "exactly at its close" that
+      // isn't actually verifiable without deeper access to TradingView's own bar-close signal.
+      const barMs=alertIntervalMs(a);
+      const curBar=Math.floor(now/barMs)*barMs;
+      if(a.lastFireBarStart===curBar)return;
+      a.lastFireBarStart=curBar;
+    }
+    fireAlert(a,px);
+    changed=true;
+  });
+  if(changed){saveAlertsLS();renderAlertsPanel();drawAlertLines();}
+}
+// Alerts on a symbol that isn't the primary chart (cfg.sym) previously never evaluated at all —
+// the only price feed evaluateAlerts() ever saw was the primary pane's own WS ticks / quote
+// poll. A ticker sitting in pane 2 has its own REST refresh (refreshAlt, >=15s, but only while
+// pane 2 is actually visible), and a ticker in NEITHER pane had no feed whatsoever, live or not.
+// So alerts need their own feed, decoupled from what's currently on screen — this poll fetches a
+// batched quote for every distinct symbol with an active alert other than cfg.sym (which the
+// existing tick pipeline already covers) and evaluates them, regardless of pane layout.
+function distinctBackgroundAlertSyms(){
+  const syms=new Set();
+  alerts.forEach(a=>{if(a.status==='active'&&a.sym&&a.sym!==cfg.sym)syms.add(a.sym);});
+  return[...syms];
+}
+let bgAlertPollBusy=false;
+async function pollBackgroundAlerts(){
+  if(bgAlertPollBusy||!LS.k)return;
+  const syms=distinctBackgroundAlertSyms();
+  if(!syms.length)return;
+  bgAlertPollBusy=true;
+  try{
+    const j=await tradier(`/v1/markets/quotes?symbols=${syms.join(',')}`);
+    let qs=j.quotes&&j.quotes.quote;qs=Array.isArray(qs)?qs:(qs?[qs]:[]);
+    qs.forEach(q=>{
+      const px=+q.last;
+      if(isFinite(px)&&px>0)evaluateAlerts(px,q.symbol);
+    });
+  }catch(e){log('Background alert poll failed: '+e.message,'warn');}
+  finally{bgAlertPollBusy=false;}
+}
+setInterval(pollBackgroundAlerts,20000);
+function alertLineColor(a){
+  if(a.status==='stopped')return'#9a8560';
+  if(a.status==='paused')return'#6b6b6b';
+  return'#f2b84b';
+}
+function wireAlertDrag(p){
+  const el=$('#pc'+p.idx);if(!el||el._alertDragWired)return;el._alertDragWired=true;
+  let dragging=null;
+  el.addEventListener('pointerdown',e=>{
+    if(!p.alertLines.length)return;
+    const rect=el.getBoundingClientRect();const y=e.clientY-rect.top;
+    let hit=null;
+    for(const al of p.alertLines){
+      let ly=null;try{ly=p.candles.priceToCoordinate(al.price);}catch(err){}
+      if(ly!=null&&Math.abs(ly-y)<=6){hit=al;break;}
+    }
+    if(!hit)return;
+    dragging=hit;e.preventDefault();e.stopPropagation();
+    try{el.setPointerCapture(e.pointerId);}catch(err){}
+  },true);
+  el.addEventListener('pointermove',e=>{
+    if(!dragging)return;
+    const rect=el.getBoundingClientRect();const y=e.clientY-rect.top;
+    let np=null;try{np=p.candles.coordinateToPrice(y);}catch(err){}
+    if(np==null||!isFinite(np))return;
+    dragging.price=np;
+    try{dragging.line.applyOptions({price:np});}catch(err){}
+  },true);
+  el.addEventListener('pointerup',()=>{
+    if(!dragging)return;
+    const a=alerts.find(x=>x.id===dragging.alertId);
+    if(a){
+      const np=+dragging.price.toFixed(2);
+      if(dragging.which===0)a.value=np;else a.value2=np;
+      a.prevPx=null;   // a manual reprice invalidates any "previous sample" the crossing logic was tracking
+      saveAlertsLS();renderAlertsPanel();
+    }
+    dragging=null;
+    drawAlertLines();
+  },true);
+}
+function drawAlertLines(){
+  visPanes().forEach(p=>{
+    if(!p.candles)return;
+    // pane 0 always mirrors cfg.sym; pane 2 (or beyond) carries its own symbol once unlinked
+    // (applyPaneSym sets p.sym directly) — an alert plots on whichever pane is actually showing
+    // its symbol, which may be neither, one, or (if linked) both at once.
+    const paneSym=p.idx===0?cfg.sym:(p.sym||cfg.sym);
+    p.alertLines.forEach(x=>{try{p.candles.removePriceLine(x.line);}catch(e){}});
+    p.alertLines=[];
+    alerts.filter(a=>a.sym===paneSym&&a.status!=='expired').forEach(a=>{
+      const vals=a.value2!=null?[a.value,a.value2]:[a.value];
+      vals.forEach((v,vi)=>{
+        const line=p.candles.createPriceLine({price:+v,color:alertLineColor(a),lineWidth:1,
+          lineStyle:lwcStyle('dashed'),axisLabelVisible:true,
+          axisLabelColor:alertLineColor(a),axisLabelTextColor:'#1a1408',
+          title:vi===0?(a.message||alertDefaultMessage(a)):''});
+        p.alertLines.push({line,alertId:a.id,price:+v,which:vi});
+      });
+    });
+    wireAlertDrag(p);
+  });
+}
+function fmtAlertCond(a){
+  const k=ALERT_COND_KIND[a.condition];
+  if(k==='channel')return `${ALERT_COND_LABEL[a.condition]} ${Math.min(a.value,a.value2)}–${Math.max(a.value,a.value2)}`;
+  if(k==='moving')return `${ALERT_COND_LABEL[a.condition]} ${a.value}${a.condition.endsWith('Pct')?'%':''}/${a.bars}bar`;
+  return `${ALERT_COND_LABEL[a.condition]} ${a.value}`;
+}
+function alertStatusLabel(a){
+  if(a.status==='expired')return{txt:'Expired',cls:'exp'};
+  if(a.status==='stopped')return{txt:'Stopped — Triggered',cls:'trig'};
+  if(a.status==='paused')return{txt:'Paused',cls:'exp'};
+  return{txt:'Active',cls:'act'};
+}
+function renderAlertsPanel(){
+  const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const body=$('#alertsListBody');
+  if(body){
+    const mine=alerts.slice().sort((a,b)=>b.createdAt-a.createdAt);
+    if(!mine.length)body.innerHTML='<div class="hint" style="padding:16px">No alerts yet. Click + to create one.</div>';
+    else body.innerHTML=mine.map(a=>{
+      const st=alertStatusLabel(a);
+      return `<div class="alrow" data-id="${a.id}">
+        <div class="almain">
+          <div class="altitle">${esc(a.name||fmtAlertCond(a))}</div>
+          <div class="alsub">${esc(a.sym)} · <span class="alst ${st.cls}">${st.txt}</span></div>
+        </div>
+        <div class="alactions">
+          ${a.status==='active'?'<button class="alicon" data-act="pause" title="Pause">⏸</button>':''}
+          ${a.status==='paused'?'<button class="alicon" data-act="resume" title="Resume">▶</button>':''}
+          <button class="alicon" data-act="edit" title="Edit">⚙</button>
+          <button class="alicon" data-act="del" title="Delete">🗑</button>
+        </div></div>`;
+    }).join('');
+  }
+  const logBody=$('#alertLogBody');
+  if(logBody){
+    if(!alertLog.length)logBody.innerHTML='<div class="hint" style="padding:16px">No alerts triggered yet. You will see a list here when they do.</div>';
+    else{
+      let lastDate='',html='';
+      alertLog.forEach(e=>{
+        const d=new Date(e.at);const dstr=d.toLocaleDateString('en-US',{month:'long',day:'numeric'}).toUpperCase();
+        if(dstr!==lastDate){lastDate=dstr;html+=`<div class="aldatehdr">${dstr}</div>`;}
+        const tstr=d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit',second:'2-digit'});
+        html+=`<div class="alrow"><div class="almain"><div class="altitle">${esc(e.message)}</div><div class="alsub">${esc(e.sym)} · ${tstr}</div></div></div>`;
+      });
+      logBody.innerHTML=html;
+    }
+  }
+  const badge=$('#alertBellBadge');
+  if(badge){badge.style.display=alertUnseenLog?'':'none';badge.textContent=alertUnseenLog>99?'99+':alertUnseenLog;}
+}
+function openAlertsPanel(){renderAlertsPanel();$('#alertsModal').style.display='flex';}
+function closeAlertsPanel(){$('#alertsModal').style.display='none';}
+function switchAlertsTab(tab){
+  $('#alertsTabActive').classList.toggle('on',tab==='active');
+  $('#alertsTabLog').classList.toggle('on',tab==='log');
+  $('#alertsListBody').style.display=tab==='active'?'':'none';
+  $('#alertLogBody').style.display=tab==='log'?'':'none';
+  if(tab==='log')clearUnseenLog();
+}
+let alEditingId=null;
+function populateCondSelect(){
+  $('#alCondType').innerHTML=ALERT_CONDITIONS.map(c=>`<option value="${c.v}">${c.l}</option>`).join('');
+}
+function syncAlertFieldsVisibility(){
+  const type=$('#alCondType').value,kind=ALERT_COND_KIND[type];
+  if(kind==='channel'){
+    $('#alValLabel1').textContent='Upper bound';$('#alValRow1').style.display='flex';
+    $('#alValLabel2').textContent='Lower bound';$('#alValRow2').style.display='flex';
+    $('#alMovingRow').style.display='none';
+  }else if(kind==='moving'){
+    $('#alValLabel1').textContent=type.endsWith('Pct')?'% moved':'Amount moved';$('#alValRow1').style.display='flex';
+    $('#alValRow2').style.display='none';
+    $('#alMovingRow').style.display='flex';
+  }else{
+    $('#alValLabel1').textContent='Value';$('#alValRow1').style.display='flex';
+    $('#alValRow2').style.display='none';$('#alMovingRow').style.display='none';
+  }
+  // Verified live on tradingview.com: "Once per bar" / "Once per bar close" only appear as
+  // Trigger options for the four Moving Up/Down(%) conditions — Crossing, Greater Than, and
+  // every other condition genuinely only offers Once only / Once per minute (called "Every
+  // time" in this app's own earlier, still-accurate wording for those).
+  const movingTrig=kind==='moving';
+  $$('.alTrigMoving').forEach(o=>o.style.display=movingTrig?'':'none');
+  const trigSel=$('#alTrigger');
+  if(!movingTrig&&(trigSel.value==='onceBar'||trigSel.value==='onceBarClose'))trigSel.value='once';
+}
+function openAlertEditor(existing,prefillPrice){
+  alEditingId=existing?existing.id:null;
+  $('#alEditTitle').textContent=existing?'Edit alert on':'Create alert on';
+  const symSel=$('#alEditSym');
+  // Mirrors TradingView's own symbol dropdown in this same dialog — verified live: with one
+  // symbol on the chart it's the sole, unremovable option, it does NOT let you type in an
+  // unrelated ticker. Here "on the chart" means pane 1's own symbol, plus pane 2's when it's
+  // genuinely showing something different (unlinked) — this is what actually lets an alert be
+  // created for the ticker sitting in pane 2 without first swapping it into pane 1.
+  if(existing){
+    symSel.innerHTML=`<option value="${existing.sym}">${existing.sym}</option>`;
+    symSel.value=existing.sym;
+    symSel.disabled=true;   // TradingView's Edit doesn't let you change an alert's symbol either
+  }else{
+    const candidates=[cfg.sym];
+    const p2sym=cfg.paneN>1&&panes[1]&&panes[1].sym;
+    if(p2sym&&p2sym!==cfg.sym)candidates.push(p2sym);
+    symSel.innerHTML=candidates.map(s=>`<option value="${s}">${s}</option>`).join('');
+    symSel.value=cfg.sym;
+    symSel.disabled=candidates.length<2;
+  }
+  populateCondSelect();
+  const a=existing||{condition:'crossing',value:prefillPrice!=null?prefillPrice:(lastPx||0),value2:null,bars:1,interval:'chart',trigger:'once',expChoice:'1m',name:'',message:'',notify:{}};
+  $('#alCondType').value=a.condition;
+  syncAlertFieldsVisibility();
+  $('#alVal1').value=a.value;
+  $('#alVal2').value=a.value2!=null?a.value2:a.value;
+  $('#alBars').value=a.bars||1;
+  $('#alInterval').value=a.interval||'chart';
+  $('#alTrigger').value=a.trigger||'once';
+  $('#alExpChoice').value=a.expChoice||'1m';
+  $('#alExpCustomRow').style.display=$('#alExpChoice').value==='custom'?'flex':'none';
+  $('#alName').value=a.name||'';
+  $('#alMessage').value=a.message&&a.message!==alertDefaultMessage(a)?a.message:'';
+  const n=a.notify||{toast:true};
+  $('#alNotifyToast').checked=n.toast!==false;
+  $('#alNotifySound').checked=!!n.sound;
+  $('#alNotifyBrowser').checked=!!n.browserNotif;
+  $('#alNotifyWebhook').checked=!!n.webhookUrl;
+  $('#alWebhookUrl').style.display=n.webhookUrl?'':'none';
+  $('#alWebhookUrl').value=n.webhookUrl||'';
+  $('#alDeleteBtn').style.display=existing?'':'none';
+  $('#alSaveBtn').textContent=existing?'Save':'Create';
+  $('#alertsModal').style.display='none';
+  $('#alertEditModal').style.display='flex';
+}
+function closeAlertEditor(reopenList){$('#alertEditModal').style.display='none';if(reopenList)openAlertsPanel();}
+function saveAlertFromEditor(){
+  const type=$('#alCondType').value,kind=ALERT_COND_KIND[type];
+  const v1=+$('#alVal1').value,v2=+$('#alVal2').value;
+  if(!isFinite(v1)){toast('Alert','Enter a valid value','short');return;}
+  const notify={toast:$('#alNotifyToast').checked,sound:$('#alNotifySound').checked,
+    browserNotif:$('#alNotifyBrowser').checked,webhookUrl:$('#alNotifyWebhook').checked?$('#alWebhookUrl').value.trim():''};
+  if(notify.browserNotif&&window.Notification&&Notification.permission==='default'){try{Notification.requestPermission();}catch(e){}}
+  let a=alEditingId?alerts.find(x=>x.id===alEditingId):null;
+  const isNew=!a;
+  if(isNew){a={id:newAlertId(),sym:$('#alEditSym').value||cfg.sym,createdAt:Date.now(),status:'active',prevPx:null,lastFireAt:null};alerts.push(a);}
+  a.condition=type;
+  a.value=v1;
+  a.value2=kind==='channel'?v2:null;
+  a.bars=kind==='moving'?Math.max(1,+$('#alBars').value||1):null;
+  a.interval=kind==='moving'?$('#alInterval').value:null;
+  a.trigger=$('#alTrigger').value;
+  a.expChoice=$('#alExpChoice').value;
+  a.expiresAt=expirationFromChoice(a.expChoice,$('#alExpCustom').value);
+  a.name=$('#alName').value.trim();
+  const typed=$('#alMessage').value.trim();
+  a.message=typed||alertDefaultMessage(a);
+  a.notify=notify;
+  if(!isNew){a.status='active';a.prevPx=null;}   // editing re-arms it, same as TradingView's Edit
+  saveAlertsLS();
+  closeAlertEditor(true);
+  drawAlertLines();
+  if(a.sym!==cfg.sym)pollBackgroundAlerts();   // don't make a freshly (re-)armed off-screen alert wait up to 20s for its first check
+  toast('Alert',isNew?'Alert created':'Alert updated','short');
+}
+function deleteAlert(id){
+  alerts=alerts.filter(a=>a.id!==id);
+  const stillTracked=new Set(alerts.map(a=>a.sym));
+  Object.keys(priceHistBySym).forEach(s=>{if(!stillTracked.has(s)&&s!==cfg.sym)delete priceHistBySym[s];});
+  saveAlertsLS();renderAlertsPanel();drawAlertLines();
 }
 
 /* ================================ Saty ATR Levels =====================================
@@ -6183,13 +7295,14 @@ function drawSatyOn(p){
     const nm=satyRowLabel(r,C,st);
     const lw=Math.max(1,+(o.w||C.levelSize)||1);
     const lstyle=o.st||(r.kind==='mid'?'dotted':'solid');
+    const tsize=o.size||10;
     p.satyLines.push(p.candles.createPriceLine({
       price:+px.toFixed(2),color:'rgba(0,0,0,0)',
       lineWidth:lw,
       lineStyle:lwcStyle(lstyle),
       axisLabelColor:'rgba(0,0,0,0)',axisLabelTextColor:col,
       axisLabelVisible:false,title:''}));
-    p.satyLabels.push({price:+px.toFixed(2),text:nm,color:col,tc:tcol,w:lw,style:lstyle});
+    p.satyLabels.push({price:+px.toFixed(2),text:nm,color:col,tc:tcol,w:lw,style:lstyle,size:tsize});
   });
 }
 // Saty's level names, in the overlay layer so they join the de-overlap pass.
@@ -6207,6 +7320,7 @@ function positionSatyLabels(p){
     axisPxLabel(host,l.price,y,l.color,'saty');     // axis price reading badge (line colour)
     const d=document.createElement('div');d.className='satylab';
     d.textContent=l.text;d.style.color=l.tc||'var(--axistext)';   // Text-tab colour for the name; white is the default fallback
+    d.style.fontSize=(l.size||10)+'px';
     d.style.top=y+'px';d.dataset.y=y;
     d.style.right=(axisW+22)+'px';
     // The visible line is drawn in drawLevelSegments — AFTER deoverlapLabels has placed the labels —
@@ -6450,8 +7564,8 @@ function renderLevelTable(){
     swEl.onclick=e=>{e.stopPropagation();
       const l=levels.find(x=>x.key===k);if(!l)return;
       const st=lvlStyleOf(l);
-      openStyler(swEl,{color:st.color,tc:st.tc,width:st.width,style:st.style},true,s=>{
-        lvlSty[k]=Object.assign(lvlSty[k]||{},{color:s.color,tc:s.tc,width:s.width,style:s.style});
+      openStyler(swEl,{color:st.color,tc:st.tc,width:st.width,style:st.style,textSize:st.size},true,s=>{
+        lvlSty[k]=Object.assign(lvlSty[k]||{},{color:s.color,tc:s.tc,width:s.width,style:s.style,size:s.textSize});
         LS.lvlSty=lvlSty;
         // Re-find the swatch by key rather than reusing the closured swEl: computeLevels()
         // (on its own ~10s poll, unrelated to this drag) calls renderLevelTable() and rebuilds
@@ -7249,6 +8363,7 @@ async function loadQuote(){
   lastPx=(!tradeFresh&&isFinite(bid)&&isFinite(ask)&&bid>0&&ask>0)?(bid+ask)/2:+q.last;
   lastPxAt=Date.now();
   paintPx();
+  evaluateAlerts(lastPx);
   if(!tradeFresh)return;
   updateForming(lastPx,0,true);           // poll: close only, never the extremes
 }
@@ -7273,7 +8388,7 @@ async function refreshAlt(paneIdx){
   try{
     st.data.bars5=mergeBars(st.data.bars5,await fetchTsRange('5min',new Date(Date.now()-864e5),now,st.sym));
     st.data.bars15=mergeBars(st.data.bars15,await fetchTsRange('15min',new Date(Date.now()-2*864e5),now,st.sym));
-    if(panes[paneIdx])renderPane(panes[paneIdx]);
+    if(panes[paneIdx]){renderPane(panes[paneIdx]);drawAlertLines();}
   }catch(e){log(`Pane ${paneIdx+1} refresh failed: `+e.message,'warn');}
 }
 // paneIdx: 1 = pane 2 (ids #lnkSym/#psym1, cfg.link/cfg.sym1, unchanged from before this was
@@ -7293,6 +8408,7 @@ async function applyPaneSym(paneIdx){
     updateSymLogo(cfg.sym,paneIdx);
     if(panes[paneIdx]){panes[paneIdx].sym=cfg.sym;renderPane(panes[paneIdx]);}
     clearInterval(st.timer);st.timer=null;st.sym='';
+    drawAlertLines();   // this pane's symbol just changed (back to cfg.sym) — its alert lines need to match
   }else{
     const sym=(box.value||'').trim().toUpperCase();
     if(!sym)return;
@@ -7304,6 +8420,7 @@ async function applyPaneSym(paneIdx){
       if(panes[paneIdx]){renderPane(panes[paneIdx]);resetView(panes[paneIdx]);}
       clearInterval(st.timer);
       st.timer=setInterval(()=>refreshAlt(paneIdx),Math.max(15,cfg.barS)*1000);
+      drawAlertLines();   // new unlinked symbol for this pane — draw whatever alerts belong to it
     }catch(e){log(`Pane ${paneIdx+1} load failed: `+e.message,'short');toast(`Pane ${paneIdx+1}`,e.message,'short');}
   }
   saveCfg();
@@ -7353,6 +8470,9 @@ async function connect(){
   // Resetting it here means computeInstitutionalLevels() correctly shows nothing for a moment
   // (via its isFinite/null guard just below) rather than confidently showing a wrong split.
   lastPx=null;
+  // (Alerts' Moving Up/Down reference history, priceHistBySym, does NOT need a reset here the
+  // way lastPx does — it's keyed per-symbol precisely so a stale sample from a previous chart
+  // symbol can never bleed into a different symbol's lookup. Nothing to clear on a symbol switch.)
   updateSymLogo(cfg.sym);
   $('#apiDot').className='dot warn';$('#mktTxt').textContent='connecting…';
   try{
@@ -7776,6 +8896,7 @@ function startAltPane(idx){
 }
 function setPaneN(n){
   n=Math.max(1,Math.min(2,n|0))||1;
+  const wasN=cfg.paneN;
   cfg.paneN=n;cfg.split=n>=2;saveCfg();
   $('#pw1').style.display=n>=2?'flex':'none';
   $('#p2cluster').style.display=n>=2?'flex':'none';
@@ -7788,6 +8909,18 @@ function setPaneN(n){
   // pane 1.
   [1].forEach(idx=>{
     if(idx<n){
+      // Pane 2 is being switched ON right now (not just re-confirmed while already visible) —
+      // inherit pane 1's CURRENT Volume/RSI panel heights instead of whatever pane 2 last had.
+      // The resize-drag handler (wireHandles) can only mirror a height onto pane 2 live while
+      // pane 2 is actually visible; resizing pane 1 while pane 2 is hidden leaves pane 2's own
+      // rsiH1/volH1 stale, which otherwise surfaces the moment pane 2 comes back — this closes
+      // that gap by re-syncing on every hidden-to-visible transition, not just during a live drag.
+      if(wasN<2){
+        cfg.rsiH1=cfg.rsiH0;cfg.volH1=cfg.volH0;
+        const rw=$('#rsic1wrap'),vw=$('#volc1wrap');
+        if(rw)rw.style.height=cfg.rsiH1+'px';
+        if(vw)vw.style.height=cfg.volH1+'px';
+      }
       if(!panes[idx]&&window.LightweightCharts)panes[idx]=makePane(idx);
       startAltPane(idx);
     }else stopAltPane(idx);
@@ -8085,6 +9218,39 @@ function openVolModal(i){
 }
 $('#voCancel').onclick=()=>$('#volModal').style.display='none';
 $('#voOk').onclick=()=>$('#volModal').style.display='none';
+
+$('#alertBellBtn').onclick=openAlertsPanel;
+$('#alertsCloseBtn').onclick=closeAlertsPanel;
+$('#alertsAddBtn').onclick=()=>openAlertEditor(null,lastPx);
+$('#alertsTabActive').onclick=()=>switchAlertsTab('active');
+$('#alertsTabLog').onclick=()=>switchAlertsTab('log');
+$('#alertsListBody').addEventListener('click',e=>{
+  const btn=e.target.closest('.alicon');if(!btn)return;
+  const row=e.target.closest('.alrow');const id=row&&row.dataset.id;
+  const a=alerts.find(x=>x.id===id);if(!a)return;
+  const act=btn.dataset.act;
+  if(act==='pause'){a.status='paused';saveAlertsLS();renderAlertsPanel();drawAlertLines();}
+  else if(act==='resume'){a.status='active';a.prevPx=null;saveAlertsLS();renderAlertsPanel();drawAlertLines();}
+  else if(act==='edit')openAlertEditor(a);
+  else if(act==='del')deleteAlert(id);
+});
+$('#alCondType').onchange=syncAlertFieldsVisibility;
+$('#alEditSym').onchange=()=>{
+  if(alEditingId)return;   // disabled while editing anyway — symbol is fixed once an alert exists
+  const sym=$('#alEditSym').value;
+  let px=lastPx;
+  if(sym!==cfg.sym){
+    const bars=altState[1]&&altState[1].data&&altState[1].data.bars5;
+    px=bars&&bars.length?bars[bars.length-1].c:null;
+  }
+  if(px!=null&&isFinite(px)){$('#alVal1').value=px;$('#alVal2').value=px;}
+};
+$('#alExpChoice').onchange=()=>{$('#alExpCustomRow').style.display=$('#alExpChoice').value==='custom'?'flex':'none';};
+$('#alNotifyWebhook').onchange=()=>{$('#alWebhookUrl').style.display=$('#alNotifyWebhook').checked?'':'none';};
+$('#alCancelBtn').onclick=()=>closeAlertEditor(true);
+$('#alSaveBtn').onclick=saveAlertFromEditor;
+$('#alDeleteBtn').onclick=()=>{if(alEditingId)deleteAlert(alEditingId);closeAlertEditor();};
+renderAlertsPanel();
 bindSwatch($('#swVoUp'),()=>cfg.volume.upC,c=>{cfg.volume.upC=c;saveCfg();renderAll();});
 bindSwatch($('#swVoDn'),()=>cfg.volume.dnC,c=>{cfg.volume.dnC=c;saveCfg();renderAll();});
 
@@ -8131,7 +9297,7 @@ function syncIndTogs(){
     const i=+b.dataset.pane,k=b.dataset.ind;
     const on=!!cfg[k+i];
     b.classList.toggle('on',on);
-    const lab=$('#'+({struct:'stlab',saty:'stylab',ribbon:'rblab'})[k]+i);
+    const lab=$('#'+({struct:'stlab',saty:'stylab',ribbon:'rblab',vwap:'vwlab',kc:'kclab'})[k]+i);
     if(lab)lab.classList.toggle('on',on);
   });
 }
@@ -8305,7 +9471,7 @@ bindLineSwatch($('#swStPat'),()=>({color:cfg.structCfg.patC,width:cfg.structCfg.
    taken when the dialog was opened, "Defaults" restores the factory input set, and "Ok"
    just closes — which is why there is no separate apply step. */
 let satySnap=null;
-function satyRedraw(){saveCfg();visPanes().forEach(p=>{drawSatyOn(p);positionSatyInfo(p);});}
+function satyRedraw(){saveCfg();visPanes().forEach(p=>{drawSatyOn(p);positionSatyLabels(p);positionSatyInfo(p);});}
 // Says what the length actually is right now and why, so "Auto" is never a black box.
 function satyLenNote(){
   const el=$('#syLenNote');if(!el)return;
@@ -8372,9 +9538,9 @@ function satyBuildStyle(){
     // one on the Text tab (matches lvlStyleOf's tc:s.tc||color fallback).
     sw.onclick=e=>{e.stopPropagation();
       const cur=satyC().sty[r.key]||{},line=satyRowColor(r,satyC());
-      openStyler(sw,{color:line,tc:cur.tc||line},false,st=>{
+      openStyler(sw,{color:line,tc:cur.tc||line,textSize:cur.size},false,st=>{
         sw.style.background=st.color;
-        const c=satyC();c.sty[r.key]=Object.assign({},c.sty[r.key],{color:st.color,tc:st.tc});satyRedraw();});};
+        const c=satyC();c.sty[r.key]=Object.assign({},c.sty[r.key],{color:st.color,tc:st.tc,size:st.textSize});satyRedraw();});};
     wsel.onchange=()=>put('w',+wsel.value);
     ssel.onchange=()=>put('st',ssel.value);
     host.appendChild(row);
@@ -8389,6 +9555,39 @@ function openSatyModal(i){
 }
 function closeSatyModal(){$('#satyModal').style.display='none';}
 $$('.satygear').forEach(b=>b.onclick=()=>openSatyModal(+b.dataset.pane||0));
+$$('.vwgear').forEach(b=>b.onclick=()=>openVwapModal(+b.dataset.pane||0));
+$('#vwapHideDWM').onchange=()=>{cfg.vwap.hideOnDWM=$('#vwapHideDWM').checked;vwapRedrawAll();};
+$('#vwapCancel').onclick=()=>{
+  if(vwapSnap)cfg.vwap=JSON.parse(vwapSnap);
+  vwapRedrawAll();
+  closeVwapModal();
+};
+$('#vwapOk').onclick=closeVwapModal;
+$('#vwapDefaults').onclick=()=>{
+  cfg.vwap={hideOnDWM:false,lines:[
+    {on:true,anchor:'session',color:'#2962FF',width:2,style:'solid'},
+    {on:true,anchor:'week',color:'#FF9800',width:2,style:'solid'},
+    {on:true,anchor:'month',color:'#AB47BC',width:2,style:'solid'}
+  ]};
+  $('#vwapHideDWM').checked=false;
+  vwapBuildRows();
+  vwapRedrawAll();
+};
+$$('.kcgear').forEach(b=>b.onclick=()=>openKcModal(+b.dataset.pane||0));
+$('#kcCancel').onclick=()=>{
+  if(kcSnap)cfg.kc=JSON.parse(kcSnap);
+  kcRedrawAll();
+  closeKcModal();
+};
+$('#kcOk').onclick=closeKcModal;
+$('#kcDefaults').onclick=()=>{
+  cfg.kc=Object.assign({},cfg.kc,{lines:[
+    {on:true,color:'#2962FF',width:1,style:'solid'},
+    {on:true,color:'#2962FF',width:1,style:'solid'}
+  ]});
+  kcBuildRows();
+  kcRedrawAll();
+};
 
 /* ---------- Saty Pivot Ribbon settings ---------- */
 const RB_DEFAULTS={timeWarp:'off',fastEma:8,pivotEma:21,slowEma:34,
