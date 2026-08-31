@@ -216,8 +216,19 @@ input[type=checkbox]{accent-color:var(--pivot)}
    parked under one candle or a line spanning the whole pane. An up-break references a swing
    HIGH, so the tick sits ABOVE it; a down-break references a swing LOW, so it sits BELOW —
    either way pointing straight back at the wick it is quoting. Coloured in the break's own
-   kind colour (BOS vs CHoCH), same as the old full-width line was. */
-.brkwick{position:absolute;height:0;pointer-events:auto;transform:rotate(-25deg);
+   kind colour (BOS vs CHoCH), same as the old full-width line was.
+   The tick's own LEFT edge is planted exactly at the wick's x — same x either way — so the
+   wick always sits diagonally off that left corner: below-left of the tick for an up-break,
+   above-left for a down-break. A single fixed tilt can only lean toward one of those two, so
+   an up-break's tick used to visually point at its wick while a down-break's tilted the WRONG
+   way, away from it. Mirrored per direction below so the tick's near corner always dips toward
+   whichever side the wick is actually on. 14deg, not the 25deg this started at — the shallower
+   angle still reads as tilted-toward-the-wick without looking like a caret. Drawn as a filled,
+   fully-rounded (pill-shaped) bar rather than a hard-cornered border-top edge, for the same
+   reason a rounded line-cap reads softer than a squared one anywhere else it is used. */
+.brkwick.up{position:absolute;pointer-events:auto;border-radius:999px;transform:rotate(-14deg);
+  filter:drop-shadow(0 1px 1px rgba(0,0,0,.85))}
+.brkwick.dn{position:absolute;pointer-events:auto;border-radius:999px;transform:rotate(14deg);
   filter:drop-shadow(0 1px 1px rgba(0,0,0,.85))}
 .brkwick.stale{opacity:.62}
 /* Used to sit a full box-height clear of the level's OWN line, on the side the break went, so
@@ -3467,21 +3478,43 @@ function causalMinMove(data,mult){
 // shares does not. This is the gate that actually fixes ETH: a minimum-excursion threshold
 // cannot, because thin-book overnight wicks are LARGE, they are just unbacked, and any
 // excursion threshold big enough to cut them also destroys real regular-session structure.
+// CAUSALITY FIX (2026-08-31): the old version returned ONE scalar computed from the median
+// of the WHOLE series (including bars that hadn't happened yet as of any earlier bar). That
+// meant the gate a bar had to clear could change retroactively as new bars arrived - a bar
+// backed today could become unbacked next week purely because the whole-history median moved,
+// silently flipping which raw pivots findSwings ever sees. Mirrors causalMinMove's own
+// already-causal design: a rolling window of the last 100 RTH volume observations UP TO AND
+// INCLUDING bar i, so out[i] never depends on anything after i and is therefore stable forever
+// once bar i is in the past. Returns a per-bar array like causalMinMove, not a single number.
 function structVolFloor(data,frac){
-  if(!(frac>0)||!data)return 0;
-  const rv=data.filter(d=>d.rth!==false).map(d=>d.volume).filter(v=>v>0);
-  if(rv.length<20)return 0;                        // no usable volume reference — do not gate
-  rv.sort((a,b)=>a-b);
-  return rv[Math.floor(rv.length/2)]*frac;
+  const out=new Array(data&&data.length||0).fill(0);
+  if(!(frac>0)||!data)return out;
+  const q=[];
+  for(let i=0;i<data.length;i++){
+    const d=data[i];
+    if(d.rth!==false&&d.volume>0){
+      q.push(d.volume);
+      if(q.length>100)q.shift();
+    }
+    if(q.length<20){out[i]=0;continue;}              // no usable volume reference yet — do not gate
+    const sorted=q.slice().sort((a,b)=>a-b);
+    out[i]=sorted[Math.floor(sorted.length/2)]*frac;
+  }
+  return out;
 }
 function findSwings(data,strength,minMove,volFloor){
   const highs=data.map(d=>d.high),lows=data.map(d=>d.low);
   const rawHi=pivotIdx(highs,strength,true),rawLo=pivotIdx(lows,strength,false);
   // bars with no volume figure at all are never gated out, so feeds that omit volume
-  // (and the daily series) behave exactly as they did before
-  const backed=i=>!(data[i].volume>0)||data[i].volume>=volFloor;
+  // (and the daily series) behave exactly as they did before. volFloor may be a per-bar
+  // causal array (structVolFloor) or a plain scalar (e.g. 0 to disable) - same array-or-
+  // scalar pattern as minMove/mmAt below.
+  const vfArr=Array.isArray(volFloor);
+  const vfAt=i=>vfArr?(+volFloor[i]||0):(+volFloor>0?+volFloor:0);
+  const backed=i=>!(data[i].volume>0)||data[i].volume>=vfAt(i);
   let hi=rawHi,lo=rawLo;
-  if(volFloor>0){
+  const anyVf=vfArr?volFloor.some(v=>v>0):volFloor>0;
+  if(anyVf){
     const gh=rawHi.filter(backed),gl=rawLo.filter(backed);
     // Safety valve: on coarse timeframes a whole bucket can be half overnight, and gating
     // hard enough there left the 4H chart with NO structure at all. If the gate would strip
@@ -3501,30 +3534,67 @@ function findSwings(data,strength,minMove,volFloor){
   // lows were all micro-noise from hours when almost nothing traded.
   const mmArr=Array.isArray(minMove);
   const mmAt=i=>mmArr?(+minMove[i]||0):(+minMove>0?+minMove:0);
+  /* REPAINT FIX (confirmed by audit, 2026-08-31): the old version collapsed two same-type
+     pivots unconditionally, with no test for whether real structure happened BETWEEN them —
+     it only ever compared the two pivot prices to each other. pivotIdx requires `strength`
+     clear bars on both sides, so a genuine pullback can easily fail to itself produce a
+     qualifying opposite pivot (an unrelated, larger extreme nearby disqualifies it) while
+     still being a completely real, sized reversal. When that happened, a later, bigger
+     same-type pivot didn't just outrank the earlier one — it ERASED it outright, including
+     swings that had already stood confirmed (i+strength bars in the past) for a long time.
+     Measured on 38 tickers / 34,818 daily bars: 3.17% of all swings were shown as confirmed
+     and later silently removed; the BOS/CHoCH events referencing them inherited the same
+     instability, including at least one case of a bar's break flipping from BOS to CHoCH
+     after the fact.
+     The fix reuses the EXACT same minMove reversal-size test already used below for
+     opposite-type pivots, just aimed at the real price extreme BETWEEN two same-type pivots
+     instead of only ever comparing the pivots' own two prices. If that intervening move
+     clears minMove, a genuine reversal happened whether or not pivotIdx's own fixed-window
+     fractal test flagged it as a pivot — so the earlier pivot is left standing, the
+     reversal's own extreme is inserted as the alternating swing between them, and the new
+     pivot is compared against THAT instead. Only when there is no such reversal (the
+     genuinely flat/quiet-range case the original comment above describes) does the old
+     "keep the more extreme, replace in place" behaviour still apply — which is also exactly
+     why this never touches anything already two-or-more entries back: nothing is ever
+     removed once something has been confirmed to follow it. */
+  const oppExtreme=(type,fromI,toI)=>{        // real price extreme strictly between two bars
+    let best=null,bestI=-1;
+    for(let k=fromI+1;k<toI;k++){
+      const v=type==='H'?lows[k]:highs[k];
+      if(best===null||(type==='H'?v<best:v>best)){best=v;bestI=k;}
+    }
+    return best===null?null:{price:best,i:bestI};
+  };
   const sw=[];
   raw.forEach(x=>{
-    const prev=sw[sw.length-1];
-    if(!prev){sw.push(x);return;}
-    if(prev.type===x.type){
-      if(x.type==='H'?x.price>prev.price:x.price<prev.price)sw[sw.length-1]=x;
-      return;
-    }
-    const mm=mmAt(x.i);
-    if(mm&&Math.abs(x.price-prev.price)<mm){
-      // The leg is too small to be a reversal. If this pivot nonetheless extends past the
-      // same-type pivot before it, the shallow pullback between them was never structure —
-      // unwind both and let x take over the earlier extreme.
-      const before=sw[sw.length-2];
-      if(before&&(x.type==='H'?x.price>before.price:x.price<before.price)){
-        sw.length-=2;
-        const p2=sw[sw.length-1];
-        if(p2&&p2.type===x.type){
-          if(x.type==='H'?x.price>p2.price:x.price<p2.price)sw[sw.length-1]=x;
-        }else sw.push(x);
+    for(;;){
+      const prev=sw[sw.length-1];
+      if(!prev){sw.push(x);return;}
+      if(prev.type===x.type){
+        const opp=oppExtreme(prev.type,prev.i,x.i);
+        const mm=mmAt(x.i);
+        const moveSize=opp?(prev.type==='H'?prev.price-opp.price:opp.price-prev.price):0;
+        if(opp&&mm&&moveSize>=mm){
+          // A real reversal happened between them — prev is settled for good; the reversal's
+          // own extreme becomes the alternating swing, and x is re-judged against it next.
+          const oppType=prev.type==='H'?'L':'H';
+          sw.push({i:opp.i,type:oppType,price:opp.price,time:data[opp.i].time});
+          continue;
+        }
+        // No real reversal in between — still the same open leg, so the more extreme point
+        // wins. Safe: prev has not earned a following swing yet, so nothing is being erased.
+        if(x.type==='H'?x.price>prev.price:x.price<prev.price)sw[sw.length-1]=x;
+        return;
       }
+      const mm=mmAt(x.i);
+      if(mm&&Math.abs(x.price-prev.price)<mm){
+        // Too small to be a real reversal off prev — x does not enter structure. prev is left
+        // exactly as it is (whether that's a still-open leg or an already-settled swing).
+        return;
+      }
+      sw.push(x);
       return;
     }
-    sw.push(x);
   });
   let lastH=null,lastL=null;
   sw.forEach(x=>{
@@ -5030,9 +5100,9 @@ function positionBreaks(p){
     const col=brkColor(bk);
     let y=null;try{y=pxRound(p.candles.priceToCoordinate(+bk.price.toFixed(2)));}catch(e){}
     if(y==null||y<6||y>h-4)return;
-    // axis price reading badge — the same colour-filled, shadowed plate Levels/Saty draw,
-    // just never wired up here until now
-    axisPxLabel(host,bk.price,y,col,'brk');
+    // No axis price badge for BOS/CHoCH (removed per feedback) — it doubled up with the swing
+    // HH/HL/LH/LL axis badges right next to it and added clutter the tick+label callout below
+    // doesn't need; the exact price is still available on hover via brkTipHtml.
     // Moomoo/other charting sites label HOD/LOD with a short SOLID tick sitting just clear
     // of the actual wick, and the name+state sit stacked directly above it (below it for a
     // down-break) — not out at the axis. This wick is the SWING's own pivot bar (bk.ref), not
@@ -5048,15 +5118,20 @@ function positionBreaks(p){
     // (positionStruct, just below) — this used to land right on top of it, and deoverlapLabels
     // shoved the swing label sideways to make room. 24/8 keeps this comfortably outside that
     // label's own footprint instead of relying on the shared de-overlap pass to sort it out.
-    const TICK_LEN=13,TICK_OFF=24,LAB_GAP=8;
+    const TICK_LEN=13,TICK_OFF=24,LAB_GAP=4;
     const tickY=up?y-TICK_OFF:y+TICK_OFF;
     const cx=wx+TICK_LEN/2;                 // the tick's own rotation centre — the label centres on this too
     const tick=document.createElement('div');
     tick.className='brkwick '+dir+stale;
-    tick.style.left=wx+'px';tick.style.top=tickY+'px';tick.style.width=TICK_LEN+'px';
-    tick.style.borderTopWidth=brkWidth(bk)+'px';
-    tick.style.borderTopStyle='solid';
-    tick.style.borderTopColor=col;
+    const bw=brkWidth(bk);
+    // A filled bar (background + border-radius), not a 0-height border-top edge — the CSS
+    // border-radius above only rounds where two borders meet, so a single border-top drawn on
+    // a 0-height box has no adjacent edge to round INTO and its ends stay hard-cornered no
+    // matter what radius is set. Centring the bar's own height on tickY keeps it sitting where
+    // the border-top used to visually sit (right at that y), rather than starting from it.
+    tick.style.left=wx+'px';tick.style.top=(tickY-bw/2)+'px';
+    tick.style.width=TICK_LEN+'px';tick.style.height=bw+'px';
+    tick.style.background=col;
     tipAttach(tick,brkTipHtml(bk));
     host.appendChild(tick);
     // name + state, centred on the tilted tick and stacked on its far side from the wick —
@@ -5081,7 +5156,10 @@ function positionBreaks(p){
       st.appendChild(sp);
       st.appendChild(document.createTextNode('pending '+(bk.dir==='up'?'bullish':'bearish')));
     }else{
-      st.textContent=bk.state==='held'?brkGlyph('held')+' held':brkGlyph('failed')+' failed';
+      // Glyph only once resolved — held/failed is legible at a glance from color+checkmark/X
+      // alone (see heldColor/failColor), and the tooltip (brkTipHtml) still spells it out in
+      // full for anyone who hovers.
+      st.textContent=brkGlyph(bk.state);
     }
     st.style.color=brkStateColor(bk.state)||col;
     lab.appendChild(st);
@@ -5103,7 +5181,7 @@ function positionBreaks(p){
 }
 function positionStruct(p){
   const host=$('#tips'+p.idx);if(!host)return;
-  host.querySelectorAll('.patlab,.swlab,.swdot,.brklab,.brkwick,.brkmark,.axpx-brk').forEach(e=>e.remove());
+  host.querySelectorAll('.patlab,.swlab,.swdot,.brklab,.brkwick,.brkmark').forEach(e=>e.remove());
   if(!cfg['struct'+p.idx])return;
   positionBreaks(p);
   // HH / HL / LH / LL at their own swing, drawn over the chart rather than as markers
