@@ -5921,13 +5921,16 @@ async function startStream(){
     log('Streaming session failed ('+e.message+') — staying on polling. Check market-data agreement; sandbox tokens cannot stream.','warn');
     return;
   }
+  gexStreamSid=sid;   // lets a later GEX bootstrap push an updated option-symbol subscription
   try{
     ws=new WebSocket('wss://ws.tradier.com/v1/markets/events');
   }catch(e){
     log('WebSocket blocked ('+e.message+') — staying on polling','warn');return;
   }
   ws.onopen=()=>{
-    ws.send(JSON.stringify({symbols:[wsWantSym],sessionid:sid,linebreak:true,filter:['trade','quote']}));
+    // Carries over whatever option symbols the last GEX bootstrap picked (survives a reconnect;
+    // empty on first connect or a fresh symbol, same as gexResubscribe() sends later).
+    ws.send(JSON.stringify({symbols:[wsWantSym,...gexWsSymbols],sessionid:sid,linebreak:true,filter:['trade','quote']}));
     wsAlive=true;wsRetryMs=1000;setStatus();
     _cvolPrev=null;Object.keys(_volBase).forEach(k=>delete _volBase[k]);   // (re)connect: cvol boundary unknown until the next clean bucket
     log('WebSocket streaming live · '+wsWantSym+' · per-trade updates','long');
@@ -5957,7 +5960,16 @@ async function startStream(){
         // correction fidelity — that path WOULD need seq-based dedupe.
         if(!_tradeSampled){log('Trade stream raw sample: '+JSON.stringify(d).slice(0,300),'warn');_tradeSampled=true;}
         const px=+(d.price!==undefined?d.price:d.last);
-        if(isFinite(px)){lastPx=px;lastPxAt=Date.now();paintPx();updateForming(px,+d.size||0,false,(d.cvol!=null&&isFinite(+d.cvol))?+d.cvol:null);evaluateAlerts(px);}
+        // A single print can never exceed the session's own cumulative volume (cvol necessarily
+        // includes it) — confirmed via LOCAL-DIAG capture that the feed can occasionally send a
+        // trade whose size fails this, e.g. size 18,207,796 against cvol 3,691,557. That garbage
+        // size, trusted as-is, seeds updateForming's cvol baseline and inflates the live bucket's
+        // volume by orders of magnitude until the bucket closes. Treat it as "no size info" (0)
+        // rather than dropping the whole trade, so the (unaffected) price still updates.
+        const cvolNum=(d.cvol!=null&&isFinite(+d.cvol))?+d.cvol:null;
+        let szNum=+d.size||0;
+        if(cvolNum!=null&&szNum>cvolNum)szNum=0;
+        if(isFinite(px)){lastPx=px;lastPxAt=Date.now();paintPx();updateForming(px,szNum,false,cvolNum);evaluateAlerts(px);}
       }else if(d.type==='quote'&&d.symbol===wsWantSym){
         // Extended-hours trade prints are sparse to nonexistent for a lot of symbols - confirmed
         // via LOCAL-DIAG capture: 30 straight minutes of pre-market 'trade' ticks for MU, all
@@ -5970,6 +5982,12 @@ async function startStream(){
         // stay trade-driven only, same as before.
         const bid=+d.bid,ask=+d.ask;
         if(isFinite(bid)&&isFinite(ask)&&bid>0&&ask>0){lastPx=(bid+ask)/2;lastPxAt=Date.now();paintPx();evaluateAlerts(lastPx);}
+      }else if(d.type==='quote'&&gexContracts.has(d.symbol)){
+        // An OPTION contract's own quote tick (different symbol space from wsWantSym above —
+        // OCC-formatted, e.g. NVDA260831C00220000). Same stream, same connection, just a
+        // different filter key: this is what makes GEX react to live bid/ask instead of
+        // waiting on the 2-minute REST backstop.
+        handleGexQuoteTick(d);
       }
     });
   };
@@ -7512,8 +7530,19 @@ function computeInstitutionalLevels(push){
   // span's own center instead of whichever bin a Map happens to iterate to first — an arbitrary
   // edge of a genuine tie is not a more accurate answer than that tie's center.
   const idxPrice=bi=>lo+bi*binSize+binSize/2;
+  // FLICKER FIX: classify a bin by its own edges, not its bare center against the live,
+  // tick-by-tick lastPx. The old `idxPrice(bi)>lastPx` compared a fixed point (the bin's
+  // center) to a constantly-jittering price - confirmed live: sweeping lastPx across a real
+  // day's range found a flip in which bin qualifies as Ceiling/Floor roughly every ~$1-2,
+  // i.e. well inside ordinary intraday chop, and at that exact instant the SAME bin swaps
+  // from a Ceiling line to a Floor line (or vanishes if it was the only candidate on its
+  // side) - the "disappears then reappears a second later" symptom. A bin whose own price
+  // RANGE contains lastPx is genuinely ambiguous - neither cleanly above nor below - so it
+  // now belongs to neither side until price fully clears its far edge, turning a knife-edge
+  // flip at one point into stability across the bin's whole width.
+  const binLo=bi=>lo+bi*binSize,binHi=bi=>lo+(bi+1)*binSize;
   const pickPeak=(above)=>{
-    const side=[...bins.entries()].filter(([bi])=>above?idxPrice(bi)>lastPx:idxPrice(bi)<=lastPx);
+    const side=[...bins.entries()].filter(([bi])=>above?binLo(bi)>=lastPx:binHi(bi)<=lastPx);
     if(!side.length)return null;
     const maxV=Math.max(...side.map(([,v])=>v));
     const tied=side.filter(([,v])=>v===maxV).map(([bi])=>bi).sort((a,b)=>a-b);
@@ -7724,6 +7753,16 @@ function parseGexRows(out,sourceNote){
   return true;
 }
 let gexTimer=null,gexBusy=false,gexLastT=0,gexNextT=0,gexSrc='';
+// STREAMING GEX: gexContracts maps each OCC symbol currently on the board (both the ±4% level
+// window and the wider ±20% heatmap window) to its own {strike,isPut,oi,ex,bid,ask,lastVal,
+// inStrikeWindow} — populated wholesale by a successful computeChainGex() bootstrap, then kept
+// current by live quote ticks (handleGexQuoteTick) on the SAME WebSocket already open for the
+// underlying's trades. gexByStrike/gexByExp are the running aggregates parseGexRows/renderGexHeat
+// already consume; ticks update them by DELTA (subtract this contract's last value, add its new
+// one) rather than re-summing the whole board, the same O(1)-per-tick idiom this file already
+// uses for VWAP/Keltner/the ribbon. gexWsSymbols/gexStreamSid let a later bootstrap (the periodic
+// backstop) push an updated subscription onto the SAME already-open connection.
+let gexContracts=new Map(),gexByStrike={},gexByExp={},gexWsSymbols=[],gexStreamSid=null,gexRerenderTimer=null;
 // §6 guardrail thresholds. FLAG: these are CHOSEN values, not derived — tune to taste.
 const GEX_SPOT_OFF_PCT=0.25;              // warn if streamed spot is >0.25% off the fresh quote
 /* ---------- GEX heatmap (strike x expiration grid, GEXstream layout) ---------- */
@@ -7893,6 +7932,64 @@ function yearsToExpiry(expYmd){
   return (closeMs-Date.now())/(365*86400*1000);
 }
 const GEX_IV_FAIL_PCT=0.5;   // FLAG: CHOSEN, not derived — reject the board if over half of attempted IV solves fail to converge
+// Pushes the CURRENT option-symbol set onto the already-open equity WebSocket (same connection,
+// same session — no reconnect). Tradier's stream treats each `symbols` list as the full desired
+// subscription, not an addition to the last one — confirmed live by re-sending an updated list on
+// an open connection and seeing full coverage switch to the new set. No-op if the socket isn't
+// open (e.g. streaming unavailable on a sandbox token) — the 2-minute REST backstop still runs
+// either way, same as before this existed.
+function gexResubscribe(){
+  if(!ws||ws.readyState!==WebSocket.OPEN||!gexStreamSid)return;
+  try{ws.send(JSON.stringify({symbols:[wsWantSym,...gexWsSymbols],sessionid:gexStreamSid,linebreak:true,filter:['trade','quote']}));}catch(e){}
+}
+// One option contract's own live quote tick. Reruns exactly the same exclusion rules as the
+// full-chain bootstrap below (no two-sided market / mid outside no-arbitrage bounds / IV solver
+// doesn't converge) so a contract that stops qualifying contributes 0 rather than a stale value —
+// the delta against its own last contribution then correctly nets it out of the board, the same
+// "subtract old, add new" idiom as VWAP's live tail.
+function handleGexQuoteTick(d){
+  if(gexBusy)return;   // a fresh bootstrap is rebuilding the board right now; let it finish and commit
+  const c=gexContracts.get(d.symbol);if(!c)return;
+  const bid=+d.bid,ask=+d.ask;
+  if(isFinite(bid))c.bid=bid;if(isFinite(ask))c.ask=ask;
+  if(!(lastPx>0))return;
+  const rfrPct=+cfg.gexRfr;if(!isFinite(rfrPct))return;
+  const r=rfrPct/100,spot=lastPx;
+  const T=yearsToExpiry(c.ex);if(!(T>0))return;
+  let val=0;
+  if(c.bid>0&&c.ask>0&&c.bid<=c.ask){
+    const mid=(c.bid+c.ask)/2;
+    const bnd=bsBounds(c.isPut,spot,c.strike,T,r,GEX_DIV_YIELD);
+    if(mid>bnd.lo&&mid<bnd.hi){
+      const sigma=solveIV(c.isPut,spot,c.strike,T,r,GEX_DIV_YIELD,mid);
+      if(sigma!=null){
+        const g=bsGamma(spot,c.strike,T,r,GEX_DIV_YIELD,sigma);
+        if(isFinite(g))val=gexContract(g,c.oi,spot,c.isPut);
+      }
+    }
+  }
+  const delta=val-(c.lastVal||0);
+  if(delta===0)return;
+  if(c.inStrikeWindow)gexByStrike[c.strike]=(gexByStrike[c.strike]||0)+delta;
+  gexByExp[c.ex]=gexByExp[c.ex]||{};gexByExp[c.ex][c.strike]=(gexByExp[c.ex][c.strike]||0)+delta;
+  c.lastVal=val;
+  scheduleGexRerender();
+}
+// The math above is O(1) per tick and negligible even at a full board's tick rate (measured live:
+// dozens of contracts, several ticks/sec each). The re-render below touches the DOM (heatmap grid,
+// level table, chart price lines) and is throttled to at most once/second so a burst of ticks
+// across the whole board repaints once, not once per tick.
+function scheduleGexRerender(){
+  if(gexRerenderTimer)return;
+  gexRerenderTimer=setTimeout(()=>{
+    gexRerenderTimer=null;
+    const rows=Object.keys(gexByStrike).map(k=>({strike:+k,val:gexByStrike[k]}));
+    if(!rows.length)return;
+    gexHeat={exps:gexHeat?gexHeat.exps:[],byExp:gexByExp,spot:lastPx,t:Date.now()};
+    parseGexRows(rows,'live stream');
+    renderGexHeat();
+  },1000);
+}
 async function computeChainGex(){
   if(gexBusy)return;
   if(!inGexWindow()){
@@ -7929,7 +8026,11 @@ async function computeChainGex(){
     // byExp keeps the same gamma broken out PER EXPIRATION, which is what the heatmap grid
     // needs — and it is collected over a wider window so the map can show strikes further
     // out without changing which strikes the level engine considers.
-    const byStrike={},byExp={};let gcount=0,sampled=false;
+    // Built LOCAL and only committed to the module-level gexByStrike/gexByExp/gexContracts once
+    // every guardrail below has passed (see the commit block near the end) — a board that gets
+    // rejected (e.g. the IV-fail-rate or gamma-flat checks) must never overwrite the last GOOD
+    // state that live ticks are still updating in the meantime.
+    const byStrike={},byExp={},contracts=new Map();let gcount=0,sampled=false;
     let exNoMid=0,exOi=0,exArb=0,exNoConverge=0,exGamma=0,ivAttempts=0;
     const HEAT_PCT=0.20;   // the reference UI spans roughly +-19% of spot; levels stay at 4%
     for(const ex of front){
@@ -7964,7 +8065,12 @@ async function computeChainGex(){
         if(!isFinite(g)){exGamma++;return;}
         const gex=gexContract(g,oi,spot,isPut);
         byExp[ex][k]=(byExp[ex][k]||0)+gex;
-        if(dist<=0.04){byStrike[k]=(byStrike[k]||0)+gex;gcount++;}
+        const inStrikeWindow=dist<=0.04;
+        if(inStrikeWindow){byStrike[k]=(byStrike[k]||0)+gex;gcount++;}
+        // Recorded for every contract in the (wider) heatmap window, not just the ±4% level
+        // window, so a live quote tick can update byExp's heatmap contribution too, not only
+        // byStrike's level lines.
+        contracts.set(o.symbol,{strike:k,isPut,oi,ex,bid,ask,lastVal:gex,inStrikeWindow});
       });
     }
     if(exNoMid||exOi||exArb||exNoConverge||exGamma)
@@ -7983,12 +8089,16 @@ async function computeChainGex(){
     // logic would mark a crossing at every strike. Reject it loudly rather than publish it.
     const totalAbs=rows.reduce((s,r)=>s+Math.abs(r.val),0);
     if(!(totalAbs>0))throw new Error('gamma is zero across every strike in range — board rejected');
+    // COMMIT: every guardrail above passed, so this board replaces the live one atomically (no
+    // await between here and gexResubscribe() below — nothing can observe a half-swapped state).
+    gexByStrike=byStrike;gexByExp=byExp;gexContracts=contracts;gexWsSymbols=[...contracts.keys()];
     gexHeat={exps:front.slice(),byExp,spot,t:Date.now()};
     // §2/§4 freshness surfaced to the UI (see gexStatus): spot as-of + what was excluded.
     parseGexRows(rows,'chain · '+front.length+' exp · '+gcount+' contracts · r='+rfrPct.toFixed(2)+'%');
     renderGexHeat();
+    gexResubscribe();   // pushes the fresh symbol set onto the already-open equity WS, if connected
     log('Chain GEX computed — gamma solved locally from live bid/ask (Black-Scholes, r='+rfrPct.toFixed(2)+'%, q=0), '
-      +ivAttempts+' IV solves attempted','warn');
+      +ivAttempts+' IV solves attempted, '+contracts.size+' contracts now streaming live','warn');
   }catch(e){
     log('Chain GEX failed: '+e.message,'short');
     toast('GEX','Chain computation failed — see Log. Paste remains available.','short');
@@ -8003,7 +8113,13 @@ async function computeChainGex(){
 // This used to allow the whole 4:00 AM - 8:00 PM data window, so the board kept refreshing
 // (and kept publishing levels onto the chart) on a chain that had not traded for hours.
 // It is now the regular session and nothing else.
-const GEX_REFRESH_MS=60000;   // fixed one minute; deliberately not configurable
+// This used to be the ONLY refresh path (60s fixed). Bid/ask now streams live (see
+// handleGexQuoteTick), so this is a backstop reconciliation, not the primary freshness path:
+// it re-pulls OI (confirmed live, unchanged over 90s on a real chain — it never moves intraday,
+// so there is nothing lost by polling it less often), picks up newly-listed strikes as spot
+// drifts, and recovers from any dropped WS message. 2 minutes keeps that backstop tight while
+// cutting REST load 2x versus the old 60s cadence. Deliberately not configurable.
+const GEX_REFRESH_MS=120000;
 function inGexWindow(){const t=nowET();const mm=t.h*60+t.m;
   return isTradingDay(t.ymd)&&mm>=570&&mm<sessionCloseMin(t.ymd);}
 let gexWasOpen=null;
@@ -8568,9 +8684,13 @@ async function connect(){
     [1].forEach(idx=>{if(idx<cfg.paneN)startAltPane(idx);});
     if(prevSym&&prevSym!==cfg.sym){
       // A new ticker means the GEX board still describes the OLD symbol until its next
-      // scheduled refresh (up to 60s away) — clear it now so scheduleGexAuto() below fetches
-      // the new symbol's chain immediately instead of waiting out the old cadence.
+      // scheduled refresh — clear it now so scheduleGexAuto() below fetches the new symbol's
+      // chain immediately instead of waiting out the old cadence. Also drop the OLD symbol's
+      // streaming state: startStream() below opens a brand-new WS connection anyway (old one
+      // already closed), so this just prevents gexResubscribe() from ever re-sending a stale
+      // symbol list before the new symbol's first bootstrap completes.
       LS.gex=null;gexLastT=0;gexSrc='';gexHeat=null;gexNextT=0;
+      gexContracts=new Map();gexByStrike={};gexByExp={};gexWsSymbols=[];
       $('#gexSummary').innerHTML='';renderGexHeat();computeLevels();gexStatus();
       log('Ticker changed — GEX board cleared, fetching the new symbol\'s chain now','warn');
     }
