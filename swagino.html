@@ -27,7 +27,21 @@
      dropped — nothing references them since the sitewide switch to SF Mono / JetBrains Mono). -->
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all';this.onload=null">
 <noscript><link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet"></noscript>
+<!-- Euclid Circular B — vendored locally in fonts/ (a licensed desktop family the user supplied
+     directly, not fetched from any font CDN), used ONLY for the chart's own floating data labels
+     (--lab below: swing/pattern/break/level/Saty/confluence/EMA-VWAP tags and axis price badges)
+     per explicit instruction to keep that one part on it while everything else reverts. -->
 <style>
+@font-face{font-family:'Euclid Circular B';src:url('fonts/EuclidCircularB-Light.ttf') format('truetype');font-weight:300;font-style:normal;font-display:swap}
+@font-face{font-family:'Euclid Circular B';src:url('fonts/EuclidCircularB-LightItalic.ttf') format('truetype');font-weight:300;font-style:italic;font-display:swap}
+@font-face{font-family:'Euclid Circular B';src:url('fonts/EuclidCircularB-Regular.ttf') format('truetype');font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:'Euclid Circular B';src:url('fonts/EuclidCircularB-Italic.ttf') format('truetype');font-weight:400;font-style:italic;font-display:swap}
+@font-face{font-family:'Euclid Circular B';src:url('fonts/EuclidCircularB-Medium.ttf') format('truetype');font-weight:500;font-style:normal;font-display:swap}
+@font-face{font-family:'Euclid Circular B';src:url('fonts/EuclidCircularB-MediumItalic.ttf') format('truetype');font-weight:500;font-style:italic;font-display:swap}
+@font-face{font-family:'Euclid Circular B';src:url('fonts/EuclidCircularB-SemiBold.ttf') format('truetype');font-weight:600;font-style:normal;font-display:swap}
+@font-face{font-family:'Euclid Circular B';src:url('fonts/EuclidCircularB-SemiBoldItalic.ttf') format('truetype');font-weight:600;font-style:italic;font-display:swap}
+@font-face{font-family:'Euclid Circular B';src:url('fonts/EuclidCircularB-Bold.ttf') format('truetype');font-weight:700;font-style:normal;font-display:swap}
+@font-face{font-family:'Euclid Circular B';src:url('fonts/EuclidCircularB-BoldItalic.ttf') format('truetype');font-weight:700;font-style:italic;font-display:swap}
 :root{
   --ink:#000000; --panel:#000000; --panel2:#000000; --line:#1a1a1a; --line2:#282828;
   --text:#ffffff; --dim:#ffffff; --faint:#ffffff;
@@ -48,6 +62,9 @@
   --mono:ui-monospace,"SF Mono","SFMono-Regular","JetBrains Mono",Menlo,Consolas,monospace;
   --disp:ui-monospace,"SF Mono","SFMono-Regular","JetBrains Mono",Menlo,Consolas,monospace;
   --heat:ui-monospace,"SF Mono","SFMono-Regular","JetBrains Mono",Menlo,Consolas,monospace;
+  /* The one deliberate exception to the revert above: the chart's own floating data-label
+     overlays (see the classes listed in the @font-face comment) stay on the embedded family. */
+  --lab:'Euclid Circular B',ui-sans-serif,system-ui,sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;background:#000;color:var(--text);font-family:var(--disp);font-weight:300;font-size:14px;
@@ -241,11 +258,11 @@ input[type=checkbox]{accent-color:var(--pivot)}
    says WHEN - it sits on the bar that settled the break. No ring, no fill - just the glyph,
    with a text-shadow halo (not a box-shadow) so it stays legible without a solid backing. */
 .brkmark{position:absolute;pointer-events:auto;transform:translate(-50%,-50%);
-  font-family:var(--mono);font-size:15px;font-weight:700;line-height:22px;
+  font-family:var(--lab);font-size:15px;font-weight:700;line-height:22px;
   width:22px;height:22px;text-align:center;background:none;
   text-shadow:0 1px 1px rgba(0,0,0,.85)}
 .brklab{position:absolute;z-index:7;
-  font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.02em;
+  font-family:var(--lab);font-size:9.5px;font-weight:700;letter-spacing:.02em;
   white-space:nowrap;pointer-events:auto;padding:0 5px;
   background:transparent;text-shadow:0 1px 1px rgba(0,0,0,.85)}
 /* Anchored to the wick tick, not the axis, and horizontally CENTRED on it (translateX(-50%),
@@ -259,8 +276,8 @@ input[type=checkbox]{accent-color:var(--pivot)}
    inside the price axis - and fully transparent. */
 /* the level line, drawn in two pieces so the label sits in a real gap */
 .lvseg{position:absolute;height:0;pointer-events:none;z-index:5;border-top-width:1px}
-.lvltag{position:absolute;transform:translateY(-50%);z-index:6;pointer-events:none;
-  font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.02em;
+.lvltag{position:absolute;transform:translateY(-50%);z-index:6;pointer-events:auto;cursor:pointer;
+  font-family:var(--lab);font-size:9.5px;font-weight:700;letter-spacing:.02em;
   white-space:nowrap;background:transparent;
   text-shadow:0 1px 1px rgba(0,0,0,.85)}
 /* price reading in the price-axis column, drawn as a compact filled badge — the charting library
@@ -268,7 +285,7 @@ input[type=checkbox]{accent-color:var(--pivot)}
    alert lines hide that plate and draw their own number here instead: a rounded box in the
    line's own colour with white text, in place of the plain line-coloured text this used to be. */
 .axpx{position:absolute;right:12px;transform:translateY(-50%);z-index:6;pointer-events:none;
-  font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.01em;white-space:nowrap;
+  font-family:var(--lab);font-size:11px;font-weight:700;letter-spacing:.01em;white-space:nowrap;
   font-variant-numeric:tabular-nums;text-align:right;color:#fff;
   padding:1px 5px;border-radius:3px;
   /* a dark legibility halo, not a colored glow — some level colors (muted greys, light tones)
@@ -299,14 +316,14 @@ input[type=checkbox]{accent-color:var(--pivot)}
    abandoned elsewhere in this file for reading as a strike-through; the plate that replaced it —
    a tight, background-coloured rect that cuts the line cleanly (line - gap - text - gap - line) —
    is reused here instead of inventing a third approach. */
-.swlab{position:absolute;font-family:var(--mono);font-size:9.5px;font-weight:700;
+.swlab{position:absolute;font-family:var(--lab);font-size:9.5px;font-weight:700;
   letter-spacing:.02em;pointer-events:auto;cursor:default;white-space:nowrap;
   transform:translate(-50%,-50%);background:var(--chartcol-bg);padding:0 3px;border-radius:3px}
 /* The pattern name is clickable: one click selects the pattern (name + both trendlines
    highlight together), and a tiny bin appears to remove it from the chart for good. */
 /* Transparent like the swing/break labels elsewhere on the chart (.brkmark/.brklab) — a
    text-shadow halo keeps the name legible over a bright candle instead of a solid plate. */
-.patlab{position:absolute;font-family:var(--mono);font-size:10.5px;font-weight:600;
+.patlab{position:absolute;font-family:var(--lab);font-size:10.5px;font-weight:600;
   padding:1px 6px;border-radius:3px;background:transparent;pointer-events:auto;
   white-space:nowrap;transform:translateY(-50%);cursor:grab;touch-action:none;
   text-shadow:0 1px 1px rgba(0,0,0,.85);
@@ -412,10 +429,10 @@ input[type=checkbox]{accent-color:var(--pivot)}
 .ctlinesec.show{display:block}
 .ctlinerow{display:flex;align-items:center;gap:6px;padding:2px 4px;font-size:11px;color:var(--dim)}
 .ctlinerow select{flex:1;min-width:0;font-size:11px;padding:2px 4px}
-.tip{position:absolute;font-family:var(--mono);font-size:9px;padding:0 5px;
+.tip{position:absolute;font-family:var(--lab);font-size:9px;padding:0 5px;
   background:transparent;text-shadow:0 1px 1px rgba(0,0,0,.85);
   font-weight:700;transform:translateY(-50%);white-space:nowrap}
-.cdown{position:absolute;right:0;z-index:7;font-family:var(--mono);transform:translateY(-50%);display:none;pointer-events:none;text-align:center;min-width:58px;border-radius:2px;overflow:hidden}
+.cdown{position:absolute;right:0;z-index:7;font-family:var(--lab);transform:translateY(-50%);display:none;pointer-events:none;text-align:center;min-width:58px;border-radius:2px;overflow:hidden}
 .cdown .v{font-size:10px;font-weight:700;padding:1px 6px;color:#050505;text-align:center}
 .cdown .t{font-size:9px;padding:0 6px 1px;color:#050505;font-weight:600;text-align:center}
 .phandle{height:5px;cursor:ns-resize;background:var(--panel);border-top:0.5px solid var(--panesep);border-bottom:0.5px solid var(--panesep);touch-action:none}
@@ -564,12 +581,12 @@ input:disabled,select:disabled{opacity:.45;cursor:not-allowed}
    halo in the text-shadow is what keeps it legible over a bright candle (see the static
    text-shadow declaration and the perf comment just below .conflab). */
 .satylab{position:absolute;transform:translateY(-50%);z-index:6;
-  font-family:var(--mono);font-size:9.5px;font-weight:600;letter-spacing:.02em;
+  font-family:var(--lab);font-size:9.5px;font-weight:600;letter-spacing:.02em;
   white-space:nowrap;pointer-events:none;padding:0 5px;
   background:transparent;text-shadow:0 1px 1px rgba(0,0,0,.85)}
 .conflab{position:absolute;transform:translateY(-50%);z-index:7;
-  font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.02em;
-  white-space:nowrap;pointer-events:none;color:#f0d98a;
+  font-family:var(--lab);font-size:10px;font-weight:700;letter-spacing:.02em;
+  white-space:nowrap;pointer-events:auto;cursor:pointer;color:#f0d98a;
   background:transparent;padding:0 5px;
   text-shadow:0 1px 1px rgba(0,0,0,.85);
   animation:confTextBreathe 4s ease-in-out infinite}
@@ -4963,12 +4980,17 @@ function positionLvlTags(p){
       d.className='lvltag';d.style.color=t.tc||'var(--axistext)';d.style.fontSize=(t.size||10)+'px';d.style.top=y+'px';
       d.style.right=(axisW+22)+'px';d.dataset.y=y;
       d.textContent=t.name;d.__line=L;
+      // Click to open the same color/width/style/text-size picker the Levels table's own swatch
+      // opens — t.key is whichever level is actually governing this (possibly combined) line's
+      // look, from drawLevelsOn's own grouping.
+      if(t.key){d.dataset.key=t.key;d.onclick=e=>{e.stopPropagation();openLevelStyler(d,t.key);};}
       host.appendChild(d);
     }else if(t.conf){
       // a confluent level's name is the glowing .conflab (drawn earlier by positionConfLabels); hang
       // the line params on it so drawLevelSegments breaks the line for it at its final position
       const cf=host.querySelector('.conflab[data-key="'+(+t.price).toFixed(2)+'"]');
-      if(cf)cf.__line=L;
+      if(cf){cf.__line=L;
+        if(t.key){cf.dataset.stylekey=t.key;cf.onclick=e=>{e.stopPropagation();openLevelStyler(cf,t.key);};}}
     }
     // The visible line is drawn in drawLevelSegments — AFTER deoverlapLabels has placed the labels —
     // so its break follows each label to its final position (no orphan gap, no strike-through).
@@ -5565,6 +5587,10 @@ function positionTips(p){
   positionRbTags(p);
   positionVwapTags(p);
   positionLvlTags(p);
+  // Keeps GEX's own lines/labels pinned to their true price across pans/zooms/resizes, the same
+  // job positionLvlTags just did above for every other level family — GEX needs its own call here
+  // because it's excluded from that shared function's pass (see drawLevelsOn's own comment on why).
+  renderGexLevels(LS.gex?LS.gex.levels:[]);
   positionAxisChrome(p);
   deoverlapLabels($('#tips'+p.idx));
   drawLevelSegments(p);
@@ -6466,14 +6492,16 @@ function drawLevelsOn(p){
     const k=l.price.toFixed(2);
     const s0=lvlSty[l.key],custom=!!(s0&&(s0.style||s0.width||s0.color||s0.tc));  // user-styled?
     let g=groups.get(k);
-    if(!g){g={price:l.price,names:[],conf:[],st,w:l.w||1,axisOn:false,custom};groups.set(k,g);}
+    if(!g){g={price:l.price,names:[],conf:[],st,w:l.w||1,axisOn:false,custom,key:l.key};groups.set(k,g);}
     else{
       // the heaviest level in the cluster owns the line's colour, width and style — a session
       // extreme should not be drawn in a round-number's grey because it was added to the ladder
       // second. BUT a level the user has explicitly styled always wins over a heavier DEFAULT one,
       // so a custom HOD/LOD keeps its thickness/line style when a plain level lands on the same
       // price on a dynamic update instead of reverting to that level's default dashed line.
-      if((custom&&!g.custom)||(custom===g.custom&&(l.w||1)>g.w)){g.st=st;g.custom=custom;}
+      // g.key rides along with g.st: clicking a combined "PM Low, Prev Low" tag edits whichever
+      // level is actually governing that line's current look, not an arbitrary group member.
+      if((custom&&!g.custom)||(custom===g.custom&&(l.w||1)>g.w)){g.st=st;g.custom=custom;g.key=l.key;}
       if((l.w||1)>g.w)g.w=l.w||1;
     }
     if(name&&g.names.indexOf(name)<0)g.names.push(name);
@@ -6485,7 +6513,7 @@ function drawLevelsOn(p){
   groups.forEach(g=>{
     const nm=g.names.join(', ');
     p.lvlTags.push({price:g.price,color:g.st.color,tc:g.st.tc||g.st.color,axisOn:g.axisOn,name:nm,conf:g.conf.join(', '),
-                    w:g.st.width||1,style:g.st.style||'solid',size:g.st.size||10});
+                    w:g.st.width||1,style:g.st.style||'solid',size:g.st.size||10,key:g.key});
     p.priceLines.push(p.candles.createPriceLine({
       price:g.price,color:'rgba(0,0,0,0)',lineWidth:g.st.width,
       lineStyle:lwcStyle(g.st.style),
@@ -7662,20 +7690,26 @@ function renderLevelTable(){
   });
   $$('#lvlTable .lvsw').forEach(swEl=>{
     const k=swEl.dataset.key;
-    swEl.onclick=e=>{e.stopPropagation();
-      const l=levels.find(x=>x.key===k);if(!l)return;
-      const st=lvlStyleOf(l);
-      openStyler(swEl,{color:st.color,tc:st.tc,width:st.width,style:st.style,textSize:st.size},true,s=>{
-        lvlSty[k]=Object.assign(lvlSty[k]||{},{color:s.color,tc:s.tc,width:s.width,style:s.style,size:s.textSize});
-        LS.lvlSty=lvlSty;
-        // Re-find the swatch by key rather than reusing the closured swEl: computeLevels()
-        // (on its own ~10s poll, unrelated to this drag) calls renderLevelTable() and rebuilds
-        // this whole table, which silently detaches swEl from the document — a drag spanning
-        // that poll kept "updating" a node nobody could see, reading as the swatch never
-        // changing color at all.
-        const liveEl=[...document.querySelectorAll('#lvlTable .lvsw')].find(x=>x.dataset.key===k);
-        if(liveEl)liveEl.style.background=s.color;
-        drawLevels();});};
+    swEl.onclick=e=>{e.stopPropagation();openLevelStyler(swEl,k);};
+  });
+}
+// Shared by the sidebar swatch above AND every on-chart level tag's own click handler
+// (positionLvlTags/renderGexLevels) — one styler flow, one save path, regardless of which UI
+// element the user actually clicked to get here.
+function openLevelStyler(anchorEl,key){
+  const l=levels.find(x=>x.key===key);if(!l)return;
+  const st=lvlStyleOf(l);
+  openStyler(anchorEl,{color:st.color,tc:st.tc,width:st.width,style:st.style,textSize:st.size},true,s=>{
+    lvlSty[key]=Object.assign(lvlSty[key]||{},{color:s.color,tc:s.tc,width:s.width,style:s.style,size:s.textSize});
+    LS.lvlSty=lvlSty;
+    // Re-find the swatch by key rather than trusting a closured reference: computeLevels()
+    // (its own ~10s poll, unrelated to this edit) calls renderLevelTable() and rebuilds the whole
+    // table, which silently detaches any earlier swatch node from the document — a drag spanning
+    // that poll kept "updating" a node nobody could see, reading as the swatch never changing
+    // color at all.
+    const liveSw=document.querySelector('#lvlTable .lvsw[data-key="'+key+'"]');
+    if(liveSw)liveSw.style.background=s.color;
+    drawLevels();
   });
 }
 
@@ -7817,8 +7851,23 @@ function renderGexLevels(lv){
       const priceKey=(+x.price).toFixed(2);
       let tagEl=host.querySelector('.lvltag[data-gexkey="'+x.key+'"]');
       if(tagEl&&tagEl.dataset.price===priceKey){
-        tagEl.textContent=x.label;tagEl.style.color=st.tc;   // same price: patch text/style, nothing moves
-        gexRedrawSeg(host,x.key,tagEl,plotW,st);   // the label's own width can change with new text - regap
+        // Same PRICE, but not necessarily the same PIXEL row: priceToCoordinate depends on the
+        // current viewport too, so a pan/zoom between two calls here moves every OTHER level's
+        // pixel position (via positionTips->positionLvlTags, which always recomputes it) while
+        // this branch used to leave GEX's own top untouched, silently drifting off its true price
+        // line — recomputed and applied on every call now, same as every other level family
+        // already does, so this can never go stale. Cheap: a style write, not a DOM rebuild, so
+        // it still can't reintroduce the flicker (that came from removing/recreating nodes).
+        let y=null;try{y=pxRound(p.candles.priceToCoordinate(+x.price));}catch(e){}
+        if(y==null||y<5||y>h-3){
+          tagEl.style.display='none';
+          host.querySelectorAll('.lvseg[data-gexkey="'+x.key+'"],.axpx-lvl[data-gexkey="'+x.key+'"]').forEach(e=>e.style.display='none');
+          return;
+        }
+        tagEl.style.display='';tagEl.style.color=st.tc;tagEl.style.top=y+'px';tagEl.dataset.y=y;
+        tagEl.textContent=x.label;
+        host.querySelectorAll('.axpx-lvl[data-gexkey="'+x.key+'"]').forEach(e=>{e.style.display='';e.style.top=y+'px';});
+        gexRedrawSeg(host,x.key,tagEl,plotW,st);   // segments follow the same y; also regap for the (possibly resized) label
         return;
       }
       if(tagEl)tagEl.remove();
@@ -7834,6 +7883,10 @@ function renderGexLevels(lv){
       tagEl.style.color=st.tc;tagEl.style.fontSize=(st.size||10)+'px';tagEl.style.top=y+'px';
       tagEl.style.right=(axisW+22)+'px';tagEl.dataset.y=y;
       tagEl.textContent=x.label;
+      // Same click-to-style flow as every other level tag — set once here, not on the "patch
+      // text only" branch above, since this element persists across magnitude-only updates
+      // without ever being recreated (that persistence is the whole point of that branch).
+      tagEl.onclick=e=>{e.stopPropagation();openLevelStyler(tagEl,x.key);};
       host.appendChild(tagEl);
       gexRedrawSeg(host,x.key,tagEl,plotW,st);
     });

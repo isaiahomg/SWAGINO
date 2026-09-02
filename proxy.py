@@ -88,6 +88,8 @@ STATIC_TYPES = {
     ".ico": "image/x-icon",
     ".woff": "font/woff",
     ".woff2": "font/woff2",
+    ".ttf": "font/ttf",
+    ".otf": "font/otf",
     ".map": "application/json",
     ".mp4": "video/mp4",
     ".webm": "video/webm",
