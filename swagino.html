@@ -5312,7 +5312,7 @@ function positionStruct(p){
         const nme=p.pattern?p.pattern.name:'pattern';
         patSelected=null;p.pattern=null;p.patKey=null;
         log(`${nme} removed from the ${p.tf==='D'?'1D':p.tf==='W'?'1W':p.tf+'m'} chart — it will not be drawn again unless a different pattern forms`,'warn');
-        renderPane(p);
+        scheduleRenderAll();
       };
       t.appendChild(del);
       // click to select (trendlines highlight with it); drag to move — a real drag (past a
@@ -5342,7 +5342,7 @@ function positionStruct(p){
       });
       t.onclick=()=>{
         if(dragged){dragged=false;return;}
-        patSelected=(patSelected===p.patKey)?null:p.patKey;renderPane(p);
+        patSelected=(patSelected===p.patKey)?null:p.patKey;scheduleRenderAll();
       };
       host.appendChild(t);
     }
@@ -9689,11 +9689,22 @@ function syncIndTogs(){
 $$('.eye').forEach(b=>b.onclick=()=>{
   const i=+b.dataset.pane,k=b.dataset.ind;
   cfg[k+i]=!cfg[k+i];saveCfg();syncIndTogs();
-  if(panes[i])renderPane(panes[i]);
-  if(cfg[k+i]&&panes[i]){
-    const p=panes[i];
-    if(k==='struct'&&p.sw)log(`Structure on (pane ${i+1}, ${p.tf==='D'?'1D':p.tf==='W'?'1W':p.tf+'m'}) \u2014 ${p.sw.length} swings, trend ${p.trend||'n/a'}${p.pattern?', pattern: '+p.pattern.name+' ('+p.pattern.bias+')':''}${p.brks&&p.brks.length?', last '+(()=>{const b=p.brks[p.brks.length-1];return b.kind+' '+b.dir+' @ '+b.price.toFixed(2)+' ('+b.state+')';})():''}`,'warn');
-  }
+  // Deferred (like scheduleRenderAll \u2014 see its own comment on why): this is the per-indicator
+  // on/off toggle used from the sidebar/on-chart legend, almost certainly the single most-clicked
+  // toggle in the app, and renderPane() alone costs 100ms+ at real history depth \u2014 the same
+  // synchronous-freeze bug scheduleRenderAll fixed for the settings modals, just reached through
+  // a direct renderPane() call instead of renderAll(). The dependent log() below reads the pane's
+  // JUST-rendered structure output (p.sw/p.trend/p.pattern/p.brks), so it has to move inside the
+  // same deferred callback, after renderPane() actually runs \u2014 logging beforehand would report
+  // stale, pre-toggle data.
+  requestAnimationFrame(()=>{
+    if(!panes[i])return;
+    renderPane(panes[i]);
+    if(cfg[k+i]){
+      const p=panes[i];
+      if(k==='struct'&&p.sw)log(`Structure on (pane ${i+1}, ${p.tf==='D'?'1D':p.tf==='W'?'1W':p.tf+'m'}) \u2014 ${p.sw.length} swings, trend ${p.trend||'n/a'}${p.pattern?', pattern: '+p.pattern.name+' ('+p.pattern.bias+')':''}${p.brks&&p.brks.length?', last '+(()=>{const b=p.brks[p.brks.length-1];return b.kind+' '+b.dir+' @ '+b.price.toFixed(2)+' ('+b.state+')';})():''}`,'warn');
+    }
+  });
 });
 // Collapse arrow under the on-chart indicator list (.chartcorner). Toggling it hides/shows
 // .indlist in normal flow, so .satyinfo (appended into the same .chartcorner below it) slides
