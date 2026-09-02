@@ -4734,10 +4734,36 @@ function renderPane(p){
      badge scored each bar against the PREVIOUS render's structure and dropped the group
      entirely on the first paint. It is also computed unconditionally: gating it on the
      Structure eye made the chart and the trigger feed score the same bar differently
-     depending on whether an indicator happened to be visible. Costs about a millisecond. */
-  p.sw=null;
-  try{p.sw=findSwings(data,Math.max(2,PP.swing),causalMinMove(data,PP.minSwingATR),
-    structVolFloor(data,PP.volFloor));}catch(e){p.sw=[];}
+     depending on whether an indicator happened to be visible.
+     MEASURED (not the stale "about a millisecond" this comment used to claim): at 8000
+     5m bars, the findSwings+causalMinMove+structVolFloor chain alone costs ~53ms — a
+     third of a full renderPane() — and unlike a one-off cost this runs on EVERY render,
+     including toggles that have nothing to do with structure (a color swatch, RSI, VWAP).
+     Cached below rather than skipped, because the three functions are proven PURE —
+     verified by reading every line of all three (no reference to cfg or any other global,
+     only their own explicit parameters) and every consumer of their output (the badge
+     below, detectDivergences, trendFrom, breakEvents/breakOutcome/lastBreaks, detectPattern
+     and its diamondPattern/fitSlope/poleFor helpers) — none of them ever mutate a swing
+     object, only ever read .i/.type/.price/.label off it. `data` itself is never mutated
+     in place anywhere in renderPane's pipeline either — verified the same way, and
+     empirically: a live renderPane() call left `data` byte-identical before and after.
+     seriesForTF's own memo already invalidates on any REAL change, including the forming
+     bar's live OHLC (not just its timestamp) — confirmed live by mutating the tail bar
+     mid-session and watching the returned reference change. So when this render's `data`
+     is the exact same reference seriesForTF returned last time, and the three structure
+     settings below are unchanged, the output is GUARANTEED identical (same pure inputs)
+     — recomputing it is pure waste, not a correctness margin, and this cache can never
+     return a value findSwings itself would not have produced for these exact inputs. */
+  const swStrength=Math.max(2,PP.swing);
+  const swc=p._swCache;
+  if(swc&&swc.data===data&&swc.strength===swStrength&&swc.minSwingATR===PP.minSwingATR&&swc.volFloor===PP.volFloor){
+    p.sw=swc.result;
+  }else{
+    p.sw=null;
+    try{p.sw=findSwings(data,swStrength,causalMinMove(data,PP.minSwingATR),
+      structVolFloor(data,PP.volFloor));}catch(e){p.sw=[];}
+    p._swCache={data,strength:swStrength,minSwingATR:PP.minSwingATR,volFloor:PP.volFloor,result:p.sw};
+  }
   // The tail bar's time as of THIS render, so paneTick can tell (cheaply, without re-deriving
   // the series) when a genuinely new bucket has started since structure was last resolved -
   // see the trigger next to it in paneTick for why comparing against wall-clock time cannot
