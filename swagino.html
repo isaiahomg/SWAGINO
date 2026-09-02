@@ -1037,8 +1037,11 @@ select option{background:var(--panel2);color:var(--text)}
 .card{
   background:linear-gradient(165deg,rgba(255,255,255,.14),rgba(255,255,255,.03) 45%,rgba(20,21,26,.4)),
     rgba(30,32,38,.62);
-  -webkit-backdrop-filter:blur(38px) saturate(180%);
-  backdrop-filter:blur(38px) saturate(180%);
+  /* blur cost scales roughly with radius^2 — 22px keeps the frosted look while cutting the
+     worst-case compositor cost of this filter (sampled continuously off a live-streaming chart)
+     by more than half versus the original 38px. */
+  -webkit-backdrop-filter:blur(22px) saturate(180%);
+  backdrop-filter:blur(22px) saturate(180%);
   border:1px solid rgba(255,255,255,.16);
   border-radius:26px;
   box-shadow:0 24px 70px rgba(0,0,0,.55),0 2px 10px rgba(0,0,0,.35),
@@ -1739,6 +1742,10 @@ table.lv td{padding:6px 10px}
     <label class="pf">B<input id="pB" type="number" min="0" max="255"></label>
     <label class="pf">A<input id="pA" type="number" min="0" max="100"></label>
   </div>
+  <div id="pTextSec" style="display:none">
+    <div class="psec">Text size</div>
+    <select id="pTSize"></select>
+  </div>
   <div class="psec">Swatches</div>
   <div class="pgrid" id="pgrid"></div>
   <div id="pLineSec">
@@ -1755,10 +1762,6 @@ table.lv td{padding:6px 10px}
       <button data-s="dashed"><span class="lg" style="border-top-width:2px;border-top-style:dashed"></span></button>
       <button data-s="dotted"><span class="lg" style="border-top-width:2px;border-top-style:dotted"></span></button>
     </div>
-  </div>
-  <div id="pTextSec" style="display:none">
-    <div class="psec">Text size</div>
-    <select id="pTSize"></select>
   </div>
 </div>
 
@@ -5428,10 +5431,24 @@ function positionConfLabels(p){
     d.style.right=(axisW+8)+'px';
   });
 }
+// The six settings surfaces (SWAGINO Settings, RSI, Volume, Market Structure, Saty ATR, Saty
+// Pivot Ribbon) all share the .card "Liquid Glass" material, which blurs whatever is behind it —
+// the live chart. While one is open the chart is fully covered, so trackOverlays' 60fps probe
+// below is pure waste: it still calls into the charting library and reads layout every frame for
+// content nobody can see, right underneath a filter whose whole job is to keep re-sampling that
+// same invalidated region. Skipping it here removes the work at the source; the 1s status
+// interval (paintMarketPhase et al.) is left running so nothing goes stale, and it self-heals the
+// moment the modal closes.
+function anyModalOpen(){
+  return['setup','rsiModal','volModal','stModal','satyModal','rbModal'].some(id=>{
+    const el=document.getElementById(id);return el&&el.style.display==='flex';
+  });
+}
 function trackOverlays(p){
   let sig='';
   const tick=()=>{
     if(!p.chart){return;}
+    if(anyModalOpen()){requestAnimationFrame(tick);return;}
     let s='';
     try{
       const r=p.chart.timeScale().getVisibleLogicalRange();
@@ -8159,7 +8176,6 @@ async function computeChainGex(){
     log('GEX compute skipped — outside the regular session','warn');
     return;
   }
-  if(!(lastPx>0)){toast('GEX','Need a live price first — connect and wait for a quote','short');return;}
   const rfrPct=+cfg.gexRfr;
   if(!isFinite(rfrPct)){toast('GEX','Risk-free rate not set — enter one in Settings → GEX before computing','short');return;}
   const r=rfrPct/100;
@@ -8171,12 +8187,21 @@ async function computeChainGex(){
     // NOT the same snapshot as each contract's bid/ask (a few seconds/quotes apart by construction)
     // — that residual mismatch cannot be closed from this API, but it is far tighter than the old
     // ORATS-greeks gap this replaced (tens of minutes).
+    //
+    // This fresh quote is also what makes an immediate ticker-switch fetch possible: connect()
+    // resets lastPx to null right when a new symbol is chosen (see its own comment on why) and
+    // does not await loadQuote() before kicking off this function, so lastPx is almost always
+    // still null the moment a new symbol's board is requested. Gating on lastPx>0 up front used
+    // to bail out right here with "need a live price first", silently doing nothing until the
+    // next scheduled 2-minute tick — the exact "have to wait for the refresh" symptom. The quote
+    // pulled below is a perfectly good spot on its own, so the gate now checks THAT instead.
     let spot=lastPx, spotAsOf=null, spotOff=null;
     try{
       const qj=await tradier(`/v1/markets/quotes?symbols=${cfg.sym}`);
       const qq=qj.quotes&&qj.quotes.quote,Q=Array.isArray(qq)?qq[0]:qq,qlast=Q&&+Q.last;
       if(isFinite(qlast)&&qlast>0){ if(isFinite(lastPx)&&lastPx>0)spotOff=Math.abs(lastPx-qlast)/qlast*100; spot=qlast; spotAsOf=Q.trade_date||null; }
     }catch(e){log('GEX spot quote failed, using streamed price: '+e.message,'warn');}
+    if(!(spot>0)){toast('GEX','Need a live price first — connect and wait for a quote','short');return;}
     if(spotOff!=null&&spotOff>GEX_SPOT_OFF_PCT)
       log('GEX WARNING — streamed price $'+(+lastPx).toFixed(2)+' is '+spotOff.toFixed(2)+'% off the fresh quote $'+spot.toFixed(2)+' (>'+GEX_SPOT_OFF_PCT+'%); the stream may be stale','short');
     const je=await tradier(`/v1/markets/options/expirations?symbol=${cfg.sym}&includeAllRoots=true&strikes=false`);
