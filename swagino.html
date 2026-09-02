@@ -4831,9 +4831,6 @@ function renderPane(p){
   // (lineVisible/lastValueVisible); the series must stay visible or the bands, background fill
   // and gradient fills attached to this same pane all vanish with it, despite having their own
   // independent on/off toggles.
-  p.rsi.applyOptions({visible:true,lineVisible:cfg.ind.rsi.on,lastValueVisible:cfg.ind.rsi.on,
-    color:cfg.ind.rsi.c,lineWidth:cfg.ind.rsi.w,lineStyle:lwcStyle(cfg.ind.rsi.st)});
-  p.rsi.setData(padSeries(data,rsi));
   // Smoothing MA + optional Bollinger Bands (TV's "Smoothing" group)
   // The Bollinger-band variant is a user choice, not a per-timeframe one, so it survives
   // auto-tune: the preset supplies the MA length/type, the gear still decides whether the
@@ -4843,10 +4840,8 @@ function renderPane(p){
   const maOn=smType!=='none';
   const maKind=isBB?'sma':smType;
   const smLen=Math.max(1,PP.rsiSmLen);
-  p.rsiMa.applyOptions({visible:maOn,color:cfg.rsi.maC,lineWidth:cfg.rsi.maW,lineStyle:lwcStyle(cfg.rsi.maSt)});
   let ma=null;
-  if(maOn){ma=maCalc(rsi,smLen,maKind,p.vals.vol);p.rsiMa.setData(padSeries(data,ma));}
-  else p.rsiMa.setData([]);
+  if(maOn)ma=maCalc(rsi,smLen,maKind,p.vals.vol);
   // CONFIRMED tail for the smoothing MA's own live-tick step (paneTick, next to rsiTail): the
   // last two raw-RSI windows, pair-seeded exactly like rsiTail/rbTail, plus the last two confirmed
   // MA values. ema/rma step from prevMa in O(1); sma/wma/vwma have no running state to step from,
@@ -4859,39 +4854,6 @@ function renderPane(p){
       prevMa:[n>=2?ma[n-2]:null,n>=1?ma[n-1]:null],
       win:[winAt(n-2),winAt(n-1)],volWin:[volAt(n-2),volAt(n-1)]};
   }else p.rsiMaTail=null;
-  p.rsiBBu.applyOptions({visible:isBB,color:cfg.rsi.bbC});
-  p.rsiBBl.applyOptions({visible:isBB,color:cfg.rsi.bbC});
-  if(isBB&&ma){
-    const sd=taStdev(rsi,smLen),mult=+cfg.rsi.bbMult||2;
-    p.rsiBBu.setData(padSeries(data,ma.map((v,i)=>v==null||sd[i]==null?null:v+sd[i]*mult)));
-    p.rsiBBl.setData(padSeries(data,ma.map((v,i)=>v==null||sd[i]==null?null:v-sd[i]*mult)));
-  }else{p.rsiBBu.setData([]);p.rsiBBl.setData([]);}
-  p.rsiFill.applyOptions({visible:!!cfg.rsi.fill,baseValue:{type:'price',price:+cfg.rsi.lo}});
-  p.rsiFill.setData(cfg.rsi.fill?data.map(d=>({time:d.time,value:+cfg.rsi.up})):[]);
-  // overbought / oversold gradient fills, clipped to the band edges
-  const gradOn=cfg.rsi.grad!==false&&cfg.ind.rsi.on;
-  p.rsiOB.applyOptions({visible:gradOn,baseValue:{type:'price',price:+cfg.rsi.up},
-    topFillColor1:cfg.rsi.obC,topFillColor2:fadeOut(cfg.rsi.obC)});
-  p.rsiOS.applyOptions({visible:gradOn,baseValue:{type:'price',price:+cfg.rsi.lo},
-    bottomFillColor1:fadeOut(cfg.rsi.osC),bottomFillColor2:cfg.rsi.osC});
-  // Ramp the fill's first few bars in from the band edge instead of feeding the raw RSI value
-  // straight in: a Baseline series' gradient varies with PRICE distance from baseValue, not time,
-  // so the instant RSI's Wilder warm-up ends on a bar already deep in OB/OS territory (common —
-  // the first RMA value is just the lookback's raw average), the fill has no prior bar to ramp
-  // from and appears as a solid block out of nowhere. Fading the fed value toward the band edge
-  // over a few bars only touches this decorative shading, never the RSI line or its MA.
-  const rampFill=(edge)=>{
-    const out=rsi.slice(),first=out.findIndex(v=>v!=null);
-    if(first<0)return out;
-    const RAMP=3;
-    for(let k=0;k<RAMP&&first+k<out.length;k++){
-      const v=out[first+k];if(v==null)continue;
-      out[first+k]=edge+(v-edge)*((k+1)/RAMP);
-    }
-    return out;
-  };
-  p.rsiOB.setData(gradOn?padSeries(data,rampFill(+cfg.rsi.up)):[]);
-  p.rsiOS.setData(gradOn?padSeries(data,rampFill(+cfg.rsi.lo)):[]);
   {
     const n=data.length-1;
     if(n>=0){
@@ -4916,31 +4878,88 @@ function renderPane(p){
     }
   }
   const stOn=cfg['struct'+p.idx];
-  const divOn=!!(cfg.rsi.div&&cfg.ind.rsi.on);
-  // Divergence — off by default. When on it draws the pivot-to-pivot line plus a label at
-  // the swing, and still writes to the Log.
-  const divs=divOn?detectDivergences(data,rsi,p.sw,Math.max(2,PP.swing),
-    {minBars:PP.divMin,maxBars:PP.divMax}):[];
-  if(!p.rsiDivLines)p.rsiDivLines=[];
-  p.rsiDivLines.forEach(sr=>{try{p.rchart.removeSeries(sr);}catch(e){}});p.rsiDivLines=[];
-  if(divOn){
-    const BULL='#26a69a',BEAR='#ef5350';
-    // hidden divergence is a continuation read, not a reversal read, so it is drawn dashed
-    // instead of sharing a solid line with the regular kind
-    divs.slice(-20).forEach(d=>{
-      const sr=p.rchart.addLineSeries({color:d.side==='bull'?BULL:BEAR,lineWidth:2,
-        lineStyle:d.kind==='hidden'?LightweightCharts.LineStyle.Dashed:LightweightCharts.LineStyle.Solid,
-        priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false,
-        autoscaleInfoProvider:()=>({priceRange:{minValue:0,maxValue:100}})});
-      sr.setData([{time:data[d.from].time,value:+d.fromVal.toFixed(2)},
-                  {time:data[d.pivot].time,value:+d.val.toFixed(2)}]);
-      p.rsiDivLines.push(sr);
-    });
-    try{p.rsi.setMarkers(divs.slice(-20).map(d=>({
-      time:data[d.pivot].time,position:d.side==='bull'?'belowBar':'aboveBar',
-      color:d.side==='bull'?BULL:BEAR,shape:'circle',
-      text:(d.kind==='hidden'?'H.':'')+(d.side==='bull'?'Bull':'Bear')})));}catch(e){}
-  }else{try{p.rsi.setMarkers([]);}catch(e){}}
+  // MEASURED: this block's own math (RSI/MA/stdev/divergence detection) is cheap — the real
+  // cost (~35-45ms, dominated by the divergence-line churn alone at ~26ms for removing and
+  // re-adding up to 20 native series) is entirely chart-library work, paid on every render
+  // regardless of what changed. Skippable the same way as renderRibbon/renderKc. The key needs
+  // p.sw's own reference (not a reconstruction of PP.swing) because detectDivergences reads
+  // p.sw directly, and p.sw can change (via its own cache invalidating on minSwingATR/volFloor)
+  // even when PP.swing itself hasn't — piggybacking on p.sw's identity is exactly as safe as
+  // findSwings' own cache and avoids re-deriving which fields matter. The rest of the key is
+  // every cfg field this block reads (PP's RSI-relevant fields plus the whole of cfg.rsi and
+  // cfg.ind.rsi, JSON-compared rather than hand-picked, same reasoning as renderRibbon's key).
+  // No cross-cutting side effect exists here the way renderRibbon's Candle Bias touches the
+  // candle series — verified: nothing in this block references p._lastBars/p.candles/p.vol.
+  const rBlockKey=JSON.stringify({rsiLen:PP.rsiLen,rsiSmType:PP.rsiSmType,rsiSmLen:PP.rsiSmLen,
+    divMin:PP.divMin,divMax:PP.divMax,R:cfg.rsi,ind:cfg.ind.rsi});
+  const rbc=p._rsiRenderCache;
+  if(!(rbc&&rbc.data===data&&rbc.sw===p.sw&&rbc.key===rBlockKey)){
+    p.rsi.applyOptions({visible:true,lineVisible:cfg.ind.rsi.on,lastValueVisible:cfg.ind.rsi.on,
+      color:cfg.ind.rsi.c,lineWidth:cfg.ind.rsi.w,lineStyle:lwcStyle(cfg.ind.rsi.st)});
+    p.rsi.setData(padSeries(data,rsi));
+    p.rsiMa.applyOptions({visible:maOn,color:cfg.rsi.maC,lineWidth:cfg.rsi.maW,lineStyle:lwcStyle(cfg.rsi.maSt)});
+    if(maOn)p.rsiMa.setData(padSeries(data,ma));
+    else p.rsiMa.setData([]);
+    p.rsiBBu.applyOptions({visible:isBB,color:cfg.rsi.bbC});
+    p.rsiBBl.applyOptions({visible:isBB,color:cfg.rsi.bbC});
+    if(isBB&&ma){
+      const sd=taStdev(rsi,smLen),mult=+cfg.rsi.bbMult||2;
+      p.rsiBBu.setData(padSeries(data,ma.map((v,i)=>v==null||sd[i]==null?null:v+sd[i]*mult)));
+      p.rsiBBl.setData(padSeries(data,ma.map((v,i)=>v==null||sd[i]==null?null:v-sd[i]*mult)));
+    }else{p.rsiBBu.setData([]);p.rsiBBl.setData([]);}
+    p.rsiFill.applyOptions({visible:!!cfg.rsi.fill,baseValue:{type:'price',price:+cfg.rsi.lo}});
+    p.rsiFill.setData(cfg.rsi.fill?data.map(d=>({time:d.time,value:+cfg.rsi.up})):[]);
+    // overbought / oversold gradient fills, clipped to the band edges
+    const gradOn=cfg.rsi.grad!==false&&cfg.ind.rsi.on;
+    p.rsiOB.applyOptions({visible:gradOn,baseValue:{type:'price',price:+cfg.rsi.up},
+      topFillColor1:cfg.rsi.obC,topFillColor2:fadeOut(cfg.rsi.obC)});
+    p.rsiOS.applyOptions({visible:gradOn,baseValue:{type:'price',price:+cfg.rsi.lo},
+      bottomFillColor1:fadeOut(cfg.rsi.osC),bottomFillColor2:cfg.rsi.osC});
+    // Ramp the fill's first few bars in from the band edge instead of feeding the raw RSI value
+    // straight in: a Baseline series' gradient varies with PRICE distance from baseValue, not time,
+    // so the instant RSI's Wilder warm-up ends on a bar already deep in OB/OS territory (common —
+    // the first RMA value is just the lookback's raw average), the fill has no prior bar to ramp
+    // from and appears as a solid block out of nowhere. Fading the fed value toward the band edge
+    // over a few bars only touches this decorative shading, never the RSI line or its MA.
+    const rampFill=(edge)=>{
+      const out=rsi.slice(),first=out.findIndex(v=>v!=null);
+      if(first<0)return out;
+      const RAMP=3;
+      for(let k=0;k<RAMP&&first+k<out.length;k++){
+        const v=out[first+k];if(v==null)continue;
+        out[first+k]=edge+(v-edge)*((k+1)/RAMP);
+      }
+      return out;
+    };
+    p.rsiOB.setData(gradOn?padSeries(data,rampFill(+cfg.rsi.up)):[]);
+    p.rsiOS.setData(gradOn?padSeries(data,rampFill(+cfg.rsi.lo)):[]);
+    const divOn=!!(cfg.rsi.div&&cfg.ind.rsi.on);
+    // Divergence — off by default. When on it draws the pivot-to-pivot line plus a label at
+    // the swing, and still writes to the Log.
+    const divs=divOn?detectDivergences(data,rsi,p.sw,Math.max(2,PP.swing),
+      {minBars:PP.divMin,maxBars:PP.divMax}):[];
+    if(!p.rsiDivLines)p.rsiDivLines=[];
+    p.rsiDivLines.forEach(sr=>{try{p.rchart.removeSeries(sr);}catch(e){}});p.rsiDivLines=[];
+    if(divOn){
+      const BULL='#26a69a',BEAR='#ef5350';
+      // hidden divergence is a continuation read, not a reversal read, so it is drawn dashed
+      // instead of sharing a solid line with the regular kind
+      divs.slice(-20).forEach(d=>{
+        const sr=p.rchart.addLineSeries({color:d.side==='bull'?BULL:BEAR,lineWidth:2,
+          lineStyle:d.kind==='hidden'?LightweightCharts.LineStyle.Dashed:LightweightCharts.LineStyle.Solid,
+          priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false,
+          autoscaleInfoProvider:()=>({priceRange:{minValue:0,maxValue:100}})});
+        sr.setData([{time:data[d.from].time,value:+d.fromVal.toFixed(2)},
+                    {time:data[d.pivot].time,value:+d.val.toFixed(2)}]);
+        p.rsiDivLines.push(sr);
+      });
+      try{p.rsi.setMarkers(divs.slice(-20).map(d=>({
+        time:data[d.pivot].time,position:d.side==='bull'?'belowBar':'aboveBar',
+        color:d.side==='bull'?BULL:BEAR,shape:'circle',
+        text:(d.kind==='hidden'?'H.':'')+(d.side==='bull'?'Bull':'Bear')})));}catch(e){}
+    }else{try{p.rsi.setMarkers([]);}catch(e){}}
+    p._rsiRenderCache={data,sw:p.sw,key:rBlockKey};
+  }
   p.lastClose=data.length?data[data.length-1].close:null;
   p.swLabels=null;
   if(p.brkLines)p.brkLines.forEach(l=>{try{p.candles.removePriceLine(l);}catch(e){}});
