@@ -643,6 +643,14 @@ input:disabled,select:disabled{opacity:.45;cursor:not-allowed}
 /* style popover */
 #picker{position:fixed;z-index:300;display:none;background:#131722;border:1px solid #2a2e39;
   border-radius:10px;padding:12px;width:268px;box-shadow:0 12px 40px rgba(0,0,0,.75)}
+/* Drag handle spans the popup's full width via negative margins undoing #picker's own padding —
+   a dedicated strip rather than making the whole popup draggable, so it never fights the psq/
+   hue/alpha rails' own pointer-drag handlers or the swatch/button clicks beneath it. */
+#pDrag{margin:-12px -12px 10px;padding:8px 0;cursor:move;touch-action:none;
+  border-radius:10px 10px 0 0;display:flex;align-items:center;justify-content:center}
+#pDrag:hover{background:rgba(255,255,255,.05)}
+#pDrag span{width:32px;height:4px;border-radius:2px;background:#2a2e39}
+#pDrag:hover span{background:#3a3e4a}
 /* saturation / value square — hue across x, brightness down y, TradingView's layout */
 #picker .psq{position:relative;height:132px;border-radius:6px;cursor:crosshair;margin-bottom:12px;
   background:linear-gradient(to top,#000,transparent),linear-gradient(to right,#fff,transparent);
@@ -1727,6 +1735,7 @@ table.lv td{padding:6px 10px}
   </div>
 </div>
 <div id="picker">
+  <div id="pDrag" title="Drag to move"><span></span></div>
   <div id="pTabs" style="display:none">
     <button data-tab="style" class="on">Style</button>
     <button data-tab="text">Text</button>
@@ -2520,6 +2529,31 @@ function buildPicker(){
     if(e.target===pkAnchor)return;                 // let the click's toggle close it
     if(e.target.classList.contains('sw'))return;   // a DIFFERENT swatch just re-targets it
     pk.style.display='none';pkAnchor=null;});
+  // Drag-to-move: pointer capture on the handle itself means move/up keep firing on it even if
+  // the cursor outruns the popup during a fast drag, so no document-level listeners are needed
+  // (unlike pkDrag() above, which drags a fixed-size rail and does need that). Clamped to the
+  // viewport so a drag can never push the popup fully off-screen and strand it.
+  const pd=$('#pDrag');
+  if(pd){
+    let dragging=false,sx=0,sy=0,ox=0,oy=0;
+    pd.addEventListener('pointerdown',e=>{
+      e.preventDefault();
+      const pk=$('#picker'),r=pk.getBoundingClientRect();
+      dragging=true;sx=e.clientX;sy=e.clientY;ox=r.left;oy=r.top;
+      pd.setPointerCapture(e.pointerId);
+    });
+    pd.addEventListener('pointermove',e=>{
+      if(!dragging)return;
+      const pk=$('#picker');
+      let x=ox+(e.clientX-sx),y=oy+(e.clientY-sy);
+      x=Math.min(Math.max(4,x),innerWidth-pk.offsetWidth-4);
+      y=Math.min(Math.max(4,y),innerHeight-pk.offsetHeight-4);
+      pk.style.left=Math.round(x)+'px';pk.style.top=Math.round(y)+'px';
+    });
+    const pdStop=e=>{dragging=false;try{pd.releasePointerCapture(e.pointerId);}catch(err){}};
+    pd.addEventListener('pointerup',pdStop);
+    pd.addEventListener('pointercancel',pdStop);
+  }
 }
 function syncPickerBtns(){
   $$('#pW button').forEach(b=>b.classList.toggle('on',+b.dataset.w===pkState.w));
