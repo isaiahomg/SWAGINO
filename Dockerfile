@@ -5,8 +5,9 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# The app is a single self-contained HTML file plus the proxy and the favicon.
+# The app is a single self-contained HTML file plus the proxy, favicon, and local fonts.
 COPY proxy.py swagino.html c799f001526d973d5e323d94542fe589.ico ./
+COPY fonts/ ./fonts/
 
 # Run as an unprivileged user, never root. Port 8787 is > 1024 so no privilege is needed to bind.
 RUN useradd -r -u 10001 swagino && chown -R swagino /app
