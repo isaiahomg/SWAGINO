@@ -2258,8 +2258,8 @@ cfg.satyRibbon=Object.assign({
   cloudTransparency:60,
   showFastHi:true, showPivotHi:true, showSlowHi:true, hiOpacity:65,
   showArrows:true, bullArrowC:'#4CAF50', bearArrowC:'#FF5252',
-  showFastConv:false, fastConvLen:13, fastConvC:'#FFEB3B',
-  showSlowConv:false, slowConvLen:48, slowConvC:'#9C27B0',
+  showFastConv:false, fastConvLen:13, fastConvC:'#FFEB3B', fastConvW:2, fastConvSt:'solid',
+  showSlowConv:false, slowConvLen:48, slowConvC:'#9C27B0', slowConvW:2, slowConvSt:'solid',
   showCandleBias:false, biasEma:21
 },cfg.satyRibbon||{});
 /* v6 rebuild migration (runs once): drop the retired A/B engine and the pre-v6 highlight-colour
@@ -2763,7 +2763,7 @@ function applyChartTheme(t){
   [['swBodyUp','bodyUp'],['swBodyDn','bodyDn'],['swBorderUp','borderUp'],['swBorderDn','borderDn'],
    ['swWickUp','wickUp'],['swWickDn','wickDn']].forEach(([id,k])=>{const el=$('#'+id);if(el)el.style.background=cfg.candle[k];});
   const axSw=$('#swAxisText');if(axSw)axSw.style.background=cfg.axisTextColor;
-  renderAll();
+  scheduleRenderAll();
   applyAxisTextColor();
   try{
     const bd=JSON.parse(localStorage.getItem('lc_backdrop'))||{};
@@ -4221,10 +4221,14 @@ function renderRibbon(p,data){
   cloudLine(p.rbFast, fast,R.showFastHi, fast,piv,hFB,hFR);   // fast EMA borders the FAST cloud
   cloudLine(p.rbPivot,piv, R.showPivotHi,fast,piv,hFB,hFR);   // pivot borders the FAST cloud
   cloudLine(p.rbSlow, slow,R.showSlowHi, piv,slow,hSB,hSR);   // slow EMA borders the SLOW cloud
-  // Conviction EMAs: own colours, plotted only when their toggle is on (Pine default: off).
-  const line=(sr,arr,show,col)=>{sr.applyOptions({visible:!!show,color:col});sr.setData(show?padSeries(data,arr):[]);};
-  line(p.rbFastConv,fc,R.showFastConv,R.fastConvC);
-  line(p.rbSlowConv,sc,R.showSlowConv,R.slowConvC);
+  // Conviction EMAs: own colours (and, independently of every other ribbon line, their own
+  // thickness/style), plotted only when their toggle is on (Pine default: off).
+  const line=(sr,arr,show,col,w,st)=>{
+    sr.applyOptions({visible:!!show,color:col,lineWidth:+w||2,lineStyle:lwcStyle(st||'solid')});
+    sr.setData(show?padSeries(data,arr):[]);
+  };
+  line(p.rbFastConv,fc,R.showFastConv,R.fastConvC,R.fastConvW,R.fastConvSt);
+  line(p.rbSlowConv,sc,R.showSlowConv,R.slowConvC,R.slowConvW,R.slowConvSt);
   // Conviction arrows: the bar where the fast conviction EMA crosses the slow one. Computed from
   // fc/sc regardless of whether those lines are shown (as Pine does — crossover/crossunder run on
   // the raw EMAs). Drawn in the HTML overlay, never as a candle marker (marker padding would be
@@ -5709,6 +5713,19 @@ function lockView(p,fn){
   if(keep){try{p.chart.timeScale().setVisibleLogicalRange(keep);}catch(e){}}
 }
 function renderAll(){visPanes().forEach(p=>lockView(p,()=>renderPane(p)));}
+// Every settings-panel toggle/swatch pick used to call renderAll() synchronously from inside its
+// own click/onchange handler. Measured live: renderAll() costs 100ms+ even for a single pane at
+// a modest history depth (well past one frame) — calling it inline blocked the browser from even
+// painting the checkbox's own new state, let alone responding to the next click (an OK/Cancel
+// click right after a toggle felt "stuck" because the main thread was still finishing the PRIOR
+// toggle's render). Deferring to the next animation frame lets the click's own visual feedback
+// commit first and frees the main thread to receive the next input immediately; the guard below
+// coalesces several changes landing in the same frame into one render instead of one each.
+let _renderAllRaf=0;
+function scheduleRenderAll(){
+  if(_renderAllRaf)return;
+  _renderAllRaf=requestAnimationFrame(()=>{_renderAllRaf=0;renderAll();});
+}
 // Re-render a pane while preserving its zoom level (bar spacing) and position relative to the
 // right edge (scroll position, in bar-widths) — NOT the raw logical bar-INDEX range lockView()
 // preserves, which only means the same thing across renders that touch the SAME underlying data
@@ -9002,12 +9019,12 @@ function wireStyle(){
   cn.forEach(([id,k])=>{
     const el=$('#'+id);if(!el)return;
     el.checked=!!cfg.candle[k];
-    el.onchange=()=>{cfg.candle[k]=el.checked;saveCfg();renderAll();};
+    el.onchange=()=>{cfg.candle[k]=el.checked;saveCfg();scheduleRenderAll();};
   });
   [['swBodyUp','bodyUp'],['swBodyDn','bodyDn'],['swBorderUp','borderUp'],
    ['swBorderDn','borderDn'],['swWickUp','wickUp'],['swWickDn','wickDn']].forEach(([id,k])=>{
     const el=$('#'+id);if(!el)return;
-    bindSwatch(el,()=>cfg.candle[k],c=>{cfg.candle[k]=c;saveCfg();renderAll();});
+    bindSwatch(el,()=>cfg.candle[k],c=>{cfg.candle[k]=c;saveCfg();scheduleRenderAll();});
   });
   {const sel=$('#cnCrossStyle');
    if(sel){sel.value=cfg.crosshair.style;sel.onchange=()=>{cfg.crosshair.style=sel.value;saveCfg();applyCrosshairCfg();};}
@@ -9061,9 +9078,9 @@ function wireStyle(){
   [['inRsi','swRsi','rsi']].forEach(([ck,sw,k])=>{
     const c=$('#'+ck),w=$('#'+sw);if(!c||!w)return;
     c.checked=!!cfg.ind[k].on;
-    c.onchange=()=>{cfg.ind[k].on=c.checked;saveCfg();renderAll();};
+    c.onchange=()=>{cfg.ind[k].on=c.checked;saveCfg();scheduleRenderAll();};
     bindLineSwatch(w,()=>({color:cfg.ind[k].c,width:cfg.ind[k].w,style:cfg.ind[k].st}),
-      st=>{cfg.ind[k].c=st.color;cfg.ind[k].w=st.width;cfg.ind[k].st=st.style;saveCfg();renderAll();});
+      st=>{cfg.ind[k].c=st.color;cfg.ind[k].w=st.width;cfg.ind[k].st=st.style;saveCfg();scheduleRenderAll();});
   });
 }
 /* panel resize (locked, TradingView-style) */
@@ -9572,7 +9589,7 @@ function applyRsiModal(){
   R.upOn=$('#rsUpOn').checked;R.midOn=$('#rsMidOn').checked;R.loOn=$('#rsLoOn').checked;
   R.up=+$('#rsUp').value||70;R.mid=+$('#rsMid').value||50;R.lo=+$('#rsLo').value||30;
   R.fill=$('#rsFill').checked;R.grad=$('#rsGrad').checked;
-  saveCfg();visPanes().forEach(applyRsiBands);renderAll();
+  saveCfg();visPanes().forEach(applyRsiBands);scheduleRenderAll();
 }
 $$('.rsigear').forEach(b=>b.onclick=()=>openRsiModal(+b.dataset.pane||0));
 $('#rsCancel').onclick=()=>$('#rsiModal').style.display='none';
@@ -9580,12 +9597,12 @@ $('#rsOk').onclick=()=>{applyRsiModal();$('#rsiModal').style.display='none';};
 bindSwatch($('#swRsUp'),()=>cfg.rsi.upC,c=>{cfg.rsi.upC=c;saveCfg();visPanes().forEach(applyRsiBands);});
 bindSwatch($('#swRsMid'),()=>cfg.rsi.midC,c=>{cfg.rsi.midC=c;saveCfg();visPanes().forEach(applyRsiBands);});
 bindSwatch($('#swRsLo'),()=>cfg.rsi.loC,c=>{cfg.rsi.loC=c;saveCfg();visPanes().forEach(applyRsiBands);});
-bindSwatch($('#swRsFill'),()=>cfg.rsi.fillC,c=>{cfg.rsi.fillC=c;saveCfg();visPanes().forEach(applyRsiBands);renderAll();});
+bindSwatch($('#swRsFill'),()=>cfg.rsi.fillC,c=>{cfg.rsi.fillC=c;saveCfg();visPanes().forEach(applyRsiBands);scheduleRenderAll();});
 bindLineSwatch($('#swRsiMa'),()=>({color:cfg.rsi.maC,width:cfg.rsi.maW,style:cfg.rsi.maSt}),
-  st=>{cfg.rsi.maC=st.color;cfg.rsi.maW=st.width;cfg.rsi.maSt=st.style;saveCfg();renderAll();});
-bindSwatch($('#swRsBb'),()=>cfg.rsi.bbC,c=>{cfg.rsi.bbC=c;saveCfg();renderAll();});
-bindSwatch($('#swRsOb'),()=>cfg.rsi.obC,c=>{cfg.rsi.obC=c;saveCfg();renderAll();});
-bindSwatch($('#swRsOs'),()=>cfg.rsi.osC,c=>{cfg.rsi.osC=c;saveCfg();renderAll();});
+  st=>{cfg.rsi.maC=st.color;cfg.rsi.maW=st.width;cfg.rsi.maSt=st.style;saveCfg();scheduleRenderAll();});
+bindSwatch($('#swRsBb'),()=>cfg.rsi.bbC,c=>{cfg.rsi.bbC=c;saveCfg();scheduleRenderAll();});
+bindSwatch($('#swRsOb'),()=>cfg.rsi.obC,c=>{cfg.rsi.obC=c;saveCfg();scheduleRenderAll();});
+bindSwatch($('#swRsOs'),()=>cfg.rsi.osC,c=>{cfg.rsi.osC=c;saveCfg();scheduleRenderAll();});
 
 // Volume has no per-timeframe auto-tuning and no per-pane style (both panes share one
 // up/down color pair), so dlgPane only drives the pane-tag pill here, not any auto-tuned value.
@@ -9631,8 +9648,8 @@ $('#alCancelBtn').onclick=()=>closeAlertEditor(true);
 $('#alSaveBtn').onclick=saveAlertFromEditor;
 $('#alDeleteBtn').onclick=()=>{if(alEditingId)deleteAlert(alEditingId);closeAlertEditor();};
 renderAlertsPanel();
-bindSwatch($('#swVoUp'),()=>cfg.volume.upC,c=>{cfg.volume.upC=c;saveCfg();renderAll();});
-bindSwatch($('#swVoDn'),()=>cfg.volume.dnC,c=>{cfg.volume.dnC=c;saveCfg();renderAll();});
+bindSwatch($('#swVoUp'),()=>cfg.volume.upC,c=>{cfg.volume.upC=c;saveCfg();scheduleRenderAll();});
+bindSwatch($('#swVoDn'),()=>cfg.volume.dnC,c=>{cfg.volume.dnC=c;saveCfg();scheduleRenderAll();});
 
 // With auto-tune on, the boxes in these dialogs are NOT what the chart is running. Say so
 // and show the values actually in force, rather than leaving stale numbers on screen.
@@ -9792,7 +9809,7 @@ function setAutoTune(on){
   const c=$('#cfgTfPresets');if(c)c.checked=!!on;
   const a=$('#stAutoTune');if(a)a.checked=!!on;
   const b=$('#rsAutoTune');if(b)b.checked=!!on;
-  renderAll();
+  scheduleRenderAll();
 }
 {
   const a=$('#stAutoTune');
@@ -9810,18 +9827,18 @@ $('#stOk').onclick=()=>{
   }
   S.failN=Math.max(1,Math.min(10,Math.round(+$('#stFailN').value)||1));
   S.labels=$('#stLabels').checked;S.bos=$('#stBos').checked;S.patterns=$('#stPat').checked;
-  saveCfg();renderAll();$('#stModal').style.display='none';
+  saveCfg();scheduleRenderAll();$('#stModal').style.display='none';
 };
-bindSwatch($('#swStUp'),()=>cfg.structCfg.upC,c=>{cfg.structCfg.upC=c;saveCfg();renderAll();});
-bindSwatch($('#swStDn'),()=>cfg.structCfg.dnC,c=>{cfg.structCfg.dnC=c;saveCfg();renderAll();});
+bindSwatch($('#swStUp'),()=>cfg.structCfg.upC,c=>{cfg.structCfg.upC=c;saveCfg();scheduleRenderAll();});
+bindSwatch($('#swStDn'),()=>cfg.structCfg.dnC,c=>{cfg.structCfg.dnC=c;saveCfg();scheduleRenderAll();});
 bindLineSwatch($('#swStBos'),
   ()=>({color:cfg.structCfg.bosC||cfg.structCfg.patC,width:+cfg.structCfg.bosW||2,style:cfg.structCfg.bosSt||'dashed'}),
-  v=>{const S=cfg.structCfg;S.bosC=v.color;S.bosW=v.width;S.bosSt=v.style;saveCfg();renderAll();});
+  v=>{const S=cfg.structCfg;S.bosC=v.color;S.bosW=v.width;S.bosSt=v.style;saveCfg();scheduleRenderAll();});
 bindLineSwatch($('#swStChoch'),
   ()=>({color:cfg.structCfg.chochC||cfg.structCfg.bosC||cfg.structCfg.patC,width:+cfg.structCfg.chochW||2,style:cfg.structCfg.chochSt||'dashed'}),
-  v=>{const S=cfg.structCfg;S.chochC=v.color;S.chochW=v.width;S.chochSt=v.style;saveCfg();renderAll();});
+  v=>{const S=cfg.structCfg;S.chochC=v.color;S.chochW=v.width;S.chochSt=v.style;saveCfg();scheduleRenderAll();});
 bindLineSwatch($('#swStPat'),()=>({color:cfg.structCfg.patC,width:cfg.structCfg.patW,style:cfg.structCfg.patSt}),
-  st=>{cfg.structCfg.patC=st.color;cfg.structCfg.patW=st.width;cfg.structCfg.patSt=st.style;saveCfg();renderAll();});
+  st=>{cfg.structCfg.patC=st.color;cfg.structCfg.patW=st.width;cfg.structCfg.patSt=st.style;saveCfg();scheduleRenderAll();});
 
 /* ---------------------------- Saty ATR Levels dialog ----------------------------------
    Edits are live: every control writes straight through to cfg and redraws, the way
@@ -9952,8 +9969,9 @@ const RB_DEFAULTS={timeWarp:'off',fastEma:8,pivotEma:21,slowEma:34,
   bullFastCloud:'#4CAF50',bearFastCloud:'#FF5252',bullSlowCloud:'#00BCD4',bearSlowCloud:'#FF9800',
   cloudTransparency:60,showFastHi:true,showPivotHi:true,showSlowHi:true,hiOpacity:65,
   showArrows:true,bullArrowC:'#4CAF50',bearArrowC:'#FF5252',
-  showFastConv:false,fastConvLen:13,fastConvC:'#FFEB3B',showSlowConv:false,slowConvLen:48,
-  slowConvC:'#9C27B0',showCandleBias:false,biasEma:21};
+  showFastConv:false,fastConvLen:13,fastConvC:'#FFEB3B',fastConvW:2,fastConvSt:'solid',
+  showSlowConv:false,slowConvLen:48,slowConvC:'#9C27B0',slowConvW:2,slowConvSt:'solid',
+  showCandleBias:false,biasEma:21};
 const RB_SW=[['rbSwBullFast','bullFastCloud'],['rbSwBearFast','bearFastCloud'],
   ['rbSwBullSlow','bullSlowCloud'],['rbSwBearSlow','bearSlowCloud'],
   ['rbSwBullArrow','bullArrowC'],['rbSwBearArrow','bearArrowC'],
@@ -9994,7 +10012,7 @@ function rbSaveForm(){
   R.showFastConv=chk('rbShowFastConv');R.fastConvLen=num('rbFastConvLen',1,400,13);
   R.showSlowConv=chk('rbShowSlowConv');R.slowConvLen=num('rbSlowConvLen',1,400,48);
   R.showCandleBias=chk('rbShowBias');R.biasEma=num('rbBiasLen',1,400,21);
-  saveCfg();rbLoadForm();renderAll();
+  saveCfg();rbLoadForm();scheduleRenderAll();
 }
 function openRbModal(i){
   if(i!=null)dlgPane=+i||0;
@@ -10005,13 +10023,22 @@ function openRbModal(i){
 function closeRbModal(){$('#rbModal').style.display='none';}
 $$('.rbgear').forEach(b=>b.onclick=()=>openRbModal(+b.dataset.pane||0));
 RB_SW.forEach(([id,key])=>{
+  if(id==='rbSwFastConv'||id==='rbSwSlowConv')return;   // bound below via bindLineSwatch (color+width+style)
   const e=$('#'+id);if(!e)return;
   bindSwatch(e,()=>cfg.satyRibbon[key]||'#ffffff',
-    c=>{cfg.satyRibbon[key]=c;saveCfg();renderAll();});
+    c=>{cfg.satyRibbon[key]=c;saveCfg();scheduleRenderAll();});
 });
+bindLineSwatch($('#rbSwFastConv'),
+  ()=>({color:cfg.satyRibbon.fastConvC,width:cfg.satyRibbon.fastConvW,style:cfg.satyRibbon.fastConvSt}),
+  st=>{const R=cfg.satyRibbon;R.fastConvC=st.color;R.fastConvW=st.width;R.fastConvSt=st.style;
+    saveCfg();scheduleRenderAll();});
+bindLineSwatch($('#rbSwSlowConv'),
+  ()=>({color:cfg.satyRibbon.slowConvC,width:cfg.satyRibbon.slowConvW,style:cfg.satyRibbon.slowConvSt}),
+  st=>{const R=cfg.satyRibbon;R.slowConvC=st.color;R.slowConvW=st.width;R.slowConvSt=st.style;
+    saveCfg();scheduleRenderAll();});
 {
   const D=$('#rbDefaults');if(D)D.onclick=()=>{
-    Object.assign(cfg.satyRibbon,RB_DEFAULTS);saveCfg();rbLoadForm();renderAll();
+    Object.assign(cfg.satyRibbon,RB_DEFAULTS);saveCfg();rbLoadForm();scheduleRenderAll();
     log('Saty Pivot Ribbon reset to the Pine v6 defaults','warn');};
   const C=$('#rbCancel');if(C)C.onclick=closeRbModal;
   const O=$('#rbOk');if(O)O.onclick=()=>{rbSaveForm();closeRbModal();};
