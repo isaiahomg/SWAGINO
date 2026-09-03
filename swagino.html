@@ -484,6 +484,20 @@ table.lv td.p{font-weight:600;text-align:right;white-space:nowrap}
 .scanstat .v{font-family:var(--lab);font-size:12.5px;color:var(--dim);line-height:1.35}
 .scanmeta{font-family:var(--lab);font-size:10px;color:var(--faint);margin-top:8px;
   padding-top:6px;border-top:1px solid var(--line)}
+/* Progressive disclosure: a beginner glancing at 7 cards at once only needs price/gap/RVOL/why-
+   it's-moving up front — everything else (ATR, VWAP, premarket, support/resistance, the whole
+   options/GEX block) sits behind one "More details" toggle per card, collapsed by default. */
+.scanquick{display:flex;gap:20px;margin-bottom:8px}
+.scanquick .scanstat .v{font-size:14px;font-weight:600;color:var(--text)}
+.scannews{font-family:var(--lab);font-size:11.5px;color:var(--dim);margin-bottom:8px;
+  line-height:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scannews a{color:inherit;text-decoration:none}
+.scannews a:hover{text-decoration:underline}
+.scannewssrc{color:var(--faint);font-size:10px;margin-left:5px}
+.scantoggle{background:none;border:none;color:var(--pivot);font-family:var(--lab);font-size:11px;
+  font-weight:600;cursor:pointer;padding:2px 0;display:flex;align-items:center;gap:3px}
+.scantoggle:hover{text-decoration:underline}
+.scandetail{margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
 .badge{font-size:9px;border:none;background:rgba(255,255,255,.08);border-radius:4px;padding:1px 5px;color:var(--dim);margin-left:4px}
 /* CONFLUENCE badge — golden glow, brighter the more independent level families agree.
    The badge is only rendered while the level is still confluent, so when a cluster breaks
@@ -2008,6 +2022,8 @@ table.lv td{padding:6px 10px}
     <button class="explainhdr setsec open" data-sec="conn" aria-expanded="true"><svg class="sec-ic" viewBox="0 0 20 20" fill="none"><path d="M7 13l-2.5 2.5a2.4 2.4 0 01-3.4-3.4L3.6 9.6M13 7l2.5-2.5a2.4 2.4 0 013.4 3.4L16.4 10.4M7.5 12.5l5-5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="caret">&#9662;</span> Connection</button>
     <div class="setbody" data-sec="conn">
     <div class="row"><label>Tradier access token</label><span class="keywrap"><input id="cfgKey" type="password" placeholder="paste token here"><button id="keyEye">show</button></span></div>
+    <div class="row"><label>Finnhub API key</label><span class="keywrap"><input id="cfgFinnhub" type="password" placeholder="optional — enables Scanner news"><button id="finnhubEye">show</button></span>
+      <span class="hint" style="margin:0;flex:1">free at finnhub.io — used only for the Scanner's News/Catalysts field</span></div>
     <div class="row"><label>Route via local proxy</label><input type="checkbox" id="cfgProxy"> <span class="hint" style="margin:0">run <b>python3 proxy.py</b> first</span></div>
     <div class="row"><label>WebSocket streaming</label><input type="checkbox" id="cfgStream" checked> <span class="hint" style="margin:0">per-trade updates via wss://ws.tradier.com; falls back to polling if unavailable</span></div>
     <div class="row"><label>Quote poll (sec)</label><input id="cfgQuoteS" value="2" style="width:60px"><label style="min-width:90px">Bars poll (sec)</label><input id="cfgBarS" value="10" style="width:60px"></div>
@@ -2047,6 +2063,7 @@ function ensureLWC(cb){
 }
 const LS={
   get k(){return localStorage.getItem('lc_key')||''},set k(v){localStorage.setItem('lc_key',v)},
+  get finnhub(){return localStorage.getItem('lc_finnhub')||''},set finnhub(v){localStorage.setItem('lc_finnhub',v)},
   get cfg(){try{return JSON.parse(localStorage.getItem('lc_cfg'))||{}}catch(e){return{}}},set cfg(v){localStorage.setItem('lc_cfg',JSON.stringify(v))},
   get gex(){try{return JSON.parse(localStorage.getItem('lc_gex'))||null}catch(e){return null}},set gex(v){localStorage.setItem('lc_gex',JSON.stringify(v))},
   get lvlSty(){try{return JSON.parse(localStorage.getItem('lc_lvlsty'))||{}}catch(e){return{}}},set lvlSty(v){localStorage.setItem('lc_lvlsty',JSON.stringify(v))},
@@ -8581,6 +8598,32 @@ async function scanComputeGex(sym){
 // The sequential driver: one symbol's bars, then that same symbol's GEX, then the next symbol —
 // never Promise.all across symbols, so the 7×(2 bars + 3 GEX requests) never land as one burst,
 // and one symbol being slow/down can never block the other six.
+// News/catalysts via Finnhub's free company-news endpoint, proxied through proxy.py's own
+// /finnhub/company-news route (added alongside this) so the key never leaves the browser as a
+// direct third-party request and so the same same-origin/CORS story Tradier already has holds
+// here too. Genuinely optional: with no key configured this says so plainly rather than
+// fabricating a headline or silently omitting the field.
+async function scanFetchNews(sym){
+  const d=scanData[sym];
+  if(!LS.finnhub){d.news={ok:false,noKey:true,at:Date.now()};return;}
+  try{
+    const to=nowET().ymd;
+    const from=new Date(Date.now()-7*864e5).toISOString().slice(0,10);
+    const url=`/finnhub/company-news?symbol=${sym}&from=${from}&to=${to}&token=${encodeURIComponent(LS.finnhub)}`;
+    const r=await fetchWithTimeout(url,{});
+    const j=await r.json().catch(()=>null);
+    if(!r.ok)throw new Error((j&&j.error)||('HTTP '+r.status));
+    const items=Array.isArray(j)?j.filter(x=>x&&x.headline):[];
+    items.sort((a,b)=>(b.datetime||0)-(a.datetime||0));
+    const top=items[0]||null;
+    d.news={ok:true,headline:top?top.headline:null,source:top?top.source:null,
+      url:top?top.url:null,datetime:top&&top.datetime?top.datetime*1000:null,at:Date.now()};
+  }catch(e){
+    d.news={ok:false,err:e.message,at:Date.now()};
+    log('Scanner news failed for '+sym+': '+e.message,'warn');
+  }
+}
+
 async function scanRefreshSlow(){
   if(scanSlowBusy||!scanPaneVisible()||!LS.k)return;
   scanSlowBusy=true;
@@ -8591,6 +8634,8 @@ async function scanRefreshSlow(){
       await scanFetchBars(sym);
       scanScheduleRender();
       await scanComputeGex(sym);
+      scanScheduleRender();
+      await scanFetchNews(sym);
       scanScheduleRender();
     }
   }finally{
@@ -8606,6 +8651,11 @@ function scanScheduleRender(){
   if(_scanRenderRaf)return;
   _scanRenderRaf=requestAnimationFrame(()=>{_scanRenderRaf=0;scanRender();});
 }
+// Per-symbol expand/collapse state for the "More details" toggle — module-level so it survives
+// scanRender()'s full innerHTML rebuilds (a re-render must not silently re-collapse a card the
+// user just opened). Starts empty (every card collapsed) — a beginner's first look is the quick
+// row only, not all 12+ stats at once.
+let scanExpanded={};
 function scanRender(){
   const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const fmtAge=t=>{if(t==null)return'never';const s=Math.floor((Date.now()-t)/1000);
@@ -8613,11 +8663,32 @@ function scanRender(){
   const n=(v,dp)=>v==null||!isFinite(v)?'—':(+v).toFixed(dp==null?2:dp);
   const stat=(label,val)=>`<div class="scanstat"><div class="k">${esc(label)}</div><div class="v">${val}</div></div>`;
   const html=SCANNER_SYMS.map(sym=>{
-    const d=scanData[sym],g=d.gex;
+    const d=scanData[sym],g=d.gex,nw=d.news,open=!!scanExpanded[sym];
     const chgCol=d.change>0?'var(--long)':d.change<0?'var(--short)':'var(--dim)';
-    const grid=[
-      stat('Gap % vs close',(d.last!=null&&d.prevClose>0)?n((d.last-d.prevClose)/d.prevClose*100)+'%':'—'),
-      stat('Volume / RVOL',d.volume!=null?`${n(d.volume/1e6,1)}M / ${d.rvol!=null?n(d.rvol)+'x':'—'}`:'—'),
+
+    // The quick row: the two numbers that answer "is this ticker doing anything today" at a
+    // glance — everything else is a click away, not a scroll away.
+    const quick=[
+      stat('Gap %',(d.last!=null&&d.prevClose>0)?n((d.last-d.prevClose)/d.prevClose*100)+'%':'—'),
+      stat('RVOL',d.rvol!=null?n(d.rvol)+'x':'—'),
+    ].join('');
+
+    let newsHtml;
+    if(nw&&nw.ok&&nw.headline){
+      const age=nw.datetime?fmtAge(nw.datetime):'';
+      const head=nw.url?`<a href="${esc(nw.url)}" target="_blank" rel="noopener">${esc(nw.headline)}</a>`:esc(nw.headline);
+      newsHtml=`<div class="scannews" title="${esc(nw.headline)}">\u{1F4F0} ${head}<span class="scannewssrc">${esc(nw.source||'')}${age?' · '+age:''}</span></div>`;
+    }else if(nw&&nw.noKey){
+      newsHtml=`<div class="scannews" style="color:var(--faint)">\u{1F4F0} add a Finnhub key in Settings for news</div>`;
+    }else if(nw&&!nw.ok){
+      newsHtml=`<div class="scannews" style="color:var(--faint)">\u{1F4F0} news unavailable</div>`;
+    }else if(nw&&nw.ok){
+      newsHtml=`<div class="scannews" style="color:var(--faint)">\u{1F4F0} no recent news</div>`;
+    }else{
+      newsHtml=`<div class="scannews" style="color:var(--faint)">\u{1F4F0} not loaded yet</div>`;
+    }
+
+    const detailGrid=[
       stat('ATR(14d) / %',d.atr!=null?`$${n(d.atr)} / ${n(d.atrPct)}%`:(d.barsOk===false?'unavailable':'—')),
       stat('VWAP / Δ',d.vwap!=null?`$${n(d.vwap)} (${d.last!=null?n((d.last-d.vwap)/d.vwap*100)+'%':'—'})`:'—'),
       stat('PM High',d.pmHigh!=null?'$'+n(d.pmHigh):'—'),
@@ -8629,25 +8700,38 @@ function scanRender(){
       stat('ATM IV',g&&g.ok&&g.atmIV!=null?n(g.atmIV*100,1)+'%':'—'),
       stat('Put/Call vol',g&&g.ok&&g.pcRatio!=null?n(g.pcRatio):'—'),
     ].join('');
-    const wide=[
+    const detailWide=[
       stat('Options',g&&g.ok?`vol ${n(g.totalVol,0)} · OI ${n(g.totalOi,0)} · exp ${esc(g.exp)}`
         :(g&&!g.ok?'unavailable — '+esc(g.err||'error'):'not loaded yet')),
       stat('Expected move (to expiry)',g&&g.ok&&g.expectedMove!=null?'±$'+n(g.expectedMove):'—'),
-      stat('News / catalysts','not available (no connected source)'),
     ].join('');
+
     return`<div class="scancard">
       <div class="scanhead">
         <span class="scansym">${esc(sym)}</span>
         <span class="scanpx">${d.last!=null?'$'+n(d.last):'—'}</span>
         <span class="scanchg" style="color:${chgCol}">${d.change!=null?(d.change>0?'+':'')+n(d.change)+' ('+n(d.changePct)+'%)':''}</span>
       </div>
-      <div class="scangrid">${grid}</div>
-      <div class="scangrid wide" style="margin-top:7px">${wide}</div>
-      <div class="scanmeta">quote ${fmtAge(d.quoteAt)} · bars ${fmtAge(d.barsAt)}${g?' · options '+fmtAge(g.at):''}</div>
+      <div class="scanquick">${quick}</div>
+      ${newsHtml}
+      <button class="scantoggle" data-sym="${esc(sym)}">${open?'Hide details':'More details'}<span class="scancaret">${open?' ▴':' ▾'}</span></button>
+      <div class="scandetail" style="display:${open?'block':'none'}">
+        <div class="scangrid">${detailGrid}</div>
+        <div class="scangrid wide" style="margin-top:7px">${detailWide}</div>
+        <div class="scanmeta">quote ${fmtAge(d.quoteAt)} · bars ${fmtAge(d.barsAt)}${g?' · options '+fmtAge(g.at):''}</div>
+      </div>
     </div>`;
   }).join('');
   const host=$('#scanCards');if(host)host.innerHTML=html;
 }
+// One delegated listener, wired once — survives every scanRender() rebuild since it lives on
+// the stable #scanCards container, not on the cards it recreates each time.
+{const host=$('#scanCards');if(host)host.addEventListener('click',e=>{
+  const btn=e.target.closest('.scantoggle');if(!btn)return;
+  const sym=btn.dataset.sym;
+  scanExpanded[sym]=!scanExpanded[sym];
+  scanRender();
+});}
 
 async function scanTick(){
   await scanFetchQuotes();
@@ -9726,7 +9810,7 @@ async function fetchRiskFreeRate(force){
 }
 fetchRiskFreeRate();
 setInterval(fetchRiskFreeRate,6*3600*1000);
-function openSetup(){$('#cfgKey').value=LS.k;$('#cfgProxy').checked=!!cfg.proxy;$('#cfgStream').checked=cfg.stream!==false;
+function openSetup(){$('#cfgKey').value=LS.k;$('#cfgFinnhub').value=LS.finnhub;$('#cfgProxy').checked=!!cfg.proxy;$('#cfgStream').checked=cfg.stream!==false;
   $('#cfgQuoteS').value=cfg.quoteS;$('#cfgBarS').value=cfg.barS;
   $('#cfgTfPresets').checked=cfg.tfPresets!==false;
   $('#cfgGexRfr').value=cfg.gexRfr;
@@ -9830,11 +9914,13 @@ $('#sbBtn').onclick=()=>{
 };
 $('#cfgCancel').onclick=()=>$('#setup').style.display='none';
 $('#keyEye').onclick=e=>{e.preventDefault();const i=$('#cfgKey');i.type=i.type==='password'?'text':'password';$('#keyEye').textContent=i.type==='password'?'show':'hide';};
+$('#finnhubEye').onclick=e=>{e.preventDefault();const i=$('#cfgFinnhub');i.type=i.type==='password'?'text':'password';$('#finnhubEye').textContent=i.type==='password'?'show':'hide';};
 // Apply owns the actual save: both Apply and Connect call this, so there is one save path, not
 // two. Only Connect goes on to close the dialog and (re)connect — Apply leaves the chart alone,
 // exactly the "save without reload/reconnect" split this settings dialog is built around now.
 function saveSettings(){
   LS.k=$('#cfgKey').value.trim();
+  LS.finnhub=$('#cfgFinnhub').value.trim();
   cfg=Object.assign(cfg,{proxy:$('#cfgProxy').checked,stream:$('#cfgStream').checked,quoteS:+$('#cfgQuoteS').value||2,barS:+$('#cfgBarS').value||10,tfPresets:$('#cfgTfPresets').checked,gexRfr:+$('#cfgGexRfr').value||3.70,gexRfrAuto:$('#cfgGexRfrAuto').checked});
   saveCfg();
 }

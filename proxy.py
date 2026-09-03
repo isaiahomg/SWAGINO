@@ -33,9 +33,16 @@ import json
 import threading
 import time
 import os
-from urllib.parse import unquote
+from urllib.parse import unquote, urlsplit, urlencode, parse_qsl
 
 UPSTREAM_HOST = "api.tradier.com"
+# Finnhub is the Scanner's News/Catalysts source — a second, unrelated upstream, proxied the
+# same way as Tradier (same-origin from the browser, avoids CORS, keeps a real API key out of
+# a page anyone could view-source) but with its own host/auth convention (a `token` query param,
+# not a Bearer header) and its own allowlist restricted to the one endpoint SWAGINO actually
+# calls, so this can never become an open proxy to Finnhub's wider (paid, rate-limited) surface.
+FINNHUB_HOST = "finnhub.io"
+_ALLOW_FINNHUB_GET_EXACT_PATH = "/finnhub/company-news"
 PORT = int(os.environ.get("PORT", "8787"))
 # BIND: 127.0.0.1 keeps the proxy on this machine only (the local default). A hosted
 # deployment runs it inside a container behind Cloudflare Tunnel and sets BIND=0.0.0.0
@@ -53,6 +60,10 @@ DEFAULT_FILE = "swagino.html"
 # Leave it unset for normal local use: the proxy then passes each browser's own
 # Authorization header straight through, exactly as before, and injects nothing.
 SHARED_TOKEN = os.environ.get("TRADIER_TOKEN", "").strip()
+# Same idea, optional, independent of Tradier: set FINNHUB_TOKEN to serve every visitor's Scanner
+# news from one shared key. Unset (the default) means local single-user mode for Finnhub too -
+# each browser sends its own key (entered in Settings), passed straight through untouched.
+SHARED_FINNHUB = os.environ.get("FINNHUB_TOKEN", "").strip()
 
 # Injected just inside <head> in shared mode. Seeds the localStorage key the app gates on
 # (lc_key) and forces proxy-on so calls stay same-origin. The value is a placeholder — the
@@ -168,26 +179,33 @@ def _fetch_risk_free_rate():
         return result
 
 
-# one upstream connection per worker thread, reused across requests
+# One upstream connection per (worker thread, host), reused across requests. Keyed by host
+# (not just one bare slot) since Finnhub (below) added a SECOND upstream alongside Tradier -
+# same pooling technique, just no longer hardcoded to a single host.
 _local = threading.local()
 
 
-def _conn():
-    c = getattr(_local, "conn", None)
+def _conn(host):
+    conns = getattr(_local, "conns", None)
+    if conns is None:
+        conns = {}
+        _local.conns = conns
+    c = conns.get(host)
     if c is None:
-        c = http.client.HTTPSConnection(UPSTREAM_HOST, timeout=TIMEOUT)
-        _local.conn = c
+        c = http.client.HTTPSConnection(host, timeout=TIMEOUT)
+        conns[host] = c
     return c
 
 
-def _drop():
-    c = getattr(_local, "conn", None)
+def _drop(host):
+    conns = getattr(_local, "conns", None)
+    c = conns.get(host) if conns else None
     if c is not None:
         try:
             c.close()
         except Exception:
             pass
-        _local.conn = None
+        conns[host] = None
 
 
 class Proxy(http.server.BaseHTTPRequestHandler):
@@ -229,14 +247,42 @@ class Proxy(http.server.BaseHTTPRequestHandler):
         last = None
         for attempt in (0, 1):
             try:
-                c = _conn()
+                c = _conn(UPSTREAM_HOST)
                 c.request(method, self.path, body=body, headers=headers)
                 r = c.getresponse()
                 data = r.read()                      # must drain before the socket is reusable
                 return r.status, r.getheader("Content-Type", "application/json"), data
             except Exception as e:
                 last = e
-                _drop()                              # stale pooled socket: re-dial and retry once
+                _drop(UPSTREAM_HOST)                  # stale pooled socket: re-dial and retry once
+        raise last
+
+    def _forward_finnhub(self):
+        # /finnhub/company-news?symbol=X&from=Y&to=Z[&token=...] -> finnhub.io/api/v1/company-news
+        # with the same path/query, but the token swapped for the server's own in shared mode
+        # (SHARED_FINNHUB set) exactly like Tradier's SHARED_TOKEN above — a visitor's own query
+        # param is ignored, never forwarded, in that mode. In local mode there is no server-side
+        # key to inject, so whatever token the browser itself supplied (the user's own, entered in
+        # Settings and never sent anywhere but here) passes through unchanged, same as Tradier's
+        # local-mode Authorization pass-through.
+        parts = urlsplit(self.path)
+        sub_path = parts.path[len("/finnhub"):]
+        q = dict(parse_qsl(parts.query))
+        if SHARED_FINNHUB:
+            q["token"] = SHARED_FINNHUB
+        upstream_path = "/api/v1" + sub_path + ("?" + urlencode(q) if q else "")
+        headers = {"Accept": "application/json", "Host": FINNHUB_HOST}
+        last = None
+        for attempt in (0, 1):
+            try:
+                c = _conn(FINNHUB_HOST)
+                c.request("GET", upstream_path, headers=headers)
+                r = c.getresponse()
+                data = r.read()
+                return r.status, r.getheader("Content-Type", "application/json"), data
+            except Exception as e:
+                last = e
+                _drop(FINNHUB_HOST)
         raise last
 
     def do_OPTIONS(self):
@@ -282,6 +328,12 @@ class Proxy(http.server.BaseHTTPRequestHandler):
             # Public U.S. Treasury data, not Tradier - no token involved, so this is served
             # in every mode (local and shared-server alike) with no allowlist gate.
             self._handle_rfr()
+        elif path == _ALLOW_FINNHUB_GET_EXACT_PATH:
+            # Narrow on purpose: the ONLY Finnhub path this proxy will ever forward, in every
+            # mode (local and shared alike) - not gated behind SHARED_TOKEN's allowlist since
+            # it's an entirely separate credential/upstream, but still can't become an open
+            # proxy to the rest of Finnhub's surface.
+            self._proxy_finnhub()
         elif self._is_api():
             if self._api_allowed("GET"):
                 self._proxy("GET")
@@ -301,6 +353,13 @@ class Proxy(http.server.BaseHTTPRequestHandler):
     def _proxy(self, method):
         try:
             status, ctype, data = self._forward(method)
+            self._send(status, ctype, data)
+        except Exception as e:
+            self._send(502, "text/plain", str(e).encode())
+
+    def _proxy_finnhub(self):
+        try:
+            status, ctype, data = self._forward_finnhub()
             self._send(status, ctype, data)
         except Exception as e:
             self._send(502, "text/plain", str(e).encode())
