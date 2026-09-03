@@ -474,6 +474,9 @@ table.lv td.p{font-weight:600;text-align:right;white-space:nowrap}
   padding:10px 12px;margin-bottom:8px}
 .scanhead{display:flex;align-items:baseline;gap:8px;margin-bottom:8px;
   padding-bottom:8px;border-bottom:1px solid var(--line)}
+.scanrank{font-family:var(--lab);font-size:10px;font-weight:700;color:var(--faint);
+  background:rgba(255,255,255,.06);border-radius:4px;padding:1px 5px;margin-right:1px}
+.scancard.scanquiet{opacity:.6}
 .scansym{font-family:var(--lab);font-weight:700;font-size:15px;letter-spacing:.01em;color:var(--text)}
 .scanpx{font-family:var(--lab);font-size:14px;font-weight:600;color:var(--text)}
 .scanchg{font-family:var(--lab);font-size:12px;font-weight:600}
@@ -8656,15 +8659,32 @@ function scanScheduleRender(){
 // user just opened). Starts empty (every card collapsed) — a beginner's first look is the quick
 // row only, not all 12+ stats at once.
 let scanExpanded={};
+// Ranking: the two stats already up front in the quick row — total %move since prior close and
+// RVOL — are exactly the "is this ticker doing something obvious today" pair (see the chat
+// explanation this scoring mirrors). abs(%move) alone rewards a big print on dead volume just as
+// much as a real one, so it's scaled by sqrt(RVOL): a real, well-participated move ranks above a
+// same-size move nobody is actually trading. sqrt (not raw RVOL) keeps one huge RVOL spike from
+// completely dominating the ranking over a genuinely bigger price move. No quote yet sorts last,
+// below even a flat/choppy symbol that HAS reported in.
+function scanMoveScore(d){
+  if(d==null||d.last==null||!(d.prevClose>0))return-1;
+  const movePct=Math.abs((d.last-d.prevClose)/d.prevClose*100);
+  const rvol=(d.rvol!=null&&isFinite(d.rvol)&&d.rvol>0)?d.rvol:0;
+  return movePct*Math.sqrt(rvol);
+}
 function scanRender(){
   const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const fmtAge=t=>{if(t==null)return'never';const s=Math.floor((Date.now()-t)/1000);
     return s<60?s+'s ago':Math.floor(s/60)+'m ago';};
   const n=(v,dp)=>v==null||!isFinite(v)?'—':(+v).toFixed(dp==null?2:dp);
   const stat=(label,val)=>`<div class="scanstat"><div class="k">${esc(label)}</div><div class="v">${val}</div></div>`;
-  const html=SCANNER_SYMS.map(sym=>{
+  // Re-sorted on every render (every quote tick, at minimum every 5s) so a card climbs or sinks
+  // the moment its own move/volume picture changes — never a one-time, load-time-only order.
+  const ranked=SCANNER_SYMS.slice().sort((a,b)=>scanMoveScore(scanData[b])-scanMoveScore(scanData[a]));
+  const html=ranked.map((sym,i)=>{
     const d=scanData[sym],g=d.gex,nw=d.news,open=!!scanExpanded[sym];
     const chgCol=d.change>0?'var(--long)':d.change<0?'var(--short)':'var(--dim)';
+    const score=scanMoveScore(d),quiet=score<0.5;   // small move + light volume = choppy/no-move
 
     // The quick row: the two numbers that answer "is this ticker doing anything today" at a
     // glance — everything else is a click away, not a scroll away.
@@ -8706,8 +8726,9 @@ function scanRender(){
       stat('Expected move (to expiry)',g&&g.ok&&g.expectedMove!=null?'±$'+n(g.expectedMove):'—'),
     ].join('');
 
-    return`<div class="scancard">
+    return`<div class="scancard${quiet?' scanquiet':''}">
       <div class="scanhead">
+        <span class="scanrank">#${i+1}</span>
         <span class="scansym">${esc(sym)}</span>
         <span class="scanpx">${d.last!=null?'$'+n(d.last):'—'}</span>
         <span class="scanchg" style="color:${chgCol}">${d.change!=null?(d.change>0?'+':'')+n(d.change)+' ('+n(d.changePct)+'%)':''}</span>
