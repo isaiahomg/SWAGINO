@@ -8463,20 +8463,23 @@ async function computeChainGex(){
 }
 
 /* ================================ Watchlist Scanner =========================================
-   Hard-coded 7-ticker scanner (AAPL/MSFT/GOOGL/AMZN/NVDA/META/TSLA), entirely isolated from the
-   active chart: its own state object, its own timers, renders into its own <table>, and never
-   touches lightweight-charts/renderPane — it cannot contend with chart render cost by
-   construction, not just by care. Three independent cadences:
-     - quotes: ONE batched request for all 7 symbols every 5s (Tradier's /quotes endpoint
+   Hard-coded 9-ticker scanner (QQQ/SPY + the Magnificent 7: AAPL/MSFT/GOOGL/AMZN/NVDA/META/TSLA),
+   entirely isolated from the active chart: its own state object, its own timers, renders into its
+   own <table>, and never touches lightweight-charts/renderPane — it cannot contend with chart
+   render cost by construction, not just by care. Three independent cadences:
+     - quotes: ONE batched request for all 9 symbols every 5s (Tradier's /quotes endpoint
        already accepts comma-separated symbols — confirmed live against the real endpoint, not
        assumed) via the existing tradier() helper. Always running (cheap — one request whether
-       it's 1 symbol or 7) so the tab is instant-fresh the moment it's opened.
+       it's 1 symbol or 9) so the tab is instant-fresh the moment it's opened.
      - bars (ATR / VWAP / premarket H-L / support-resistance): per-symbol, NOT batchable across
        symbols (a Tradier API limitation, not a choice) — fetched strictly SEQUENTIALLY, never
-       Promise.all'd, so the 14 requests (2/symbol) never burst at once. Refreshed every 5
-       minutes and ONLY while #pane-scanner is actually visible (scanPaneVisible()), the same
-       "don't do invisible work" principle anyModalOpen() already applies to the chart's own
-       overlay loop elsewhere in this file.
+       Promise.all'd, so the 18 requests (2/symbol) never burst at once. Refreshed on a scheduler
+       aligned to the real 5-minute ET candle boundary (scanScheduleBoundary, below) — not a
+       fixed setInterval anchored to whenever the page happened to load — and only does its
+       fetch work while #pane-scanner is actually visible (scanPaneVisible()), the same "don't do
+       invisible work" principle anyModalOpen() already applies to the chart's own overlay loop
+       elsewhere in this file; scanCatchUpIfStale() (below) covers the gap that leaves; see its
+       own comment for why that gap existed.
      - GEX/options summary: reuses the exact same pure Black-Scholes functions computeChainGex()
        above uses (bsBounds/solveIV/bsGamma/gexContract/gexFlip/yearsToExpiry — zero changes to
        any of them) but writes into scanData[sym].gex instead of the module-level
@@ -8485,16 +8488,16 @@ async function computeChainGex(){
        Scoped down from the main pipeline: front-month expiration only (same as the main chart),
        ±4% strike window only (skips the wider ±20% heatmap window the main chart needs for its
        grid but this summary doesn't), no live per-tick WS subscription (a periodic snapshot is
-       enough for a scanner overview). Same 5-minute, visible-only, sequential cadence as bars —
-       this is the heaviest tier (an options chain fetch + IV solves per symbol), so it gets the
-       same care against bursting. IV-solve cost itself was measured earlier this session to be
-       trivial per contract (Newton-Raphson in a handful of iterations) — the request VOLUME is
-       the real cost here, not the math, which is exactly why this stays sequential-with-await
+       enough for a scanner overview). Same boundary-aligned, visible-only, sequential cadence as
+       bars — this is the heaviest tier (an options chain fetch + IV solves per symbol), so it
+       gets the same care against bursting. IV-solve cost itself was measured earlier this session
+       to be trivial per contract (Newton-Raphson in a handful of iterations) — the request VOLUME
+       is the real cost here, not the math, which is exactly why this stays sequential-with-await
        rather than parallel. */
-const SCANNER_SYMS=['AAPL','MSFT','GOOGL','AMZN','NVDA','META','TSLA'];
+const SCANNER_SYMS=['QQQ','SPY','AAPL','MSFT','GOOGL','AMZN','NVDA','META','TSLA'];
 let scanData={};
 SCANNER_SYMS.forEach(s=>scanData[s]={sym:s});
-let scanSlowBusy=false,scanEverLoaded=false;
+let scanSlowBusy=false,scanLastFullAt=0;
 function scanPaneVisible(){const el=$('#pane-scanner');return!!el&&el.classList.contains('on');}
 
 async function scanFetchQuotes(){
@@ -8531,7 +8534,15 @@ async function scanFetchBars(sym){
     const pmBars=todayBars.filter(b=>b.etMin<SCAN_RTH_OPEN_MIN);
     d.pmHigh=pmBars.length?Math.max(...pmBars.map(b=>b.h)):null;
     d.pmLow=pmBars.length?Math.min(...pmBars.map(b=>b.l)):null;
-    d.vwap=todayBars.length?(computeVwapSeries(todayBars,'session').values.slice(-1)[0]??null):null;
+    // computeVwapSeries expects the main chart's OWN mapped bar shape (high/low/close/volume/ymd —
+    // what seriesForTFRaw produces), but todayBars here is straight off fetchTsRange/mapTsRow,
+    // which uses h/l/c/v/etYmd instead. Passed as-is, every field read inside computeVwapSeries
+    // came back undefined — tp (the typical price) was NaN and vol was always 0, so cumV>0 was
+    // never true and it silently returned null for every bar, every cycle, for every symbol.
+    // Confirmed live post-market 2026-09-03: VWAP showed "–" for all 9 scanner cards despite 195
+    // valid bars being fetched for QQQ alone. Re-shape into the field names it actually reads.
+    const vwapBars=todayBars.map(b=>({high:b.h,low:b.l,close:b.c,volume:b.v,ymd:b.etYmd}));
+    d.vwap=vwapBars.length?(computeVwapSeries(vwapBars,'session').values.slice(-1)[0]??null):null;
 
     const startD=new Date(Date.now()-120*864e5).toISOString().slice(0,10);
     const jd=await tradier(`/v1/markets/history?symbol=${sym}&interval=daily&start=${startD}&end=${todayYmd}`);
@@ -8576,10 +8587,20 @@ async function scanComputeGex(sym){
     const je=await tradier(`/v1/markets/options/expirations?symbol=${sym}&includeAllRoots=true&strikes=false`);
     let exps=je.expirations&&je.expirations.date;exps=Array.isArray(exps)?exps:exps?[exps]:[];
     const today=nowET().ymd;
-    const front=exps.filter(e=>e>=today).slice(0,1);
-    if(!front.length)throw new Error('no expirations returned');
-    const ex=front[0],T=yearsToExpiry(ex);
-    if(!(T>0))throw new Error('expiration has no time remaining');
+    // A same-day (0DTE) listing is still ">= today" after its own 4pm close — QQQ/SPY (unlike the
+    // Magnificent 7) list one every weekday, so post-market their naive "first expiration on/after
+    // today" candidate is today's OWN, already-expired 0DTE. Confirmed live post-market
+    // (2026-09-03, 16:12 ET): this threw "expiration has no time remaining" for QQQ and SPY on
+    // every cycle, for the rest of the session — a real, session-long post-market data gap for
+    // exactly the two tickers the post-market validation asked about. Walk forward through every
+    // candidate in expiration order and take the first with real time left, instead of only ever
+    // trying the very first one; for every other symbol here (none of which have 0DTE) the first
+    // candidate always has T>0, so this loop still terminates on iteration one, unchanged.
+    const candidates=exps.filter(e=>e>=today);
+    if(!candidates.length)throw new Error('no expirations returned');
+    let ex=null,T=0;
+    for(const cand of candidates){const t=yearsToExpiry(cand);if(t>0){ex=cand;T=t;break;}}
+    if(!ex)throw new Error('no expiration with time remaining');
     const jc=await tradier(`/v1/markets/options/chains?symbol=${sym}&expiration=${ex}`);
     let os=jc.options&&jc.options.option;os=Array.isArray(os)?os:os?[os]:[];
     const byStrike={};let totalVol=0,totalOi=0,callVol=0,putVol=0,atmSigma=null,atmDist=Infinity;
@@ -8662,7 +8683,7 @@ async function scanRefreshSlow(){
       scanScheduleRender();
     }
   }finally{
-    scanSlowBusy=false;scanEverLoaded=true;
+    scanSlowBusy=false;scanLastFullAt=Date.now();
     if(st)st.textContent='last full refresh '+h12(etParts(new Date()).hms)+' ET';
   }
 }
@@ -8776,10 +8797,56 @@ function scanRender(){
 
 async function scanTick(){
   await scanFetchQuotes();
-  if(scanPaneVisible()&&!scanEverLoaded&&!scanSlowBusy)scanRefreshSlow();
 }
 setInterval(scanTick,5000);
-setInterval(scanRefreshSlow,300000);
+
+// Boundary-aligned scheduler for the slow tier (bars/GEX/news). The old version was a bare
+// setInterval(scanRefreshSlow,300000) registered once at page-load/script-eval time — its
+// 5-minute cadence was anchored to WHEN THE SCRIPT HAPPENED TO LOAD, not to real 5-minute candle
+// closes (:00/:05/:10... ET), and a repeating setInterval accumulates drift release over release.
+// Worse, the one-shot "has this ever run" latch it used to gate the FIRST run never reset once
+// set — so it silently stopped mattering the moment that first run completed, and every
+// subsequent refresh depended entirely on the tab happening to be the visible pane at that one
+// precise, drifting millisecond the interval fired. Miss that instant even once (working on the
+// Chart tab, say) and the slow tier went stale for the rest of the session — reloading the page
+// was the only thing that re-armed it. That IS the "scanner doesn't refresh without a reload" bug.
+//
+// Fixed with a self-rescheduling setTimeout that recomputes its delay to the NEXT real 5-minute
+// ET boundary from the wall clock (via nowET()) every single time it fires, so it can never
+// accumulate drift the way a repeating interval does. Exactly one timer handle is ever pending
+// (cleared before every reschedule), so it can never duplicate or fire twice for one boundary. A
+// +250ms pad lets the exchange's own bar for the bucket that just closed actually exist before
+// scanFetchBars asks for it. It reschedules unconditionally, on schedule, forever — whether or
+// not the pane happened to be visible or connected when it fired — because the actual fetch work
+// is separately gated at the top of scanRefreshSlow() itself (scanPaneVisible()/LS.k), so a
+// background-tab cycle is a no-op, never a missed appointment: the next boundary is always
+// already scheduled.
+let _scanBoundaryTimer=null;
+function scanMsToNextBoundary(){
+  const t=nowET();
+  const secIntoDay=t.h*3600+t.m*60+(+t.hms.slice(6,8));
+  return(300-(secIntoDay%300))*1000;
+}
+function scanScheduleBoundary(){
+  clearTimeout(_scanBoundaryTimer);
+  _scanBoundaryTimer=setTimeout(async()=>{
+    try{await scanRefreshSlow();}finally{scanScheduleBoundary();}
+  },scanMsToNextBoundary()+250);
+}
+scanScheduleBoundary();
+
+// Catching up when the user RETURNS to the Scanner tab (either by clicking it — see switchPane —
+// or by returning to a backgrounded browser tab, where setTimeout itself can be throttled well
+// past its due time — see the visibilitychange hook below). The boundary timer above only does
+// real work while the pane is visible, so without this, data can sit up to one full 5-minute
+// cycle stale the moment someone switches back: they'd see whatever was current the last time
+// THIS tab was open, not the market as of right now. Same principle the main chart's own
+// resyncOnReturn() already uses — the tick that makes the tab relevant again triggers the
+// catch-up directly instead of making the user wait for the next scheduled tick.
+function scanCatchUpIfStale(){
+  if(!scanPaneVisible()||!LS.k)return;
+  if(!scanLastFullAt||Date.now()-scanLastFullAt>=300000)scanRefreshSlow();
+}
 scanRender();   // paint the "not loaded yet" placeholder rows immediately, before any fetch
 
 // Auto-refresh only runs while Tradier serves data (04:00-20:00 ET). The previous
@@ -9428,7 +9495,7 @@ async function resyncOnReturn(){
   }catch(e){catchingUp=false;softFail(e);}
   finally{resyncBusy=false;bgEvents=[];}
 }
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)resyncOnReturn();});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){resyncOnReturn();scanCatchUpIfStale();}});
 let failStreak=0;
 function softFail(e){
   failStreak++;
@@ -9577,6 +9644,7 @@ function switchPane(p){$$('.tabs button').forEach(x=>x.classList.toggle('on',x.d
   // other tab (Levels/GEX/Log) keeps the normal 340px, toggled here rather than left permanently
   // wide so switching away restores the chart's usual layout exactly.
   const main=$('.main');if(main)main.classList.toggle('scanwide',p==='scanner');
+  if(p==='scanner')scanCatchUpIfStale();
   moveTabPill();}
 addEventListener('resize',moveTabPill);
 // lay out before first paint so the pill does not visibly snap into place on load
