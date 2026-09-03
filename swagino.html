@@ -5870,7 +5870,7 @@ function bucketFields(t){const p=etParts(new Date(t*1000));return{etYmd:p.ymd,et
 // §6 cvol reconciliation state + a one-time raw sample so the trade-event field names (esp. cvol)
 // can be spot-checked against a live print rather than assumed.
 let _volChk={t:null,warned:false},_tradeSampled=false,_cvolPrev=null;const _volBase={};
-function updateForming(px,sz,closeOnly,cvol){
+function updateForming(px,sz,closeOnly,cvol,tradeTs){
   if(px==null||!isFinite(px))return;
   sz=+sz||0;
   const m=nowET();const mm=m.h*60+m.m;
@@ -5883,7 +5883,20 @@ function updateForming(px,sz,closeOnly,cvol){
   // extended hours or not.
   const dow=new Date(m.ymd+'T12:00:00Z').getUTCDay();
   if(dow===0||dow===6)return;
-  const now=Math.floor(Date.now()/1000);
+  // Which bucket a trade belongs to used to always come from Date.now() — when this line of JS
+  // happened to RUN, not when the exchange actually executed the print. Confirmed live via
+  // LOCAL-DIAG capture across a real 5m rollover (2026-09-03 10:00:00 ET, QQQ): of 1,634 trades
+  // in a ~40s window, 31 arrived 4.2-6.5s late (a burst right at the boundary) with an exchange
+  // timestamp still in the closing bucket, but Date.now() had already crossed into the new one -
+  // so each got inserted as the NEW candle's first tick (corrupting its open with a price that
+  // was really still part of the OLD candle) while the true closing candle silently stopped
+  // advancing a beat early. That is the exact "next candle's open doesn't match the previous
+  // candle's close" symptom. tradeTs (the trade's own d.date, passed in by the WS handler) fixes
+  // the bucket to when the print actually happened; sanity-bounded to within an hour of local
+  // wall-clock (mirrors the size/cvol sanity guard just above in the caller) so a garbage or
+  // missing timestamp falls back to the old behavior instead of misbucketing far worse.
+  const nowLocal=Math.floor(Date.now()/1000);
+  const now=(tradeTs!=null&&isFinite(tradeTs)&&Math.abs(nowLocal-tradeTs)<3600)?tradeTs:nowLocal;
   const haveCvol=cvol!=null&&isFinite(cvol);
   const upd=(arr,period)=>{
     const b=Math.floor(now/period)*period;
@@ -6165,7 +6178,14 @@ async function startStream(){
         const cvolNum=(d.cvol!=null&&isFinite(+d.cvol))?+d.cvol:null;
         let szNum=+d.size||0;
         if(cvolNum!=null&&szNum>cvolNum)szNum=0;
-        if(isFinite(px)){lastPx=px;lastPxAt=Date.now();paintPx();updateForming(px,szNum,false,cvolNum);evaluateAlerts(px);}
+        // d.date is the EXCHANGE's own execution timestamp for this print (ms) — confirmed present
+        // on every live trade message via LOCAL-DIAG capture, e.g. {"price":"712.53",...,
+        // "date":"1788443988353"}. Passed through to updateForming so it can bucket the trade by
+        // when it actually happened rather than when this line of JS got to run — see that
+        // function's own comment for why (a real, measured rollover-boundary bug this closes).
+        const tradeTsMs=+d.date;
+        const tradeTs=isFinite(tradeTsMs)&&tradeTsMs>0?Math.floor(tradeTsMs/1000):null;
+        if(isFinite(px)){lastPx=px;lastPxAt=Date.now();paintPx();updateForming(px,szNum,false,cvolNum,tradeTs);evaluateAlerts(px);}
       }else if(d.type==='quote'&&d.symbol===wsWantSym){
         // Extended-hours trade prints are sparse to nonexistent for a lot of symbols - confirmed
         // via LOCAL-DIAG capture: 30 straight minutes of pre-market 'trade' ticks for MU, all
