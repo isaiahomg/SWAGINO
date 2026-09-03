@@ -5869,7 +5869,7 @@ function touchSessionExtremes(px){
 function bucketFields(t){const p=etParts(new Date(t*1000));return{etYmd:p.ymd,etMin:p.h*60+p.m,etHm:p.hm};}
 // §6 cvol reconciliation state + a one-time raw sample so the trade-event field names (esp. cvol)
 // can be spot-checked against a live print rather than assumed.
-let _volChk={t:null,warned:false},_tradeSampled=false,_cvolPrev=null;const _volBase={};
+let _volChk={t:null,warned:false},_tradeSampled=false,_cvolPrev=null,_lastTradeDateMs=null;const _volBase={};
 function updateForming(px,sz,closeOnly,cvol,tradeTs){
   if(px==null||!isFinite(px))return;
   sz=+sz||0;
@@ -6142,6 +6142,7 @@ async function startStream(){
     ws.send(JSON.stringify({symbols:[wsWantSym,...gexWsSymbols],sessionid:sid,linebreak:true,filter:['trade','quote']}));
     wsAlive=true;wsRetryMs=1000;setStatus();
     _cvolPrev=null;Object.keys(_volBase).forEach(k=>delete _volBase[k]);   // (re)connect: cvol boundary unknown until the next clean bucket
+    _lastTradeDateMs=null;   // (re)connect/symbol change: a new stream, so nothing to dedupe against yet
     log('WebSocket streaming live · '+wsWantSym+' · per-trade updates','long');
   };
   ws.onmessage=ev=>{
@@ -6185,6 +6186,18 @@ async function startStream(){
         // function's own comment for why (a real, measured rollover-boundary bug this closes).
         const tradeTsMs=+d.date;
         const tradeTs=isFinite(tradeTsMs)&&tradeTsMs>0?Math.floor(tradeTsMs/1000):null;
+        // Confirmed live post-market (2026-09-03, AAPL, ~16:24-16:26 ET): with no genuine new
+        // print to report, Tradier's trade channel re-sent the SAME closing-auction record
+        // (price/size/date byte-for-byte identical — size 5,900,610 dated exactly 16:00:00.200,
+        // the closing print) 24 times over 82 seconds, only cvol ticking between copies. Every
+        // repeat has real positive size, so it passed every existing guard and re-ran lastPx/
+        // paintPx/evaluateAlerts/updateForming on pure duplicate information every few seconds —
+        // wasted work, and worse, it would keep pinning the on-screen price back to a stale print
+        // on top of any genuine (quote-driven) post-market price discovery in between. A real new
+        // trade always carries a new execution timestamp; the exact same d.date coming back is
+        // this replay, not news, so skip it entirely rather than reprocess it.
+        if(tradeTsMs===_lastTradeDateMs)return;
+        _lastTradeDateMs=tradeTsMs;
         if(isFinite(px)){lastPx=px;lastPxAt=Date.now();paintPx();updateForming(px,szNum,false,cvolNum,tradeTs);evaluateAlerts(px);}
       }else if(d.type==='quote'&&d.symbol===wsWantSym){
         // Extended-hours trade prints are sparse to nonexistent for a lot of symbols - confirmed
