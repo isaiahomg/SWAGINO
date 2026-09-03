@@ -463,16 +463,27 @@ input[type=checkbox]{accent-color:var(--pivot)}
 table.lv{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:11px}
 table.lv td{padding:3px 4px;white-space:normal;overflow-wrap:anywhere}
 table.lv td.p{font-weight:600;text-align:right;white-space:nowrap}
-/* Scanner reuses .lv/.lvgrp/.lvrow wholesale for visual consistency, but its value column holds
-   long descriptive strings ("not loaded yet", "33.8M / 0.61x"), not short prices like "708.25" —
-   .p's white-space:nowrap above is correct for the Levels table but forced table.lv's auto
-   layout to crush the LABEL column down to single-character width to make room for a value it
-   refused to wrap (reproduced live: label column measured 27px, wrapping every word one letter
-   per line). Fixed layout with an explicit label-column width sidesteps that regardless of
-   content length; scoped to #scanTable by id so the actual Levels table (#lvlTable) is untouched. */
-#scanTable{table-layout:fixed}
-#scanTable td:first-child{width:42%;color:var(--dim)}
-#scanTable td.p{white-space:normal;text-align:left;font-weight:400}
+/* Scanner cards: the shared .lv table (monospace, dense rows) is right for the Levels panel but
+   reads as a terminal dump for a 7-symbol overview — its own card+stat-grid layout instead, in
+   the app's normal UI font (--lab), smaller and more scannable than a stacked label:value list.
+   Only the Scanner tab needs the extra width a 3-column stat grid wants, so .main only widens
+   while it's the active pane (toggled in switchPane()) — every other tab keeps the normal 340px. */
+.main.scanwide{grid-template-columns:1fr 500px}
+#pane-scanner{padding:10px;overflow-y:auto}
+.scancard{background:var(--panel2);border:1px solid var(--line);border-radius:10px;
+  padding:10px 12px;margin-bottom:8px}
+.scanhead{display:flex;align-items:baseline;gap:8px;margin-bottom:8px;
+  padding-bottom:8px;border-bottom:1px solid var(--line)}
+.scansym{font-family:var(--lab);font-weight:700;font-size:13px;letter-spacing:.01em;color:var(--text)}
+.scanpx{font-family:var(--lab);font-size:12px;font-weight:600;color:var(--text)}
+.scanchg{font-family:var(--lab);font-size:10.5px;font-weight:600}
+.scangrid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px 10px}
+.scangrid.wide{grid-template-columns:1fr}
+.scanstat .k{font-family:var(--lab);font-size:8px;letter-spacing:.03em;text-transform:uppercase;
+  color:var(--faint);margin-bottom:1px}
+.scanstat .v{font-family:var(--lab);font-size:10px;color:var(--dim);line-height:1.3}
+.scanmeta{font-family:var(--lab);font-size:8.5px;color:var(--faint);margin-top:8px;
+  padding-top:6px;border-top:1px solid var(--line)}
 .badge{font-size:9px;border:none;background:rgba(255,255,255,.08);border-radius:4px;padding:1px 5px;color:var(--dim);margin-left:4px}
 /* CONFLUENCE badge — golden glow, brighter the more independent level families agree.
    The badge is only rendered while the level is still confluent, so when a cluster breaks
@@ -1624,7 +1635,7 @@ table.lv td{padding:6px 10px}
       <div class="pane" id="pane-log"><div id="log"></div></div>
       <div class="pane" id="pane-scanner">
         <div id="scanStatus" class="hint" style="margin:8px 10px 2px">not loaded yet</div>
-        <table class="lv" id="scanTable"></table>
+        <div id="scanCards"></div>
       </div>
     </div>
   </div>
@@ -8600,35 +8611,42 @@ function scanRender(){
   const fmtAge=t=>{if(t==null)return'never';const s=Math.floor((Date.now()-t)/1000);
     return s<60?s+'s ago':Math.floor(s/60)+'m ago';};
   const n=(v,dp)=>v==null||!isFinite(v)?'—':(+v).toFixed(dp==null?2:dp);
+  const stat=(label,val)=>`<div class="scanstat"><div class="k">${esc(label)}</div><div class="v">${val}</div></div>`;
   const html=SCANNER_SYMS.map(sym=>{
     const d=scanData[sym],g=d.gex;
-    const rows=[];
-    const row=(label,val)=>rows.push(`<tr class="lvrow"><td>${esc(label)}</td><td class="p">${val}</td></tr>`);
-    const chgCol=d.change>0?'var(--long)':d.change<0?'var(--short)':'inherit';
-    row('Price',d.last!=null?`$${n(d.last)} <span style="color:${chgCol}">${d.change>0?'+':''}${n(d.change)} (${n(d.changePct)}%)</span>`:'—');
-    row('Gap % vs prev close',(d.last!=null&&d.prevClose>0)?n((d.last-d.prevClose)/d.prevClose*100)+'%':'—');
-    row('Volume / RVOL',d.volume!=null?`${n(d.volume,0)} / ${d.rvol!=null?n(d.rvol)+'x':'—'}`:'—');
-    row('ATR(14d) / ATR%',d.atr!=null?`$${n(d.atr)} / ${n(d.atrPct)}%`:(d.barsOk===false?'unavailable — '+esc(d.barsErr||''):'not loaded yet'));
-    row('VWAP / Δ',d.vwap!=null?`$${n(d.vwap)} (${d.last!=null?n((d.last-d.vwap)/d.vwap*100)+'%':'—'})`:'—');
-    row('Premarket High / Low',(d.pmHigh!=null||d.pmLow!=null)?`$${n(d.pmHigh)} / $${n(d.pmLow)}`:'no premarket bars yet');
-    row('Support / Resistance',(d.support!=null||d.resistance!=null)?`$${n(d.support)} / $${n(d.resistance)}`:'—');
-    if(g&&g.ok){
-      row('Net GEX ('+esc(g.exp)+')',n(g.netGex,0));
-      row('Gamma Flip',g.flipPrice!=null?'$'+n(g.flipPrice):'none found');
-      row('ATM IV',g.atmIV!=null?n(g.atmIV*100,1)+'%':'—');
-      row('Chain Vol / OI',`${n(g.totalVol,0)} / ${n(g.totalOi,0)}`);
-      row('Put/Call vol ratio',g.pcRatio!=null?n(g.pcRatio):'—');
-      row('Expected move (to '+esc(g.exp)+')',g.expectedMove!=null?'±$'+n(g.expectedMove):'—');
-    }else if(g&&!g.ok){
-      row('Options / GEX','unavailable — '+esc(g.err||'error'));
-    }else{
-      row('Options / GEX','not loaded yet');
-    }
-    row('News / catalysts','not available (no connected source)');
-    row('Data as of','quote '+fmtAge(d.quoteAt)+', bars '+fmtAge(d.barsAt)+(g?', options '+fmtAge(g.at):''));
-    return`<tr class="lvgrp"><td colspan="2"><span class="catlabel on">${esc(sym)}</span></td></tr>`+rows.join('');
+    const chgCol=d.change>0?'var(--long)':d.change<0?'var(--short)':'var(--dim)';
+    const grid=[
+      stat('Gap % vs close',(d.last!=null&&d.prevClose>0)?n((d.last-d.prevClose)/d.prevClose*100)+'%':'—'),
+      stat('Volume / RVOL',d.volume!=null?`${n(d.volume/1e6,1)}M / ${d.rvol!=null?n(d.rvol)+'x':'—'}`:'—'),
+      stat('ATR(14d) / %',d.atr!=null?`$${n(d.atr)} / ${n(d.atrPct)}%`:(d.barsOk===false?'unavailable':'—')),
+      stat('VWAP / Δ',d.vwap!=null?`$${n(d.vwap)} (${d.last!=null?n((d.last-d.vwap)/d.vwap*100)+'%':'—'})`:'—'),
+      stat('PM High',d.pmHigh!=null?'$'+n(d.pmHigh):'—'),
+      stat('PM Low',d.pmLow!=null?'$'+n(d.pmLow):'—'),
+      stat('Support',d.support!=null?'$'+n(d.support):'—'),
+      stat('Resistance',d.resistance!=null?'$'+n(d.resistance):'—'),
+      stat('Net GEX',g&&g.ok?n(g.netGex,0):(g&&!g.ok?'—':'…')),
+      stat('Gamma Flip',g&&g.ok?(g.flipPrice!=null?'$'+n(g.flipPrice):'none'):(g&&!g.ok?'—':'…')),
+      stat('ATM IV',g&&g.ok&&g.atmIV!=null?n(g.atmIV*100,1)+'%':'—'),
+      stat('Put/Call vol',g&&g.ok&&g.pcRatio!=null?n(g.pcRatio):'—'),
+    ].join('');
+    const wide=[
+      stat('Options',g&&g.ok?`vol ${n(g.totalVol,0)} · OI ${n(g.totalOi,0)} · exp ${esc(g.exp)}`
+        :(g&&!g.ok?'unavailable — '+esc(g.err||'error'):'not loaded yet')),
+      stat('Expected move (to expiry)',g&&g.ok&&g.expectedMove!=null?'±$'+n(g.expectedMove):'—'),
+      stat('News / catalysts','not available (no connected source)'),
+    ].join('');
+    return`<div class="scancard">
+      <div class="scanhead">
+        <span class="scansym">${esc(sym)}</span>
+        <span class="scanpx">${d.last!=null?'$'+n(d.last):'—'}</span>
+        <span class="scanchg" style="color:${chgCol}">${d.change!=null?(d.change>0?'+':'')+n(d.change)+' ('+n(d.changePct)+'%)':''}</span>
+      </div>
+      <div class="scangrid">${grid}</div>
+      <div class="scangrid wide" style="margin-top:7px">${wide}</div>
+      <div class="scanmeta">quote ${fmtAge(d.quoteAt)} · bars ${fmtAge(d.barsAt)}${g?' · options '+fmtAge(g.at):''}</div>
+    </div>`;
   }).join('');
-  const tbl=$('#scanTable');if(tbl)tbl.innerHTML=html;
+  const host=$('#scanCards');if(host)host.innerHTML=html;
 }
 
 async function scanTick(){
@@ -9429,7 +9447,12 @@ function moveTabPill(){
   pill.style.width=on.offsetWidth+'px';
   pill.style.transform='translateX('+on.offsetLeft+'px)';
 }
-function switchPane(p){$$('.tabs button').forEach(x=>x.classList.toggle('on',x.dataset.pane===p));$$('.pane').forEach(x=>x.classList.toggle('on',x.id==='pane-'+p));moveTabPill();}
+function switchPane(p){$$('.tabs button').forEach(x=>x.classList.toggle('on',x.dataset.pane===p));$$('.pane').forEach(x=>x.classList.toggle('on',x.id==='pane-'+p));
+  // Only the Scanner tab wants the wider column (a 3-column stat grid needs the room) — every
+  // other tab (Levels/GEX/Log) keeps the normal 340px, toggled here rather than left permanently
+  // wide so switching away restores the chart's usual layout exactly.
+  const main=$('.main');if(main)main.classList.toggle('scanwide',p==='scanner');
+  moveTabPill();}
 addEventListener('resize',moveTabPill);
 // lay out before first paint so the pill does not visibly snap into place on load
 requestAnimationFrame(moveTabPill);
