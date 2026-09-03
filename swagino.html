@@ -225,29 +225,10 @@ input[type=checkbox]{accent-color:var(--pivot)}
 .sessband.post{background:rgba(64,116,196,.30)}
 .swdot{position:absolute;width:5px;height:5px;border-radius:50%;pointer-events:auto;cursor:default;
   transform:translate(-50%,-50%);box-shadow:0 0 3px rgba(0,0,0,.9)}
-/* a break reads in three places: a small solid tick at the swing's own wick (with its name
-   stacked right above/below it), a tick or cross on the bar that settled it, and the axis
-   price reading. */
-/* Where the break happened, moomoo/HOD-LOD style: a short solid tick sitting just clear of
-   the swing's own wick — the exact price that had to give way — instead of a solid arrowhead
-   parked under one candle or a line spanning the whole pane. An up-break references a swing
-   HIGH, so the tick sits ABOVE it; a down-break references a swing LOW, so it sits BELOW —
-   either way pointing straight back at the wick it is quoting. Coloured in the break's own
-   kind colour (BOS vs CHoCH), same as the old full-width line was.
-   The tick's own LEFT edge is planted exactly at the wick's x — same x either way — so the
-   wick always sits diagonally off that left corner: below-left of the tick for an up-break,
-   above-left for a down-break. A single fixed tilt can only lean toward one of those two, so
-   an up-break's tick used to visually point at its wick while a down-break's tilted the WRONG
-   way, away from it. Mirrored per direction below so the tick's near corner always dips toward
-   whichever side the wick is actually on. 14deg, not the 25deg this started at — the shallower
-   angle still reads as tilted-toward-the-wick without looking like a caret. Drawn as a filled,
-   fully-rounded (pill-shaped) bar rather than a hard-cornered border-top edge, for the same
-   reason a rounded line-cap reads softer than a squared one anywhere else it is used. */
-.brkwick.up{position:absolute;pointer-events:auto;border-radius:999px;transform:rotate(-14deg);
-  filter:drop-shadow(0 1px 1px rgba(0,0,0,.85))}
-.brkwick.dn{position:absolute;pointer-events:auto;border-radius:999px;transform:rotate(14deg);
-  filter:drop-shadow(0 1px 1px rgba(0,0,0,.85))}
-.brkwick.stale{opacity:.62}
+/* a break reads in two places: its name+state label near the swing's own wick, and a tick or
+   cross on the bar that settled it. (A tilted solid tick used to sit at the wick too — removed
+   per feedback, it read as a stray dash — the swing's own dot, positionStruct, already marks
+   that exact price, and the label's hover tooltip still gives the exact price.) */
 /* Used to sit a full box-height clear of the level's OWN line, on the side the break went, so
    it wouldn't straddle that line. That line is gone now (the break lives at the wick instead),
    so the up/dn variants were left overriding the base centring transform with nothing to clear
@@ -299,6 +280,12 @@ input[type=checkbox]{accent-color:var(--pivot)}
 .rbarrow.up{border-bottom:8px solid currentColor;transform:translate(-50%,4px)}
 .rbarrow.dn{border-top:8px solid currentColor;transform:translate(-50%,-100%) translateY(-4px)}
 .brklab .bst{margin-left:5px}
+/* an outcome that has not landed yet should look like it is still running */
+.brklab .bspin{display:inline-block;width:7px;height:7px;margin:0 4px -1px 1px;border-radius:50%;
+  border:1.5px solid currentColor;border-top-color:transparent;vertical-align:middle;
+  animation:bspin .85s linear infinite}
+@keyframes bspin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.brklab .bspin{animation-duration:3s}}
 /* Only the older break's MARKERS fade. Its name and outcome stay at full strength: the
    whole reason a resolved break is still on the chart is so you can read what happened. */
 .brkmark.stale{opacity:.62}
@@ -3654,12 +3641,6 @@ function findSwings(data,strength,minMove,volFloor){
 }
 // A failed break keeps its own hue so BOS is still tellable from CHoCH at a glance, but
 // loses most of its weight — it is history, not a level to trade off.
-function brkWidth(bk){
-  const S=cfg.structCfg;
-  if(bk.state==='held')return +S.heldW||2;
-  if(bk.state==='failed')return +S.failW||1;
-  return +(bk.kind==='BOS'?S.bosW:S.chochW)||2;
-}
 function brkColor(bk){
   const S=cfg.structCfg;
   const base=bk.kind==='BOS'?(S.bosC||S.patC):(S.chochC||S.bosC||S.patC);
@@ -5250,14 +5231,9 @@ function positionBreaks(p){
     let y=null;try{y=pxRound(p.candles.priceToCoordinate(+bk.price.toFixed(2)));}catch(e){}
     if(y==null||y<6||y>h-4)return;
     // No axis price badge for BOS/CHoCH (removed per feedback) — it doubled up with the swing
-    // HH/HL/LH/LL axis badges right next to it and added clutter the tick+label callout below
-    // doesn't need; the exact price is still available on hover via brkTipHtml.
-    // Moomoo/other charting sites label HOD/LOD with a short SOLID tick sitting just clear
-    // of the actual wick, and the name+state sit stacked directly above it (below it for a
-    // down-break) — not out at the axis. This wick is the SWING's own pivot bar (bk.ref), not
-    // the later bar that broke it: the tick is quoting "this is the exact price that had to
-    // give way", the same thing the old full-pane line used to draw before it shrank down to
-    // a wick callout.
+    // HH/HL/LH/LL axis badges right next to it; the exact price is still available on hover
+    // via brkTipHtml. The label anchors off the SWING's own pivot bar (bk.ref), not the later
+    // bar that broke it — it's quoting "this is the exact price that had to give way".
     const dir=bk.dir==='up'?'up':'dn';
     const wt=(p.tms&&bk.ref!=null)?p.tms[bk.ref]:null;
     const wx=at(wt);
@@ -5269,22 +5245,11 @@ function positionBreaks(p){
     // label's own footprint instead of relying on the shared de-overlap pass to sort it out.
     const TICK_LEN=13,TICK_OFF=24,LAB_GAP=4;
     const tickY=up?y-TICK_OFF:y+TICK_OFF;
-    const cx=wx+TICK_LEN/2;                 // the tick's own rotation centre — the label centres on this too
-    const tick=document.createElement('div');
-    tick.className='brkwick '+dir+stale;
-    const bw=brkWidth(bk);
-    // A filled bar (background + border-radius), not a 0-height border-top edge — the CSS
-    // border-radius above only rounds where two borders meet, so a single border-top drawn on
-    // a 0-height box has no adjacent edge to round INTO and its ends stay hard-cornered no
-    // matter what radius is set. Centring the bar's own height on tickY keeps it sitting where
-    // the border-top used to visually sit (right at that y), rather than starting from it.
-    tick.style.left=wx+'px';tick.style.top=(tickY-bw/2)+'px';
-    tick.style.width=TICK_LEN+'px';tick.style.height=bw+'px';
-    tick.style.background=col;
-    tipAttach(tick,brkTipHtml(bk));
-    host.appendChild(tick);
-    // name + state, centred on the tilted tick and stacked on its far side from the wick —
-    // the same "HOD 144.872" placement moomoo uses, just angled to match the tick.
+    const cx=wx+TICK_LEN/2;                 // kept as the label's own centring x, independent of any tick
+    // name + state, stacked clear of the wick (above for an up-break, below for a down-break) —
+    // the same "HOD 144.872" placement moomoo uses. No tick/line drawn to the wick any more (per
+    // feedback — read as a stray dash) — the label alone, plus the swing's own dot (positionStruct)
+    // already marking that exact price, carries this.
     const lab=document.createElement('div');
     lab.className='brklab '+dir+stale;
     lab.style.color=col;
@@ -5293,10 +5258,16 @@ function positionBreaks(p){
     lab.dataset.y=up?tickY-LAB_GAP:tickY+LAB_GAP;
     lab.appendChild(document.createTextNode(bk.kind));
     const st=document.createElement('span');st.className='bst';
-    // direction used to carry an arrow glyph here, easy to miss at 9.5px — the wick tick's
-    // own position now carries direction instead (above the wick = up, below = down), but the
-    // state is still spelled out in words while the outcome is still open
+    // direction used to carry an arrow glyph here, easy to miss at 9.5px — the label's own
+    // position already carries direction (above the wick = up, below = down), but the state
+    // is still spelled out in words while the outcome is still open
     if(bk.state==='pending'){
+      const sp=document.createElement('i');sp.className='bspin';
+      /* positionBreaks rebuilds this label on every animation frame, so a fresh spinner
+         restarted its rotation constantly and read as a stutter. Starting each one at the
+         phase a continuously-running spinner would be at makes the loop seamless. */
+      sp.style.animationDelay=(-((performance.now()%850)/1000)).toFixed(3)+'s';
+      st.appendChild(sp);
       st.appendChild(document.createTextNode('pending '+(bk.dir==='up'?'bullish':'bearish')));
     }else{
       // Glyph only once resolved — held/failed is legible at a glance from color+checkmark/X
