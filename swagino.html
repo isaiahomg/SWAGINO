@@ -5108,42 +5108,78 @@ function axisPxLabel(host,price,y,color,fam){
   d.style.background=color;d.style.top=y+'px';
   host.appendChild(d);
 }
+// FLICKER FIX: this used to wipe and recreate every .lvltag/.axpx-lvl node on every call — fine
+// at drawLevelsOn's own change-driven cadence, but this function is ALSO called every second by
+// the shared positionTips() ticker (visPanes().forEach(p=>positionTips(p)), 1000ms, regardless of
+// whether any level actually moved), purely to keep positions in sync with pans/zooms/resizes.
+// Measured live (a MutationObserver on #tips0 during a normal RTH session, QQQ): every label was
+// being destroyed and recreated roughly once per second even with the book flat, and at least one
+// observed cycle removed a tag whose priceToCoordinate() call happened to land out-of-range that
+// ONE tick and never got a chance to re-add it in the same pass — a real, reproduced "disappears,
+// then reappears within a second or two" gap, not just wasted work. Same class of bug GEX's own
+// renderGexLevels already solved (see its own comment) — same fix here: diff per KEY against
+// what's already in the DOM (patch text/color/position in place when the key is unchanged;
+// display:none rather than remove when transiently out of view; only create/remove a node when a
+// key is genuinely new or genuinely gone) instead of a blanket wipe-and-rebuild.
 function positionLvlTags(p){
   const host=$('#tips'+p.idx);if(!host)return;
-  // [data-gexkey] elements belong to renderGexLevels' own dedicated diff-and-patch renderer, not
-  // this pipeline's tags — leaving them out of this wipe is what stops an UNRELATED trigger (a
-  // price tick, a bar close) from tearing down and losing a GEX line that hasn't actually changed.
-  host.querySelectorAll('.lvltag:not([data-gexkey]),.lvseg:not([data-gexkey]),.axpx-lvl:not([data-gexkey])').forEach(e=>e.remove());
-  if(!p.lvlTags||!p.lvlTags.length||!p.candles)return;
+  if(!p.lvlTags||!p.candles){
+    host.querySelectorAll('.lvltag:not([data-gexkey]),.axpx-lvl:not([data-gexkey])').forEach(e=>e.remove());
+    return;
+  }
   const el=$('#pc'+p.idx);if(!el)return;
   const h=paneClipH(p,el);
   let axisW=0;try{axisW=Math.round(p.chart.priceScale('right').width()||0);}catch(e){}
   if(!(axisW>10))axisW=56;
-  const plotW=Math.max(20,el.clientWidth-axisW);
-  p.lvlTags.forEach(t=>{
+  const named=p.lvlTags.filter(t=>t.name);
+  const wantedKeys=new Set(named.map(t=>t.key||t.name));
+  // A key no longer on the board (level removed, category toggled off, or merged into a
+  // different group) is the only case that still removes a node — everything else patches.
+  host.querySelectorAll('.lvltag[data-key]:not([data-gexkey])').forEach(e=>{if(!wantedKeys.has(e.dataset.key))e.remove();});
+  host.querySelectorAll('.axpx-lvl[data-lvlkey]:not([data-gexkey])').forEach(e=>{if(!wantedKeys.has(e.dataset.lvlkey))e.remove();});
+  named.forEach(t=>{
+    const key=t.key||t.name;
     let y=null;try{y=pxRound(p.candles.priceToCoordinate(+t.price));}catch(e){}
-    if(y==null||y<5||y>h-3)return;
-    if(t.axisOn!==false)axisPxLabel(host,t.price,y,t.color,'lvl');   // axis price reading badge
+    const visible=y!=null&&y>=5&&y<=h-3;
     const L={y,color:t.color,w:t.w,style:t.style};   // line params; the visible line is drawn later
-    if(t.name){
-      const d=document.createElement('div');
-      d.className='lvltag';d.style.color=t.tc||'var(--axistext)';d.style.fontSize=(t.size||10)+'px';d.style.top=y+'px';
-      d.style.right=(axisW+22)+'px';d.dataset.y=y;
-      d.textContent=t.name;d.__line=L;
+    let d=host.querySelector('.lvltag[data-key="'+key+'"]:not([data-gexkey])');
+    if(!d){
+      if(!visible)return;   // nothing on screen yet to create
+      d=document.createElement('div');
+      d.className='lvltag';d.dataset.key=key;
       // Click to open the same color/width/style/text-size picker the Levels table's own swatch
       // opens — t.key is whichever level is actually governing this (possibly combined) line's
-      // look, from drawLevelsOn's own grouping.
-      if(t.key){d.dataset.key=t.key;d.onclick=e=>{e.stopPropagation();openLevelStyler(d,t.key);};}
+      // look, from drawLevelsOn's own grouping. Bound once, here, since this node now persists
+      // across cycles instead of being recreated every one — same as renderGexLevels' own tags.
+      d.onclick=e=>{e.stopPropagation();openLevelStyler(d,key);};
       host.appendChild(d);
-    }else if(t.conf){
-      // a confluent level's name is the glowing .conflab (drawn earlier by positionConfLabels); hang
-      // the line params on it so drawLevelSegments breaks the line for it at its final position
-      const cf=host.querySelector('.conflab[data-key="'+(+t.price).toFixed(2)+'"]');
-      if(cf){cf.__line=L;
-        if(t.key){cf.dataset.stylekey=t.key;cf.onclick=e=>{e.stopPropagation();openLevelStyler(cf,t.key);};}}
+    }
+    d.style.display=visible?'':'none';
+    if(visible){
+      d.style.color=t.tc||'var(--axistext)';d.style.fontSize=(t.size||10)+'px';d.style.top=y+'px';
+      d.style.right=(axisW+22)+'px';d.dataset.y=y;
+      d.textContent=t.name;d.__line=L;
+    }
+    if(t.axisOn!==false){
+      let b=host.querySelector('.axpx-lvl[data-lvlkey="'+key+'"]');
+      if(!visible){if(b)b.style.display='none';}
+      else{
+        if(!b){b=document.createElement('div');b.className='axpx axpx-lvl';b.dataset.lvlkey=key;host.appendChild(b);}
+        b.style.display='';b.style.background=t.color;b.style.top=y+'px';b.textContent=(+t.price).toFixed(2);
+      }
     }
     // The visible line is drawn in drawLevelSegments — AFTER deoverlapLabels has placed the labels —
     // so its break follows each label to its final position (no orphan gap, no strike-through).
+  });
+  // Purely-confluent levels (t.conf, no t.name) carry no .lvltag of their own — their name is the
+  // glowing .conflab positionConfLabels already drew; just hang this level's line params on it so
+  // drawLevelSegments breaks the line for it at its final position. Cheap (a handful at most) and
+  // idempotent, so re-running it every cycle isn't the flicker source — left as a plain re-derive.
+  p.lvlTags.filter(t=>!t.name&&t.conf).forEach(t=>{
+    let y=null;try{y=pxRound(p.candles.priceToCoordinate(+t.price));}catch(e){}
+    const cf=host.querySelector('.conflab[data-key="'+(+t.price).toFixed(2)+'"]');
+    if(cf){cf.__line={y,color:t.color,w:t.w,style:t.style};
+      if(t.key){cf.dataset.stylekey=t.key;cf.onclick=e=>{e.stopPropagation();openLevelStyler(cf,t.key);};}}
   });
 }
 // Draw a level line as two HTML segments that break for its label. Shared by all level families.
