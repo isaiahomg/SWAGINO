@@ -1907,7 +1907,7 @@ table.lv td{padding:6px 10px}
       <span class="sw" id="swStUp" title="bullish swings"></span><span class="sw" id="swStDn" title="bearish swings"></span></div>
     <div class="row"><label style="min-width:0"><input type="checkbox" id="stBos"></label><span style="min-width:150px;font-size:12px">BOS / CHoCH markers</span><span class="sw" id="swStBos" title="BOS marker"></span><span class="sw" id="swStChoch" title="CHoCH marker"></span></div>
     <div class="row" style="display:none"><label>Closes to fail</label><input id="stFailN" style="width:60px">
-      <span class="hint" style="margin:0;flex:1">Consecutive closes back through the level before a break is called failed. <b>1</b> is the exact mirror of the break rule &mdash; and it is wrong more often than it is right. Measured on 70,215 real 5m bars across 15 names (2,732 breaks): at <b>1</b>, 63% of &quot;failed&quot; verdicts saw price close back through the level the break's own way within the hour, and overall verdict accuracy was <b>49.6%</b>. At <b>3</b> it is <b>66.2%</b>, and the same knee shows up on 10m, 1H, 4H and 1D. The cost is a slower call (median 7 bars instead of 2). <b>3</b> is the default for that reason; lower it only if you want the twitchier read back.</span></div>
+      <span class="hint" style="margin:0;flex:1">How many consecutive closes back through a broken level it takes before that break is called failed &mdash; higher means fewer wrong failed calls, at the cost of a slower verdict. <b>1</b> is the exact mirror of the break rule &mdash; and it is wrong more often than it is right. Measured on 70,215 real 5m bars across 15 names (2,732 breaks): at <b>1</b>, 63% of &quot;failed&quot; verdicts saw price close back through the level the break's own way within the hour, and overall verdict accuracy was <b>49.6%</b>. At <b>3</b> it is <b>66.2%</b>, and the same knee shows up on 10m, 1H, 4H and 1D. The cost is a slower call (median 7 bars instead of 2). <b>3</b> is the default for that reason; lower it only if you want the twitchier read back.</span></div>
     <div class="row"><label style="min-width:0"><input type="checkbox" id="stPat"></label><span style="font-size:12px">Pattern trendlines</span><span class="sw" id="swStPat"></span></div>
     <div class="hint">Shapes like triangles and channels appear when price is actually forming one, and disappear once it breaks out. Click a pattern's name on the chart to highlight it, or to remove it for good.</div>
     <div class="row" style="justify-content:flex-end"><button class="tbtn" id="stCancel">Cancel</button><button class="tbtn primary" id="stOk">OK</button></div>
@@ -8029,11 +8029,15 @@ function parseGexRows(out,sourceNote){
   const magLine=(x,i)=>`${i===0?'Strongest':'Magnet'}: <b style="color:${MAG}">${x.strike}</b> (${fmt(x.val)})`;
   const airLine=(x,i)=>`${i===0?'Strongest':'Air Pocket'}: <b style="color:${AIR}">${x.strike}</b> (${fmt(x.val)})`;
   // GAMMA FLIP regime line stays DYNAMIC off gexFlip's abovePos, reworded for the section layout
-  const flipHdr=flip?(flip.abovePos?'above it moves stall, below it moves amplify':'below it moves stall, above it moves amplify'):'net gamma keeps one sign across the board';
+  // Worded to match "How to read it"'s own explanation of the flip verbatim (grind and
+  // mean-revert / moves get amplified) — this shorter line used to say the same thing in a
+  // clipped, barely-grammatical form ("above it moves stall, below it moves amplify") that read
+  // worse than the fuller explanation sitting right above it in the same panel.
+  const flipHdr=flip?(flip.abovePos?'above it price tends to grind and mean-revert, below it moves get amplified':'below it price tends to grind and mean-revert, above it moves get amplified'):'net gamma keeps one sign across the board';
   $('#gexSummary').innerHTML=
     `<b style="color:${MAG}">MAGNETS</b> - price tends to stall and get pulled back here<br>`+
     (above.length?above.map(magLine).join('<br>'):'—')+`<br><br>`+
-    `<b style="color:${AIR}">AIR POCKETS</b> - price action speed up through here<br>`+
+    `<b style="color:${AIR}">AIR POCKETS</b> - price action speeds up through here<br>`+
     (below.length?below.map(airLine).join('<br>'):'—')+`<br><br>`+
     `<b style="color:${FLIPC}">GAMMA FLIP</b> - ${flipHdr}<br>`+
     (flip?`<b style="color:${FLIPC}">${flip.price.toFixed(1)}</b>`:`<span style="color:${FLIPC}">none on this board</span>`);
