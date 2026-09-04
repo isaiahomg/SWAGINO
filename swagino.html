@@ -2246,10 +2246,11 @@ function volRgba(hex,a){
   if(!m)return hex;   // already rgba()/named — pass through rather than mangle it
   return `rgba(${parseInt(m[1],16)},${parseInt(m[2],16)},${parseInt(m[3],16)},${a==null?.45:a})`;
 }
-// The live price line + its countdown badge used to render at full, saturated opacity — the
-// single most visually loud thing on the chart since it sits at eye height on the right edge and
-// repaints every tick. Toned down to read as a live indicator, not a highlighter.
-const PRICE_LINE_ALPHA=0.65;
+// The live price line used to render at full, saturated opacity — the single most visually loud
+// thing on the chart since it repaints every tick. Toned down to read as a live indicator, not a
+// highlighter. The countdown badge beside it stays at full opacity — it carries dark text that
+// needs the contrast, and only the line itself was called out as still distracting.
+const PRICE_LINE_ALPHA=0.35;
 // A settings panel showing numbers the engine was never validated on is worse than no panel.
 // Saved config wins over defaults, so an install from before the 12-instrument study kept its
 // old values and the boxes disagreed with the researched ones. This pushes the measured set
@@ -6698,9 +6699,7 @@ function updateCountdown(p){
   // up/down) - was hardcoded to plain up/down here regardless, ignoring both.
   const fallback=up?(cfg.candle.bodyUp||'#2dd4a7'):(cfg.candle.bodyDn||'#f0564f');
   const bg=rem==null?'#3a3a3a':(p._liveColor||fallback);
-  // Softened along with the price line it sits beside (see PRICE_LINE_ALPHA) — a touch less than
-  // the line itself since this badge carries dark text that needs to stay legible over it.
-  el.style.background=volRgba(bg,0.82);
+  el.style.background=bg;   // full opacity, deliberately — only the price line itself reads as distracting
   const vcol=rem==null?'style="color:#ffffff"':'';
   el.innerHTML='<div class="v" '+vcol+'>'+p.lastClose.toFixed(2)+'</div><div class="t" '+vcol+'>'+fmtCd(rem)+'</div>';
   el.style.display='block';el.style.top=y+'px';
