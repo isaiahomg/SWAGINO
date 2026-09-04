@@ -3620,12 +3620,33 @@ function findSwings(data,strength,minMove,volFloor){
   let hi=rawHi,lo=rawLo;
   const anyVf=vfArr?volFloor.some(v=>v>0):volFloor>0;
   if(anyVf){
-    const gh=rawHi.filter(backed),gl=rawLo.filter(backed);
-    // Safety valve: on coarse timeframes a whole bucket can be half overnight, and gating
-    // hard enough there left the 4H chart with NO structure at all. If the gate would strip
-    // the chart bare, it is the wrong tool for that series — fall back to ungated rather
-    // than show nothing.
-    if(gh.length+gl.length>=6){hi=gh;lo=gl;}
+    // CAUSAL GATE (audited 2026-09-05, fixed same day): the safety valve below used to be ONE
+    // decision for the WHOLE series — gh.length+gl.length (backed pivots ANYWHERE in the entire
+    // array, including bars that hadn't happened yet as of any earlier bar) >= 6, applied
+    // uniformly to every pivot. That is not causal: whether pivot i was gated depended on how
+    // many bars existed AFTER it. Measured live on real Tradier data (QQQ, 4H, 200 bars): a
+    // walk-forward run found 2 swings (bar 48 L, bar 51 H) that were confirmed and SETTLED
+    // (each already had a following swing) at an early cutoff, then vanished entirely once more
+    // bars pushed the whole-series backed-pivot count past the threshold and the gate flipped
+    // from inactive to active in hindsight.
+    // Fixed by making the decision itself a running, monotonic function of position: walk every
+    // raw pivot in chronological order, keep a running count of backed ones seen AT OR BEFORE
+    // each pivot's own index, and gate that ONE pivot (drop it if unbacked) only once that
+    // running count has reached 6 — otherwise let it through same as the old ungated fallback.
+    // The running count strictly before/at index i can never depend on index i+1, so a pivot's
+    // own inclusion, once decided, cannot be revisited by any later bar — proven by construction:
+    // recomputing on a longer array recomputes the identical count at that same index every time.
+    // Same intent as before (don't strip a thin/coarse chart bare) — the ungated fallback simply
+    // now applies to the actual early-history PREFIX it was always meant to cover, rather than to
+    // the whole series whenever the far future happened to be thin.
+    const allRaw=rawHi.map(i=>({i,isHigh:true})).concat(rawLo.map(i=>({i,isHigh:false})))
+      .sort((a,b)=>a.i-b.i);
+    let backedSoFar=0;const keepHi=new Set(),keepLo=new Set();
+    for(const x of allRaw){
+      if(backed(x.i))backedSoFar++;
+      if(backedSoFar<6||backed(x.i)){(x.isHigh?keepHi:keepLo).add(x.i);}
+    }
+    hi=rawHi.filter(i=>keepHi.has(i));lo=rawLo.filter(i=>keepLo.has(i));
   }
   const raw=hi.map(i=>({i,type:'H',price:highs[i],time:data[i].time}))
     .concat(lo.map(i=>({i,type:'L',price:lows[i],time:data[i].time})))
