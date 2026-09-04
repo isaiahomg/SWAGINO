@@ -2241,11 +2241,15 @@ if(!cfg.rsiTV){
 // i.e. --long/--short) at the same 45% opacity, so an existing install looks identical until
 // the new gear is actually used.
 cfg.volume=Object.assign({upC:'#2dd4a7',dnC:'#f0564f'},cfg.volume||{});
-function volRgba(hex){
+function volRgba(hex,a){
   const m=/^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex);
   if(!m)return hex;   // already rgba()/named — pass through rather than mangle it
-  return `rgba(${parseInt(m[1],16)},${parseInt(m[2],16)},${parseInt(m[3],16)},.45)`;
+  return `rgba(${parseInt(m[1],16)},${parseInt(m[2],16)},${parseInt(m[3],16)},${a==null?.45:a})`;
 }
+// The live price line + its countdown badge used to render at full, saturated opacity — the
+// single most visually loud thing on the chart since it sits at eye height on the right edge and
+// repaints every tick. Toned down to read as a live indicator, not a highlighter.
+const PRICE_LINE_ALPHA=0.65;
 // A settings panel showing numbers the engine was never validated on is worse than no panel.
 // Saved config wins over defaults, so an install from before the 12-instrument study kept its
 // old values and the boxes disagreed with the researched ones. This pushes the measured set
@@ -2477,28 +2481,40 @@ function syncPicker(){
 // dragging continues outside the surface once the pointer is down, as it should
 function pkDrag(el,onMove){
   if(!el)return;
-  const go=e=>{
+  const move=e=>{
     const r=el.getBoundingClientRect();
     onMove(Math.min(1,Math.max(0,(e.clientX-r.left)/r.width)),
            Math.min(1,Math.max(0,(e.clientY-r.top)/r.height)));
-    syncPicker();emitPick();
   };
+  const go=e=>{move(e);syncPicker();emitPick();};
   // Pointer Events (not mouse-only) so every color picker in the app — candle colors, every
   // indicator's line/fill/band colors — is draggable from a touch screen too.
   el.addEventListener('pointerdown',e=>{
     e.preventDefault();go(e);
-    // Coalesced to one update per animation frame: emitPick()'s downstream chain (e.g.
-    // drawLevels() tears down and rebuilds every price line on every visible pane) is too
-    // heavy to run at raw pointermove rate, which is what read as lag while dragging quickly
-    // — dropping in-between events and always applying the LATEST position instead.
+    // Rate-coalescing alone (one update per animation frame) turned out not to be enough: what
+    // actually lagged was emitPick()'s own downstream cost, not how often it ran. Measured live
+    // with a synthetic drag + rAF frame timing (not guessed): dragging ANY of these rails — hue,
+    // saturation, alpha, not alpha-specific despite how it read — against a callback that
+    // reaches scheduleRenderAll() (candle colors, most indicator swatches) dropped frame time to
+    // 150-300ms instead of the ~16ms budget, because renderAll() itself was already measured
+    // elsewhere in this file at 100ms+. One rAF-coalesced call per frame just means one 150-300ms
+    // stall per frame — still far too slow to track a moving pointer.
+    // So the expensive commit (emitPick, everything downstream of it) now only runs on the
+    // initial pointerdown (go(e) above — a single click/tap applies immediately) and once more
+    // on release; WHILE actually dragging, only the cheap in-picker preview updates each frame
+    // (move() + syncPicker() — swatch/hex/RGB fields, dot positions: measured at ~0.1ms a call,
+    // not the cost here). `pending` always holds the latest pointer position, so release commits
+    // exactly where the pointer actually is, never a stale mid-drag sample.
     let raf=0,pending=null;
     const mv=ev=>{
       pending=ev;
       if(raf)return;
-      raf=requestAnimationFrame(()=>{raf=0;go(pending);});
+      raf=requestAnimationFrame(()=>{raf=0;move(pending);syncPicker();});
     };
     const up=()=>{
       if(raf)cancelAnimationFrame(raf);raf=0;
+      if(pending){move(pending);syncPicker();}
+      emitPick();
       document.removeEventListener('pointermove',mv);
       document.removeEventListener('pointerup',up);document.removeEventListener('pointercancel',up);
     };
@@ -4727,7 +4743,7 @@ function pushMainSeriesData(p){
   // already does this per-tick) - otherwise toggling Candle Bias or Gradient mode, or switching
   // symbol/timeframe, left the price line showing whatever colour it last had from creation
   // until the next trade tick happened to arrive.
-  if(p._liveColor)try{p.candles.applyOptions({priceLineColor:p._liveColor});}catch(e){}
+  if(p._liveColor)try{p.candles.applyOptions({priceLineColor:volRgba(p._liveColor,PRICE_LINE_ALPHA)});}catch(e){}
 }
 function renderPane(p){
   if(!p||!p.candles)return;
@@ -5068,7 +5084,7 @@ function renderPane(p){
    const plUp=!plLb?true:(cs.prevClose?(plN>1?plLb.close>=data[plN-2].close:plLb.close>=plLb.open):(plLb.close>=plLb.open));
    const plCol=p._liveColor||(plUp?(cs.bodyUp||'#2dd4a7'):(cs.bodyDn||'#f0564f'));
    try{p.candles.applyOptions({lastValueVisible:false,priceLineVisible:true,
-     priceLineColor:plCol});}catch(e){}}
+     priceLineColor:volRgba(plCol,PRICE_LINE_ALPHA)});}catch(e){}}
   p.lastOpen=data.length?data[data.length-1].open:null;
   drawLevelsOn(p);
   drawSatyOn(p);
@@ -6382,7 +6398,7 @@ function paneTick(p){
   // The price line marks the last close, so it tracks the SAME resolved colour as the live point
   // above — Gradient or Candle Bias when active, plain up/down otherwise (was hardcoded to plain
   // up/down here regardless, which is the exact bug the countdown badge shared - see updateCountdown).
-  try{p.candles.applyOptions({priceLineColor:liveCol});}catch(e){}
+  try{p.candles.applyOptions({priceLineColor:volRgba(liveCol,PRICE_LINE_ALPHA)});}catch(e){}
   /* Advance every moving average onto the live bar. An EMA is a one-step recursion, so
      the new value only needs the previous bar's — no re-walk of the series. It was
      stashed by the last full render. `isNew` distinguishes a tick that EXTENDS the
@@ -6682,7 +6698,9 @@ function updateCountdown(p){
   // up/down) - was hardcoded to plain up/down here regardless, ignoring both.
   const fallback=up?(cfg.candle.bodyUp||'#2dd4a7'):(cfg.candle.bodyDn||'#f0564f');
   const bg=rem==null?'#3a3a3a':(p._liveColor||fallback);
-  el.style.background=bg;
+  // Softened along with the price line it sits beside (see PRICE_LINE_ALPHA) — a touch less than
+  // the line itself since this badge carries dark text that needs to stay legible over it.
+  el.style.background=volRgba(bg,0.82);
   const vcol=rem==null?'style="color:#ffffff"':'';
   el.innerHTML='<div class="v" '+vcol+'>'+p.lastClose.toFixed(2)+'</div><div class="t" '+vcol+'>'+fmtCd(rem)+'</div>';
   el.style.display='block';el.style.top=y+'px';
@@ -8059,9 +8077,13 @@ function parseGexRows(out,sourceNote){
 }
 // GEX's own dedicated on-chart renderer (see the FLICKER FIX comment in parseGexRows above for
 // why this exists instead of going through the shared drawLevelsOn/positionLvlTags pipeline).
-// Diffs per KEY against what's already in the DOM: unchanged price -> patch the label text only;
-// new or moved price -> remove and recreate just that key's tag/line/axis-badge; a key no longer
-// on the board -> remove it. No other key's DOM is ever touched by any of this.
+// Diffs per KEY against what's already in the DOM: an existing key is always patched in place
+// (text/color/position, and price — a magnet, air pocket, or the flip legitimately relocating to
+// a different strike as gamma recomputes just moves the same node) and only a key with no node
+// yet, or one that's dropped off the board entirely, ever creates or removes a DOM element. A
+// price change used to fall through to remove-then-recreate, which is exactly what read as the
+// line "disappearing and reappearing" when a strike shifted — a freshly created node has no
+// visual continuity with the one it replaced. No other key's DOM is ever touched by any of this.
 function renderGexLevels(lv){
   // Same two on/off switches every other category respects: the whole GEX category toggle
   // (catShown) and any individual level the user has switched off by itself (lvlStyleOf's own
@@ -8089,45 +8111,40 @@ function renderGexLevels(lv){
       const st=lvlStyleOf({key:x.key,dc:x.color,ds:x.style,cat:'gex',w:x.w,conf:false});
       const priceKey=(+x.price).toFixed(2);
       let tagEl=host.querySelector('.lvltag[data-gexkey="'+x.key+'"]');
-      if(tagEl&&tagEl.dataset.price===priceKey){
-        // Same PRICE, but not necessarily the same PIXEL row: priceToCoordinate depends on the
-        // current viewport too, so a pan/zoom between two calls here moves every OTHER level's
-        // pixel position (via positionTips->positionLvlTags, which always recomputes it) while
-        // this branch used to leave GEX's own top untouched, silently drifting off its true price
-        // line — recomputed and applied on every call now, same as every other level family
-        // already does, so this can never go stale. Cheap: a style write, not a DOM rebuild, so
-        // it still can't reintroduce the flicker (that came from removing/recreating nodes).
-        let y=null;try{y=pxRound(p.candles.priceToCoordinate(+x.price));}catch(e){}
-        if(y==null||y<5||y>h-3){
-          tagEl.style.display='none';
-          host.querySelectorAll('.lvseg[data-gexkey="'+x.key+'"],.axpx-lvl[data-gexkey="'+x.key+'"]').forEach(e=>e.style.display='none');
-          return;
-        }
-        tagEl.style.display='';tagEl.style.color=st.tc;tagEl.style.top=y+'px';tagEl.dataset.y=y;
+      // priceToCoordinate depends on the current viewport too, so this is recomputed on every
+      // call regardless of whether the underlying price moved — a pan/zoom between two calls
+      // moves every level's pixel row, GEX's own included, and it must never drift stale.
+      let y=null;try{y=pxRound(p.candles.priceToCoordinate(+x.price));}catch(e){}
+      if(!tagEl){
+        // Nothing on screen for this key yet — the only case that still creates fresh nodes.
+        if(y==null||y<5||y>h-3)return;
+        const badge=document.createElement('div');
+        badge.className='axpx axpx-lvl';badge.dataset.gexkey=x.key;
+        badge.textContent=priceKey;badge.style.background=st.color;badge.style.top=y+'px';
+        host.appendChild(badge);
+        tagEl=document.createElement('div');
+        tagEl.className='lvltag';tagEl.dataset.gexkey=x.key;tagEl.dataset.price=priceKey;
+        tagEl.style.color=st.tc;tagEl.style.fontSize=(st.size||10)+'px';tagEl.style.top=y+'px';
+        tagEl.style.right=(axisW+22)+'px';tagEl.dataset.y=y;
         tagEl.textContent=x.label;
-        host.querySelectorAll('.axpx-lvl[data-gexkey="'+x.key+'"]').forEach(e=>{e.style.display='';e.style.top=y+'px';});
-        gexRedrawSeg(host,x.key,tagEl,plotW,st);   // segments follow the same y; also regap for the (possibly resized) label
+        // Click-to-style, bound once here — this node persists across future price/magnitude
+        // updates without ever being recreated, so it never needs rebinding.
+        tagEl.onclick=e=>{e.stopPropagation();openLevelStyler(tagEl,x.key);};
+        host.appendChild(tagEl);
+        gexRedrawSeg(host,x.key,tagEl,plotW,st);
         return;
       }
-      if(tagEl)tagEl.remove();
-      host.querySelectorAll('.lvseg[data-gexkey="'+x.key+'"],.axpx-lvl[data-gexkey="'+x.key+'"]').forEach(e=>e.remove());
-      let y=null;try{y=pxRound(p.candles.priceToCoordinate(+x.price));}catch(e){}
-      if(y==null||y<5||y>h-3)return;
-      const badge=document.createElement('div');
-      badge.className='axpx axpx-lvl';badge.dataset.gexkey=x.key;
-      badge.textContent=priceKey;badge.style.background=st.color;badge.style.top=y+'px';
-      host.appendChild(badge);
-      tagEl=document.createElement('div');
-      tagEl.className='lvltag';tagEl.dataset.gexkey=x.key;tagEl.dataset.price=priceKey;
-      tagEl.style.color=st.tc;tagEl.style.fontSize=(st.size||10)+'px';tagEl.style.top=y+'px';
-      tagEl.style.right=(axisW+22)+'px';tagEl.dataset.y=y;
+      // Key already has a node — patch it in place, including when the price itself moved.
+      if(y==null||y<5||y>h-3){
+        tagEl.style.display='none';
+        host.querySelectorAll('.lvseg[data-gexkey="'+x.key+'"],.axpx-lvl[data-gexkey="'+x.key+'"]').forEach(e=>e.style.display='none');
+        return;
+      }
+      tagEl.style.display='';tagEl.style.color=st.tc;tagEl.style.top=y+'px';tagEl.dataset.y=y;tagEl.dataset.price=priceKey;
       tagEl.textContent=x.label;
-      // Same click-to-style flow as every other level tag — set once here, not on the "patch
-      // text only" branch above, since this element persists across magnitude-only updates
-      // without ever being recreated (that persistence is the whole point of that branch).
-      tagEl.onclick=e=>{e.stopPropagation();openLevelStyler(tagEl,x.key);};
-      host.appendChild(tagEl);
-      gexRedrawSeg(host,x.key,tagEl,plotW,st);
+      const badge=host.querySelector('.axpx-lvl[data-gexkey="'+x.key+'"]');
+      if(badge){badge.style.display='';badge.style.top=y+'px';badge.textContent=priceKey;badge.style.background=st.color;}
+      gexRedrawSeg(host,x.key,tagEl,plotW,st);   // segments follow the same y; also regap for the (possibly resized/relocated) label
     });
   });
 }
