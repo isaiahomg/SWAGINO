@@ -225,6 +225,12 @@ input[type=checkbox]{accent-color:var(--pivot)}
 .sessband.post{background:rgba(64,116,196,.30)}
 .swdot{position:absolute;width:5px;height:5px;border-radius:50%;pointer-events:auto;cursor:default;
   transform:translate(-50%,-50%);box-shadow:0 0 3px rgba(0,0,0,.9)}
+/* The one swing that's still the open leg's tip (nothing has followed it yet — see
+   positionStruct's own comment) draws hollow instead of filled, and its label sits a touch
+   fainter, so it reads as "still forming" next to every solid, settled swing beside it. Purely
+   visual: the algorithm, its timing and its prices are unchanged either way. */
+.swdot.open{width:6px;height:6px;border:1.5px solid;box-shadow:none}
+.swlab.open{opacity:.7}
 /* a break reads in two places: its name+state label near the swing's own wick, and a tick or
    cross on the bar that settled it. (A tilted solid tick used to sit at the wick too — removed
    per feedback, it read as a stray dash — the swing's own dot, positionStruct, already marks
@@ -3751,8 +3757,34 @@ function trendFrom(sw){
    Whichever comes first decides it, and for a swing "first" means its confirmation bar
    (i + strength), not its pivot, so an outcome is never dated earlier than it was knowable.
    BOS and CHoCH run the identical test — the only thing separating them is the trend at the
-   moment of the break, and that says nothing about what price does next. */
-function breakEvents(data,sw,strength,closedLen){
+   moment of the break, and that says nothing about what price does next.
+
+   CLASSIFICATION FREEZE (audited 2026-09-05): this function recomputes EVERY break from bar 0
+   forward on every call, using whatever `sw` currently contains — and `sw`'s own tail can gain a
+   new, back-dated entry later (findSwings' documented, correct "open leg" behavior: the most
+   recent swing can still be superseded by a later, more extreme same-type pivot until something
+   else confirms after it — see findSwings' own comments). When that happens, `known` — the set of
+   swings trendFrom() sees as "confirmed by bar i" — silently gains a member for a bar in the
+   PAST relative to an already-emitted break, and trendFrom(known) can return a different verdict
+   for that same historical bar than it did the first time. The break's own price/level/ref never
+   moves (proven stable — only the swing PRICES feed ph/pl, and those are already guaranteed
+   immutable once settled); only `kind` (BOS vs CHoCH) was ever observed to flip.
+   Measured live against real Tradier data (SPY/QQQ/AAPL/MSFT/NVDA/AMZN/META/GOOGL/TSLA, 5m, a
+   walk-forward simulation comparing what would have been shown at many historical cutoffs against
+   the final full-history answer): 1,926 already-past break events checked, 11 flipped kind after
+   the fact (0.57%; worst case NVDA at 1.99%) — a signal a real viewer would already have seen and
+   could have acted on, silently reinterpreted from continuation to reversal or back.
+   Fixed by freezing `kind` the first time each break is ever produced, keyed on the swing being
+   broken (its own TIMESTAMP, not array index — index shifts under history backfill, time does
+   not — plus `dir`, since an up-break and a down-break never share a level) rather than on the
+   break's own bar `i`. `kindCache` is optional and owned by the CALLER (one Map per pane,
+   reset only on an actual symbol/timeframe change — see renderPane) exactly like p._swCache
+   already owns findSwings' memo, so this function itself stays a pure, deterministic mapping of
+   (data, sw, strength, closedLen, kindCache) -> out; passing no cache reproduces the old
+   every-call-fresh behavior verbatim (used by anything that only wants a one-off read, e.g. the
+   audit harness itself). Only `kind` is frozen — state/held/failed/pending is computed
+   separately, live, every time in breakOutcome/lastBreaks, exactly as before. */
+function breakEvents(data,sw,strength,closedLen,kindCache){
   const out=[];
   if(!data||!data.length||!sw||sw.length<2)return out;
   const st=Math.max(1,+strength||5);
@@ -3761,6 +3793,13 @@ function breakEvents(data,sw,strength,closedLen){
   const all=sw.slice().sort((a,b)=>(a.i+st)-(b.i+st));
   let hi=0,lo=0,ci=0,ph=null,pl=null,brokeH=false,brokeL=false;
   const known=[];let tr='undetermined';
+  const kindOf=(key,liveTrendKind)=>{
+    if(!kindCache)return liveTrendKind;
+    const cached=kindCache.get(key);
+    if(cached)return cached;
+    kindCache.set(key,liveTrendKind);
+    return liveTrendKind;
+  };
   for(let i=0;i<CL;i++){
     // absorb everything CONFIRMED as of this bar
     let moved=false;
@@ -3772,12 +3811,12 @@ function breakEvents(data,sw,strength,closedLen){
     const c=data[i].close;
     if(!brokeH&&c>ph.price){
       brokeH=true;
-      out.push({kind:tr==='downtrend'?'CHoCH':'BOS',dir:'up',price:ph.price,
-                i:i,time:data[i].time,ref:ph.i});
+      const kind=kindOf(ph.time+':up',tr==='downtrend'?'CHoCH':'BOS');
+      out.push({kind,dir:'up',price:ph.price,i:i,time:data[i].time,ref:ph.i});
     }else if(!brokeL&&c<pl.price){
       brokeL=true;
-      out.push({kind:tr==='uptrend'?'CHoCH':'BOS',dir:'down',price:pl.price,
-                i:i,time:data[i].time,ref:pl.i});
+      const kind=kindOf(pl.time+':down',tr==='uptrend'?'CHoCH':'BOS');
+      out.push({kind,dir:'down',price:pl.price,i:i,time:data[i].time,ref:pl.i});
     }
   }
   return out.slice(-8);
@@ -3815,8 +3854,8 @@ function breakOutcome(data,sw,strength,e,closedLen){
 }
 // the last two, so a break that just resolved is still on screen while the next one forms.
 // Never two pending at once — an unresolved older break is dropped rather than stacked.
-function lastBreaks(data,sw,strength,closedLen){
-  const ev=breakEvents(data,sw,strength,closedLen);
+function lastBreaks(data,sw,strength,closedLen,kindCache){
+  const ev=breakEvents(data,sw,strength,closedLen,kindCache);
   if(!ev.length)return [];
   ev.forEach(e=>{
     const o=breakOutcome(data,sw,strength,e,closedLen);
@@ -5019,7 +5058,13 @@ function renderPane(p){
           :(last.t!=null?(Math.floor(Date.now()/1000)>=last.t+(+p.tf||5)*60):true);
         if(!closed)closedLen=data.length-1;
       }
-      p.brks=lastBreaks(data,p.sw,PP.swing,closedLen);
+      // One BOS/CHoCH classification-freeze cache per pane (see breakEvents' own comment),
+      // reset only when THIS pane's actual symbol or timeframe changes — a different series'
+      // swing timestamps bear no relationship to the old cache's keys, and reusing it across a
+      // switch would let one ticker's frozen classification leak onto another's.
+      const bosChochSeriesKey=(p.sym||cfg.sym)+'|'+p.tf;
+      if(p._bosChochSeriesKey!==bosChochSeriesKey){p._bosChochSeriesKey=bosChochSeriesKey;p._bosChochKindCache=new Map();}
+      p.brks=lastBreaks(data,p.sw,PP.swing,closedLen,p._bosChochKindCache);
     }
     if(cfg.structCfg.patterns){
       p.pattern=detectPattern(data,p.sw,{tolPct:PP.tolPct,devPct:PP.patDev});
@@ -5030,8 +5075,17 @@ function renderPane(p){
     // Swing labels are collected for the HTML overlay layer rather than pushed to the
     // chart as markers — see the price-scale note above: markers pad the autoscale range
     // and there is no way to opt out of that.
+    // OPEN-TIP TRANSPARENCY (2026-09-05): the LAST entry in p.sw is, by findSwings' own design,
+    // the tip of a still-open leg — nothing has followed it yet, so a later, more extreme
+    // same-type pivot can still legitimately supersede it (this is correct, unavoidable
+    // real-time behavior, not a bug: you cannot know a leg is over before it reverses). Every
+    // OTHER entry is permanently settled the moment something follows it (proven: once settled,
+    // a swing's price/type/label never changes again). Flagging just this one lets the overlay
+    // show it differently so a viewer can tell "still forming" from "locked in" — the algorithm,
+    // its prices, its confirmation timing and every settled swing are untouched by this.
+    const openSwing=p.sw.length?p.sw[p.sw.length-1]:null;
     if(cfg.structCfg.labels)p.swLabels=p.sw.slice(-Math.max(4,PP.maxSwings)).map(x=>({
-      time:x.time,price:x.price,type:x.type,label:x.label,
+      time:x.time,price:x.price,type:x.type,label:x.label,open:x===openSwing,
       // the swing bar's CLOSE, so Line mode can plot the marker ON the line: swings are
       // detected on the wick high/low, but a line chart draws only closes, so a marker at
       // the wick price floats above/below the line (the "plotted incorrectly" in Line mode).
@@ -5315,7 +5369,9 @@ const SWING_TIP={
 };
 function swingTipHtml(x){
   const px=(+x.price).toFixed(2),t=SWING_TIP[x.label]||[x.label,'',''];
-  return '<div style="line-height:1.5"><b>'+t[0]+'</b> ('+x.label+') at '+px+'<br>'+t[1]+'<br>'+t[2]+'</div>';
+  const openNote=x.open?'<br><b style="color:#f0b429">Not settled yet</b> — nothing has reversed off it '
+    +'since, so a bigger high/low still forming nearby could replace this one before that happens.':'';
+  return '<div style="line-height:1.5"><b>'+t[0]+'</b> ('+x.label+') at '+px+'<br>'+t[1]+'<br>'+t[2]+openNote+'</div>';
 }
 function positionBreaks(p){
   const host=$('#tips'+p.idx);if(!host)return;
@@ -5417,12 +5473,14 @@ function positionStruct(p){
       if(y==null||cx==null||cx<0||cx>w-axisW)return;
       // a dot ON the wick tip, so the swing is marked exactly where it happened even
       // after its label has slid sideways to get out of another label's way
-      const dot=document.createElement('div');dot.className='swdot';
-      dot.style.background=x.color;dot.style.left=cx+'px';
+      const dot=document.createElement('div');dot.className='swdot'+(x.open?' open':'');
+      if(x.open){dot.style.borderColor=x.color;dot.style.background='transparent';}
+      else dot.style.background=x.color;
+      dot.style.left=cx+'px';
       dot.style.top=(x.type==='H'?y-4:y+4)+'px';
       tipAttach(dot,swingTipHtml(x));
       host.appendChild(dot);
-      const d=document.createElement('div');d.className='swlab';
+      const d=document.createElement('div');d.className='swlab'+(x.open?' open':'');
       d.textContent=x.label;d.style.color=x.color;
       d.style.left=cx+'px';
       const ty=(x.type==='H'?y-13:y+13);
