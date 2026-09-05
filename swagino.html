@@ -46,7 +46,6 @@
   --ink:#000000; --panel:#000000; --panel2:#000000; --line:#1a1a1a; --line2:#282828;
   --text:#ffffff; --dim:#ffffff; --faint:#ffffff;
   --long:#2dd4a7; --short:#f0564f; --warn:#e8a33d; --pivot:#8b7bf4; --gexp:#4caf6e; --gexn:#c75d5d;
-  --session:#5aa7d6; --band:#d6b35a;
   /* Robinhood's own face is Capsule Sans, which is proprietary and cannot be redistributed.
      Inter is the closest freely-licensed match — same neo-grotesque skeleton, tall x-height,
      near-identical digit shapes — so the whole UI runs on it. Tabular figures are forced
@@ -70,7 +69,7 @@
 html,body{height:100%;background:#000;color:var(--text);font-family:var(--disp);font-weight:300;font-size:14px;
   font-variant-numeric:tabular-nums;font-feature-settings:'tnum' 1,'cv05' 1}
 button{font-family:var(--disp);font-weight:300;cursor:pointer}
-input,select,textarea{font-family:var(--mono);font-weight:300;background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:4px;padding:5px 8px;font-size:12px}
+input,select,textarea{font-family:var(--mono);font-weight:300;background:var(--panel2);color:var(--text);border:none;border-radius:4px;padding:5px 8px;font-size:12px}
 input:focus,textarea:focus,select:focus{outline:1px solid var(--pivot)}
 /* iOS Safari auto-zooms the page when a focused text input computes below 16px. The 12px
    base above is deliberate desktop density (kept as-is for mouse/trackpad); this touch-only
@@ -80,7 +79,7 @@ input[type=checkbox]{accent-color:var(--pivot)}
 .app{display:grid;grid-template-rows:auto 1fr;height:100vh;height:100dvh;position:relative;z-index:1}
 /* live video backdrop sits behind the app; the frosted chrome blurs it like the image backdrop */
 .bgvideo{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;pointer-events:none;border:0;background:transparent}
-.topbar{display:flex;align-items:center;gap:12px;padding:0 12px;background:var(--panel);border-bottom:1px solid var(--line);
+.topbar{display:flex;align-items:center;gap:12px;padding:0 12px;background:var(--panel);
   position:relative;z-index:50;flex-wrap:wrap;min-height:44px;row-gap:6px}
 /* Keeps .topbar's popovers (the timeframe/chart-type dropdowns) painting above .chartcol
    regardless of DOM order. */
@@ -151,13 +150,11 @@ input[type=checkbox]{accent-color:var(--pivot)}
 .dot.warn::before{content:'\26A0'}
 @keyframes glowpulse{0%,100%{opacity:1}50%{opacity:.55}}
 .spacer{flex:1}
-.tbtn{background:var(--panel2);border:1px solid var(--line);color:var(--text);padding:5px 10px;border-radius:8px;font-size:12px}
-.tbtn:hover{border-color:var(--line2)}
-.tbtn.primary{background:var(--pivot);border-color:var(--pivot);color:#0a0e17;font-weight:600}
-.tbtn.on{border-color:var(--warn);color:var(--warn)}
-.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
-.seg button{background:var(--panel2);border:none;color:var(--dim);padding:5px 10px;font-size:11px;border-right:1px solid var(--line)}
-.seg button:last-child{border-right:none}
+.tbtn{background:var(--panel2);color:var(--text);border:none;padding:5px 10px;border-radius:8px;font-size:12px}
+.tbtn.primary{background:var(--pivot);color:#0a0e17;font-weight:600}
+.tbtn.on{color:var(--warn)}
+.seg{display:flex;border-radius:8px;overflow:hidden}
+.seg button{background:var(--panel2);border:none;color:var(--dim);padding:5px 10px;font-size:11px}
 .seg button.on{color:#ffe98a;background:rgba(255,220,90,.10);
   box-shadow:inset 0 0 10px rgba(255,220,90,.16)}
 .main{display:grid;grid-template-columns:1fr 340px;min-height:0}
@@ -176,21 +173,8 @@ input[type=checkbox]{accent-color:var(--pivot)}
 .chartcol{background:var(--chartcol-bg)}
 .panerow{flex:1;display:flex;flex-direction:column;min-height:0}
 .panerow.split{flex-direction:row}
-.panerow.split .panewrap{flex:1;min-width:0;border-bottom:none;border-right:0.5px solid var(--panesep)}
-/* .pw-last, not :last-of-type: with a 3rd panewrap always present in the DOM (hidden via
-   display:none at 1 or 2 panes), :last-of-type would still count it as a sibling and never
-   match the actual last VISIBLE pane — pane 2 would keep a spurious divider on its right edge
-   even at 2-pane layout. setPaneN() moves this class onto whichever wrap is really last-shown. */
-.panerow.split .panewrap.pw-last{border-right:none}
-/* The wrap's own border-right should already run the full height of price+volume+RSI stacked
-   inside it, but each section gets its own matching border too — belt and braces, so the
-   divider reads as one unbroken line down the whole pane regardless of anything drawn over
-   the wrap's edge inside .pchart (level tags, GEX lines, the indicator legend). */
-.panerow.split .panewrap:not(.pw-last) .pchart,
-.panerow.split .panewrap:not(.pw-last) .subpane,
-.panerow.split .panewrap:not(.pw-last) .phandle{border-right:0.5px solid var(--panesep)}
-.panewrap{flex:1;display:flex;flex-direction:column;min-height:0;border-bottom:0.5px solid var(--panesep);position:relative}
-.panewrap:last-of-type{border-bottom:none}
+.panerow.split .panewrap{flex:1;min-width:0}
+.panewrap{flex:1;display:flex;flex-direction:column;min-height:0;position:relative}
 .pchart{flex:1;position:relative;min-height:0}
 .pchart>div.cinner{position:absolute;inset:0}
 /* Keeping a price line out of its own label without putting a box behind the text.
@@ -216,10 +200,7 @@ input[type=checkbox]{accent-color:var(--pivot)}
    one still read as a box: on dense bold text, eight black copies offset 1px in every
    direction fatten each letter until they merge with their neighbours into one solid slab.
    It is unnecessary now. The price lines reserve their own gap, so the line already stops before the label and picks up after it.
-   Nothing needs to be painted over the chart to hide a line that is no longer there.
-   Kept as a transparent no-op rather than 'none' so the rules that COMBINE it with a real
-   glow - the confluence label - stay a valid shadow list. */
-:root{--linemask:0 0 0 rgba(0,0,0,0)}
+   Nothing needs to be painted over the chart to hide a line that is no longer there. */
 .tips{position:absolute;inset:0;pointer-events:none;z-index:6;overflow:hidden}
 .sessband{position:absolute;top:0;bottom:0;pointer-events:none;background:rgba(64,116,196,.22)}
 .sessband.post{background:rgba(64,116,196,.30)}
@@ -319,6 +300,10 @@ input[type=checkbox]{accent-color:var(--pivot)}
 .patlab:active{cursor:grabbing}
 .patlab:hover{border-color:rgba(255,183,77,.5)}
 .patlab.sel{border-color:#ffb74d;box-shadow:0 0 8px rgba(255,183,77,.45)}
+/* Same "still forming" fade .swlab.open already uses for an open swing — this pattern's own
+   boundary touches that exact unsettled swing (see renderPane's p.patternOpen), so it gets the
+   identical, already-established treatment rather than a new one. */
+.patlab.open{opacity:.7}
 .patlab .patdel{display:none;border:none;background:none;padding:1px;line-height:0;
   color:#f0564f;cursor:pointer;opacity:.85}
 .patlab.sel .patdel{display:inline-flex;align-items:center;justify-content:center}
@@ -355,7 +340,7 @@ input[type=checkbox]{accent-color:var(--pivot)}
 .indtog .mini{opacity:0;transition:opacity .12s ease}
 .indtog:hover .mini{opacity:1}
 .indcollapse{display:flex;align-items:center;justify-content:center;width:20px;height:15px;
-  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.13);border-radius:4px;
+  background:rgba(255,255,255,.05);border:none;border-radius:4px;
   color:var(--faint);cursor:pointer;padding:0}
 .indcollapse:hover{color:var(--dim);background:rgba(255,255,255,.09)}
 .indcollapse svg{width:9px;height:9px;transition:transform .15s}
@@ -413,7 +398,7 @@ input[type=checkbox]{accent-color:var(--pivot)}
 .ctitem.on{color:var(--axistext)}
 /* Line chart type's own colour-mode row (Solid/Gradient) - only meaningful, so only shown,
    while that pane's chart type is actually Line; see syncChartTypeBtns(). */
-.ctlinesec{display:none;border-top:1px solid var(--line);margin-top:3px;padding-top:5px}
+.ctlinesec{display:none;margin-top:3px;padding-top:5px}
 .ctlinesec.show{display:block}
 .ctlinerow{display:flex;align-items:center;gap:6px;padding:2px 4px;font-size:11px;color:var(--dim)}
 .ctlinerow select{flex:1;min-width:0;font-size:11px;padding:2px 4px}
@@ -423,16 +408,16 @@ input[type=checkbox]{accent-color:var(--pivot)}
 .cdown{position:absolute;right:0;z-index:7;font-family:var(--lab);transform:translateY(-50%);display:none;pointer-events:none;text-align:center;min-width:58px;border-radius:2px;overflow:hidden}
 .cdown .v{font-size:10px;font-weight:700;padding:1px 6px;color:#050505;text-align:center}
 .cdown .t{font-size:9px;padding:0 6px 1px;color:#050505;font-weight:600;text-align:center}
-.phandle{height:5px;cursor:ns-resize;background:var(--panel);border-top:0.5px solid var(--panesep);border-bottom:0.5px solid var(--panesep);touch-action:none}
+.phandle{height:5px;cursor:ns-resize;background:var(--panel);touch-action:none}
 .phandle:hover{background:var(--line)}
 .subpane{position:relative}
 .subpane>div.cinner{position:absolute;inset:0}
 .ptag{position:absolute;left:8px;top:4px;z-index:5;font-family:var(--mono);font-weight:300;font-size:10px;color:var(--axistext);
   text-shadow:0 1px 1px rgba(0,0,0,.85);
-  padding:2px 4px;border-radius:4px;border:1px solid transparent;transition:background .12s ease,border-color .12s ease}
+  padding:2px 4px;border-radius:4px;transition:background .12s ease}
 /* Same hover-reveal plate .indtog uses on the chart's on-chart indicator legend, applied to the
-   Volume/RSI subpane label so its gear icon reads as part of one bordered unit on hover too. */
-.ptag:hover{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.14)}
+   Volume/RSI subpane label so its gear icon reads as part of one plate on hover too. */
+.ptag:hover{background:rgba(255,255,255,.06)}
 .ptag .volgear,.ptag .rsigear{opacity:0;transition:opacity .15s ease;
   background:none!important;border:none!important;box-shadow:none!important}
 .subpane:hover .volgear,.subpane:hover .rsigear{opacity:1}
@@ -448,10 +433,9 @@ input[type=checkbox]{accent-color:var(--pivot)}
      so it must come later in source order to win). */
   .ctbtn,.volgear,.rsigear{min-width:40px;min-height:40px;display:inline-flex;align-items:center;justify-content:center}
 }
-.side{background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
-.tabs{display:flex;border-bottom:1px solid var(--line)}
-.tabs button{flex:1;background:none;border:none;color:var(--dim);padding:9px 0;font-size:11px;letter-spacing:.02em;border-bottom:2px solid transparent}
-.tabs button.on{color:var(--text);border-bottom-color:var(--warn)}
+.side{background:var(--panel);display:flex;flex-direction:column;min-height:0}
+.tabs{display:flex}
+.tabs button{flex:1;background:none;border:none;color:var(--dim);padding:9px 0;font-size:11px;letter-spacing:.02em}
 .pane{display:none;flex:1;overflow-y:auto;padding:12px;min-height:0}
 .pane.on{display:block}
 .pane h3{font-size:11px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase;margin:14px 0 6px}
@@ -476,10 +460,10 @@ table.lv td.p{font-weight:600;text-align:right;white-space:nowrap}
    while it's the active pane (toggled in switchPane()) — every other tab keeps the normal 340px. */
 .main.scanwide{grid-template-columns:1fr 500px}
 #pane-scanner{padding:10px;overflow-y:auto}
-.scancard{background:var(--panel2);border:1px solid var(--line);border-radius:10px;
+.scancard{background:var(--panel2);border-radius:10px;
   padding:10px 12px;margin-bottom:8px}
 .scanhead{display:flex;align-items:baseline;gap:8px;margin-bottom:8px;
-  padding-bottom:8px;border-bottom:1px solid var(--line)}
+  padding-bottom:8px}
 .scanrank{font-family:var(--lab);font-size:10px;font-weight:700;color:var(--faint);
   background:rgba(255,255,255,.06);border-radius:4px;padding:1px 5px;margin-right:1px}
 .scancard.scanquiet{opacity:.6}
@@ -492,7 +476,7 @@ table.lv td.p{font-weight:600;text-align:right;white-space:nowrap}
   color:var(--faint);margin-bottom:1px}
 .scanstat .v{font-family:var(--lab);font-size:12.5px;color:var(--dim);line-height:1.35}
 .scanmeta{font-family:var(--lab);font-size:10px;color:var(--faint);margin-top:8px;
-  padding-top:6px;border-top:1px solid var(--line)}
+  padding-top:6px}
 /* Progressive disclosure: a beginner glancing at 7 cards at once only needs price/gap/RVOL/why-
    it's-moving up front — everything else (ATR, VWAP, premarket, support/resistance, the whole
    options/GEX block) sits behind one "More details" toggle per card, collapsed by default. */
@@ -506,23 +490,23 @@ table.lv td.p{font-weight:600;text-align:right;white-space:nowrap}
 .scantoggle{background:none;border:none;color:var(--pivot);font-family:var(--lab);font-size:11px;
   font-weight:600;cursor:pointer;padding:2px 0;display:flex;align-items:center;gap:3px}
 .scantoggle:hover{text-decoration:underline}
-.scandetail{margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
+.scandetail{margin-top:8px;padding-top:8px}
 .badge{font-size:9px;border:none;background:rgba(255,255,255,.08);border-radius:4px;padding:1px 5px;color:var(--dim);margin-left:4px}
 /* CONFLUENCE badge — golden glow, brighter the more independent level families agree.
    The badge is only rendered while the level is still confluent, so when a cluster breaks
    up the glow disappears with it on the next recompute. */
-.badge.conf{color:#f0d98a;border-color:var(--band);background:rgba(214,179,90,.07);
+.badge.conf{color:#f0d98a;background:rgba(214,179,90,.07);
   animation:confBreathe 4s ease-in-out infinite}
-/* A slow, even breath rather than a glow pulse — the opacity and border ease in and out on
+/* A slow, even breath rather than a glow pulse — the opacity eases in and out on
    a sine-like curve, so it reads as calm movement instead of a flicker. */
 /* box-shadow/text-shadow are not compositor-only properties - animating them forces a main-
    thread repaint of every badge on every single animation frame, forever, for as long as any
    confluence badge is on screen. filter:drop-shadow() renders the same soft outer glow but IS
    compositor-only (like opacity/transform), so the GPU handles the whole breath with no repaint. */
 @keyframes confBreathe{
-  0%,100%{opacity:.68;border-color:rgba(214,179,90,.45);
+  0%,100%{opacity:.68;
           filter:drop-shadow(0 0 3px rgba(214,179,90,.16)) drop-shadow(0 0 3px rgba(214,179,90,.28))}
-  50%    {opacity:1;   border-color:rgba(240,217,138,.95);
+  50%    {opacity:1;
           filter:drop-shadow(0 0 9px rgba(214,179,90,.42)) drop-shadow(0 0 6px rgba(214,179,90,.6))}}
 /* 3+ families: same breath, a little deeper and slightly quicker */
 .badge.conf.s3{color:#fff1b8;background:rgba(214,179,90,.13);animation-duration:2.8s}
@@ -537,25 +521,39 @@ table.lv td.p{font-weight:600;text-align:right;white-space:nowrap}
 .setsec:hover{color:#ffd98a}
 .setbody{margin-bottom:2px}
 .ihelp{display:inline-flex;align-items:center;justify-content:center;flex:0 0 14px;
-  width:14px;height:14px;border-radius:50%;border:1px solid #3a4052;color:#ffffff;
+  width:14px;height:14px;border-radius:50%;background:#3a4052;color:#ffffff;
   font:600 9px/1 ui-sans-serif,system-ui;cursor:help;user-select:none;vertical-align:middle;
-  margin-left:6px;transition:color .12s,border-color .12s}
-.ihelp:hover{color:#ffffff;border-color:#5b8dee}
-#tipbox{position:fixed;z-index:400;display:none;max-width:330px;background:#131722;
-  border:1px solid #2a2e39;border-radius:7px;padding:9px 11px;
-  font:400 11.5px/1.55 var(--disp);color:#ffffff;
+  margin-left:6px;transition:color .12s,background .12s}
+.ihelp:hover{color:#ffffff;background:#5b8dee}
+/* Every tooltip (the ihelp "i" popovers AND tipAttach's swing/break readouts, see both below)
+   shares this one box, so its type/spacing/alignment is set centrally, here, exactly once —
+   content only ever supplies text/<b>/<br>, never its own font or line-height. Centered both
+   ways: text-align for the horizontal axis, and the box itself has no fixed height (shrinks to
+   its content via the default block layout) so there's never leftover vertical space to center
+   within — it's already exactly as tall as its text, top and bottom padding equal. Font size
+   dropped from 11.5 and line-height tightened from 1.55 (still var(--disp), the same family
+   every other small UI label already uses) — smaller and tighter reads as a crisp popover
+   instead of a bulky paragraph, while staying clearly readable at normal viewing distance. */
+#tipbox{position:fixed;z-index:400;display:none;max-width:310px;background:#131722;
+  border-radius:7px;padding:8px 12px;
+  font:400 10.5px/1.42 var(--disp);color:#ffffff;text-align:center;
   box-shadow:0 10px 34px rgba(0,0,0,.7);pointer-events:none}
 #tipbox b{color:#ffffff}
-/* a field the timeframe auto-tune is currently driving: greyed and dashed, not bright white —
+/* Leading title of a tipAttach readout (brkTipHtml/swingTipHtml) — NOT every <b> in a tooltip,
+   several (the "Closes to fail" hint's inline stat call-outs, brkTipHtml's own outcome word) are
+   deliberately inline emphasis inside a sentence and must stay that way. Scoped to this one
+   class instead of styling <b> itself so those inline uses are untouched. */
+#tipbox b.tiptitle{display:block;margin-bottom:3px}
+/* a field the timeframe auto-tune is currently driving: greyed, not bright white —
    white read as MORE prominent than a manually-set field, the opposite of "this is not yours
    to edit right now." Every :disabled input/select gets the same dimming as a floor. */
 input:disabled,select:disabled{opacity:.45;cursor:not-allowed}
-.autoval{color:var(--faint)!important;border-style:dashed!important;cursor:not-allowed;
+.autoval{color:var(--faint)!important;cursor:not-allowed;
   opacity:.55!important;background:rgba(255,255,255,.02)!important}
 .panetag{font:600 10px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;
-  color:#ffffff;border:1px solid var(--line2);border-radius:4px;padding:3px 6px;
+  color:#ffffff;background:var(--line2);border-radius:4px;padding:3px 6px;
   vertical-align:middle;margin-left:8px}
-.sw{display:inline-block;width:18px;height:14px;border-radius:3px;border:1px solid var(--line2);
+.sw{display:inline-block;width:18px;height:14px;border-radius:3px;
   cursor:pointer;vertical-align:middle;user-select:none;-webkit-user-select:none}
 /* Touch-only: the base 18x14 swatch is well under a usable tap target — matters most for
    #volModal, the one modal with no larger per-modal .sw override. Same specificity as the
@@ -629,7 +627,7 @@ input:disabled,select:disabled{opacity:.45;cursor:not-allowed}
 .gexsum{font-family:var(--mono);font-size:11px;line-height:1.7}
 .gexsum b.pos{color:var(--gexp)} .gexsum b.neg{color:var(--gexn)} .gexsum b.flip{color:var(--warn)}
 /* plain-English read of the board, shown in the status box once one has been computed */
-.gxhowh{margin:7px 0 0!important;padding-top:7px!important;border-top:1px solid var(--line);width:100%}
+.gxhowh{margin:7px 0 0!important;padding-top:7px!important;width:100%}
 .gxhow{margin-top:4px;
   font-family:var(--disp),system-ui;font-size:10.5px;line-height:1.55;color:var(--dim);
   letter-spacing:0;text-transform:none;font-weight:400}
@@ -646,17 +644,21 @@ input:disabled,select:disabled{opacity:.45;cursor:not-allowed}
 /* Levels header matches the GEX section header (warn, uppercase, tracked); keeps its collapse
    caret and info icon, just drops the "Ns ago" stamp that used to trail it */
 /* compact trigger card */
-.mini{font-size:10px;padding:3px 8px;background:var(--panel);border:1px solid var(--line);color:var(--dim);border-radius:8px}
+.mini{font-size:10px;padding:3px 8px;background:var(--panel);color:var(--dim);border-radius:8px}
 .mini:hover{color:var(--text)}
 #log{font-family:var(--mono);font-size:11px;line-height:1.6}
 #log .t{color:var(--faint)} #log .long{color:var(--long)} #log .short{color:var(--short)} #log .warn{color:var(--warn)}
 #toasts{position:fixed;right:352px;top:52px;z-index:50;display:flex;flex-direction:column;gap:8px}
-.toast{background:var(--panel);border:none;border-left:4px solid var(--warn);padding:10px 14px;border-radius:6px;font-size:13px;min-width:260px;box-shadow:0 6px 24px rgba(0,0,0,.5)}
-.toast.long{border-left-color:var(--long)}
-.toast.short{border-left-color:var(--short)}
+.toast{background:var(--panel);padding:10px 14px;border-radius:6px;font-size:13px;min-width:260px;box-shadow:0 6px 24px rgba(0,0,0,.5)}
+/* the alert-type accent used to be a colored border-left stripe; a border-free redesign moves
+   that same long/short/warn color-coding onto the title text instead — same signal, same
+   colors, no border, and it matches how #log already color-codes these three types by text. */
+.toast b{color:var(--warn)}
+.toast.long b{color:var(--long)}
+.toast.short b{color:var(--short)}
 .toast small{display:block;color:var(--dim);font-family:var(--mono);font-size:10px;margin-top:3px}
 #setup{position:fixed;inset:0;background:rgba(6,9,15,.92);z-index:100;display:none;align-items:center;justify-content:center}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:26px;width:540px;max-width:94vw;max-height:92vh;overflow-y:auto}
+.card{background:var(--panel);border-radius:10px;padding:26px;width:540px;max-width:94vw;max-height:92vh;overflow-y:auto}
 .card h1{font-size:20px;margin-bottom:2px}
 .card h1 em{color:var(--warn);font-style:normal}
 .card p{font-size:12px;color:var(--dim);line-height:1.6;margin:8px 0}
@@ -664,10 +666,10 @@ input:disabled,select:disabled{opacity:.45;cursor:not-allowed}
 .keywrap{position:relative;flex:1}
 .keywrap input{width:100%;padding-right:56px}
 .keywrap button{position:absolute;right:4px;top:3px;font-size:10px;background:none;border:none;color:var(--dim)}
-.warnbox{background:rgba(232,163,61,.10);border:none;border-left:2px solid var(--warn);border-radius:6px;padding:8px 10px;font-size:11px;color:var(--warn);margin:10px 0;line-height:1.5}
+.warnbox{background:rgba(232,163,61,.10);border-radius:6px;padding:8px 10px;font-size:11px;color:var(--warn);margin:10px 0;line-height:1.5}
 
 /* style popover */
-#picker{position:fixed;z-index:300;display:none;background:#131722;border:1px solid #2a2e39;
+#picker{position:fixed;z-index:300;display:none;background:#131722;
   border-radius:10px;padding:12px;width:268px;box-shadow:0 12px 40px rgba(0,0,0,.75)}
 /* Drag handle spans the popup's full width via negative margins undoing #picker's own padding —
    a dedicated strip rather than making the whole popup draggable, so it never fights the psq/
@@ -693,26 +695,25 @@ input:disabled,select:disabled{opacity:.45;cursor:not-allowed}
   transform:translate(-50%,-50%);pointer-events:none;top:50%}
 #picker .psq .pdot{top:0}
 #picker .pfields{display:flex;align-items:flex-end;gap:5px;margin:2px 0 4px}
-#picker .pprev{width:26px;height:26px;border-radius:5px;border:1px solid #2a2e39;flex:0 0 26px;
+#picker .pprev{width:26px;height:26px;border-radius:5px;flex:0 0 26px;
   background-image:linear-gradient(45deg,#2a2e39 25%,transparent 25%,transparent 75%,#2a2e39 75%),
     linear-gradient(45deg,#2a2e39 25%,#1c2030 25%,#1c2030 75%,#2a2e39 75%);
   background-size:8px 8px;background-position:0 0,4px 4px}
 #picker .pf{display:flex;flex-direction:column;gap:2px;font-size:8.5px;letter-spacing:.09em;
   color:#ffffff;text-transform:uppercase;flex:1;min-width:0}
 #picker .pf.pfhex{flex:2.1}
-#picker .pf input{width:100%;background:#1c2030;border:1px solid #2a2e39;color:#ffffff;
+#picker .pf input{width:100%;background:#1c2030;color:#ffffff;
   border-radius:4px;padding:4px 3px;font-family:var(--mono);font-size:10.5px;text-align:center;
   min-width:0;-moz-appearance:textfield;appearance:textfield}
 #picker .pf input::-webkit-outer-spin-button,#picker .pf input::-webkit-inner-spin-button{
   -webkit-appearance:none;appearance:none;margin:0}
-#picker .pf input:focus{outline:none;border-color:#2962ff}
+#picker .pf input:focus{outline:none}
 #picker .pgrid{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;margin-bottom:2px}
-#picker .pc{width:100%;aspect-ratio:1;border-radius:3px;cursor:pointer;border:1px solid rgba(255,255,255,.07)}
-#picker .pc:hover{transform:scale(1.18);border-color:rgba(255,255,255,.5)}
+#picker .pc{width:100%;aspect-ratio:1;border-radius:3px;cursor:pointer}
+#picker .pc:hover{transform:scale(1.18)}
 #picker .psec{font-size:8.5px;color:#ffffff;letter-spacing:.09em;text-transform:uppercase;margin:10px 0 5px}
-#picker .pbtns{display:flex;border:1px solid #2a2e39;border-radius:9px;overflow:hidden}
-#picker .pbtns button{flex:1;background:#1c2030;border:none;border-right:1px solid #2a2e39;padding:8px 0;display:flex;align-items:center;justify-content:center}
-#picker .pbtns button:last-child{border-right:none}
+#picker .pbtns{display:flex;border-radius:9px;overflow:hidden}
+#picker .pbtns button{flex:1;background:#1c2030;border:none;padding:8px 0;display:flex;align-items:center;justify-content:center}
 #picker .pbtns button:hover{background:#252a3a}
 #picker .pbtns button.on{background:#2962ff}
 /* Style / Text tab strip — shown only when styling a level (independent line vs label-text colour) */
@@ -727,9 +728,9 @@ input:disabled,select:disabled{opacity:.45;cursor:not-allowed}
 #picker .pbtns button.on .lg{border-top-color:#fff}
 /* Text-tab-only text size dropdown (8-40px) — same dark chip look as the rest of the picker,
    shown only while editing a label's text colour (see pkSwitchTab/openStyler's pTextSec gating). */
-#pTextSec select{width:100%;background:#1c2030;border:1px solid #2a2e39;border-radius:9px;
+#pTextSec select{width:100%;background:#1c2030;border-radius:9px;
   color:#fff;padding:7px 8px;font-size:12px;font-family:var(--mono);cursor:pointer}
-#pTextSec select:focus{outline:none;border-color:#2962ff}
+#pTextSec select:focus{outline:none}
 /* Levels list: one grouped tree instead of a separate master-switch panel. The group header
    carries the family's master checkbox; unchecking it dims its rows in place rather than
    hiding them, so you can still see and restyle a family you have temporarily turned off. */
@@ -740,7 +741,7 @@ input:disabled,select:disabled{opacity:.45;cursor:not-allowed}
 .lv tr.lvrow.catoff td.p{color:var(--faint)}
 /* right-click chart menu, TradingView-style */
 #ctxMenu{position:fixed;z-index:150;display:none;min-width:210px;padding:5px;
-  background:#1c1f26;border:1px solid #2f343d;border-radius:8px;
+  background:#1c1f26;border-radius:8px;
   box-shadow:0 8px 28px rgba(0,0,0,.65);font:12px/1 var(--disp),system-ui;
   user-select:none;-webkit-user-select:none}
 #ctxMenu .ci{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:5px;
@@ -887,7 +888,7 @@ input:disabled,select:disabled{opacity:.45;cursor:not-allowed}
   --mono:ui-monospace,"SF Mono","SFMono-Regular","JetBrains Mono",Menlo,Consolas,monospace;
   --text:#f5f5f7; --dim:#e6e8ec; --faint:#a0a3ab;
   --line:#26282e; --line2:#3a3d45; --panel:#0d0e11; --panel2:#141519;
-  --accent:#0a84ff; --accent2:#5e5ce6;
+  --accent:#0a84ff;
   /* The chart canvases themselves are transparent (layout.background is rgba(0,0,0,0) — see
      createChart) — what actually reads as "the chart's background" is .chartcol's
      rgba(15,16,21,.5) scrim composited over html,body's #060607 (the Backdrop's "default"
@@ -909,11 +910,6 @@ input:disabled,select:disabled{opacity:.45;cursor:not-allowed}
      setting onto every chart's own layout.textColor. Default matches cfg.axisTextColor's own
      default (#ffffff) so this looks right before that function's first run ever touches it. */
   --axistext:#ffffff;
-  /* Pane/subpane dividers only. --line is a solid, fairly high-contrast grey — fine for a
-     settings-panel rule, but even at a 0.5px border-width it still reads as a hard, heavy
-     line on the actual chart grid. Matches --chartbg now (see above) instead of a white
-     hairline, so a divider blends into the surrounding chrome rather than standing out. */
-  --panesep:var(--chartbg);
 }
 html,body{
   background:#060607;
@@ -926,35 +922,34 @@ html,body{
   text-rendering:optimizeLegibility;
 }
 input[type=checkbox]{accent-color:var(--accent)}
-.topbar{background:var(--chartbg); border-bottom:1px solid var(--line)}
-.side{background:var(--chartbg); border-left:1px solid var(--line)}
-.tabs{border-bottom:1px solid var(--line)}
+.topbar{background:var(--chartbg)}
+.side{background:var(--chartbg)}
 /* ── buttons ── */
 .tbtn{
-  background:var(--panel2); border:1px solid var(--line); color:var(--text);
+  background:var(--panel2); color:var(--text); border:none;
   border-radius:11px; padding:6px 13px; font-size:12px; font-weight:510;
-  transition:transform .12s cubic-bezier(.2,.8,.3,1), background .18s ease, border-color .18s ease;
+  transition:transform .12s cubic-bezier(.2,.8,.3,1), background .18s ease;
 }
-.tbtn:hover{background:#1c1e24; border-color:var(--line2); transform:translateY(-1px)}
+.tbtn:hover{background:#1c1e24; transform:translateY(-1px)}
 .tbtn:active{transform:translateY(0) scale(.97)}
-.tbtn.primary{background:#0a84ff; border-color:#0a84ff; color:#fff; font-weight:600}
+.tbtn.primary{background:#0a84ff; color:#fff; font-weight:600}
 .tbtn.primary:hover{background:#3d9cff}
-.tbtn.on{background:rgba(10,132,255,.16); border-color:#0a84ff; color:#8ac6ff}
+.tbtn.on{background:rgba(10,132,255,.16); color:#8ac6ff}
 .tbtn:disabled{opacity:.4; cursor:not-allowed}
-.mini{background:var(--panel2); border:1px solid var(--line); color:var(--dim); border-radius:9px; transition:all .15s ease}
-.mini:hover{color:var(--text); background:#1c1e24; border-color:var(--line2)}
+.mini{background:var(--panel2); color:var(--dim); border-radius:9px; transition:all .15s ease}
+.mini:hover{color:var(--text); background:#1c1e24}
 /* ── segmented control (timeframes etc.) ── */
-.seg{background:#0a0b0d; border:1px solid var(--line); border-radius:12px; padding:2px; overflow:visible}
+.seg{background:#0a0b0d; border-radius:12px; padding:2px; overflow:visible}
 .seg button{background:transparent; border:none; border-radius:9px; color:var(--faint); padding:5px 11px; font-weight:510; transition:all .15s ease}
 .seg button:hover{color:var(--text)}
 .seg button.on{color:#fff; background:#26282e}
 /* ── tabs ── */
 .tabs button{color:var(--axistext); font-weight:520; transition:color .15s ease}
-.tabs button.on{color:var(--text); border-bottom-color:var(--accent)}
+.tabs button.on{color:var(--text)}
 /* ── inputs ── */
-input,select,textarea{background:#0a0b0d; border:1px solid var(--line); border-radius:9px; color:var(--text); padding:6px 10px;
-  transition:border-color .15s ease, box-shadow .15s ease, background .15s ease}
-input:focus,select:focus,textarea:focus{outline:none; border-color:#0a84ff; background:#101115; box-shadow:0 0 0 3.5px rgba(10,132,255,.25)}
+input,select,textarea{background:#0a0b0d; border:none; border-radius:9px; color:var(--text); padding:6px 10px;
+  transition:box-shadow .15s ease, background .15s ease}
+input:focus,select:focus,textarea:focus{outline:none; background:#101115; box-shadow:0 0 0 3.5px rgba(10,132,255,.25)}
 /* The dropdown's OWN closed box picks up the semi-transparent glass background above just fine,
    but its expanded <option> list is an OS-rendered popup that never receives backdrop-filter/
    transparency — it falls back to the browser's own default (opaque white), while the options
@@ -978,7 +973,7 @@ select option{background:var(--panel2);color:var(--text)}
 #tfbtn0,#tfbtn1{color:var(--axistext)}
 .sym input:focus{outline:none}
 .tfdrop{position:relative;display:inline-flex;align-items:center;
-  border-left:1px solid var(--line);padding-left:6px;margin-left:1px}
+  padding-left:6px;margin-left:1px}
 .tfbtn{display:inline-flex;align-items:center;gap:3px;background:none;border:none;
   color:var(--dim);font-family:var(--mono);font-size:11px;font-weight:600;cursor:pointer;padding:2px 3px}
 .tfbtn:hover{color:var(--text)}
@@ -1000,7 +995,7 @@ select option{background:var(--panel2);color:var(--text)}
 .tfdrop.open .tfbtn svg{transform:rotate(180deg)}
 .tfdrop.open .tfbtn #layIcon{transform:none}
 .tfmenu{position:absolute;top:100%;right:0;margin-top:6px;z-index:60;display:none;
-  background:#1a1c22;border:1px solid var(--line);border-radius:8px;padding:3px;min-width:64px}
+  background:#1a1c22;border-radius:8px;padding:3px;min-width:64px}
 .tfdrop.open .tfmenu{display:block}
 /* Inside the dropdown the segmented control reads as a plain list, not a horizontal trough —
    same .ctitem row language as the chart-type menu, not a new pattern. */
@@ -1076,18 +1071,100 @@ select option{background:var(--panel2);color:var(--text)}
      by more than half versus the original 38px. */
   -webkit-backdrop-filter:blur(22px) saturate(180%);
   backdrop-filter:blur(22px) saturate(180%);
-  border:1px solid rgba(255,255,255,.16);
   border-radius:26px;
   box-shadow:0 24px 70px rgba(0,0,0,.55),0 2px 10px rgba(0,0,0,.35),
-    inset 0 1px 0 rgba(255,255,255,.28),inset 0 0 0 1px rgba(255,255,255,.05);
+    inset 0 1px 0 rgba(255,255,255,.28);
 }
-.card .tbtn{background:rgba(255,255,255,.08); border-color:rgba(255,255,255,.16);
+.card .tbtn{background:rgba(255,255,255,.08);
   -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px)}
-.card .tbtn:hover{background:rgba(255,255,255,.15); border-color:rgba(255,255,255,.24)}
-.card .tbtn.primary{background:rgba(10,132,255,.82); border-color:rgba(10,132,255,.9)}
+.card .tbtn:hover{background:rgba(255,255,255,.15)}
+.card .tbtn.primary{background:rgba(10,132,255,.82)}
 .card .tbtn.primary:hover{background:rgba(61,156,255,.9)}
-.card input,.card select,.card textarea{background:rgba(255,255,255,.06); border-color:rgba(255,255,255,.14)}
+.card input,.card select,.card textarea{background:rgba(255,255,255,.06)}
 .card input:focus,.card select:focus,.card textarea:focus{background:rgba(255,255,255,.1)}
+/* MP4-backdrop liquid glass — same material recipe as .card above (gradient sheen over a
+   frosted, blurred-through base + inset top highlight), reused rather than invented, but only
+   switched on for the topbar/side chrome while Settings > Backdrop is 'video' (body.bd-video,
+   toggled by applyBackdrop()). backdrop-filter is a real per-frame GPU compositing cost paid for
+   as long as the element is on screen — unlike .card, which only exists while a modal is open,
+   the topbar/side are permanent chrome, so this must never be on for default/color/picture,
+   where their background is a flat opaque fill and a blur behind it would be invisible anyway.
+   Same blur(22px) radius .card already settled on for "sampled continuously off a live-streaming
+   chart" — proven safe at that cost, no reason to re-derive a number here. */
+body.bd-video .topbar,body.bd-video .side{
+  background:linear-gradient(165deg,rgba(255,255,255,.10),rgba(255,255,255,.02) 45%,rgba(11,11,14,.58)),
+    rgba(11,11,14,.40);
+  -webkit-backdrop-filter:blur(22px) saturate(180%);
+  backdrop-filter:blur(22px) saturate(180%);
+}
+/* .chartcol already goes translucent in video mode (--chartcol-bg, set by applyBackdrop() — see
+   that variable's own comment) so the video shows through the chart's own transparent canvas.
+   That existing tint is left exactly as-is (it's already tuned for candle legibility); this only
+   adds the actual blur+saturate on top of it, and at a lower radius than the chrome above since
+   this surface sits directly behind the price data the user is reading, not empty chrome. */
+body.bd-video .chartcol{
+  -webkit-backdrop-filter:blur(13px) saturate(160%);
+  backdrop-filter:blur(13px) saturate(160%);
+}
+/* ── liquid glass, part 2: surfaces NESTED inside an already-blurred ancestor ──
+   Audited every opaque `background:var(--chartbg)`/flat-panel fill that lives inside .topbar/
+   .side/.chartcol (the three surfaces blurred above): the axis strips, the ticker/search pill,
+   the Levels/GEX table, and the Scanner cards were all still fully opaque, so they read as solid
+   islands cut out of the glass instead of belonging to it — the exact "only part of the UI is
+   glass" symptom. NONE of these get their own backdrop-filter: they already paint on top of a
+   parent that is already blurred (verified — .axisback's DOM parents (.subpane/.pchart/.panewrap/
+   .panerow) carry no background of their own, so .chartcol's blurred composite reaches all the
+   way down to them; .sym/table.lv/.scancard sit directly inside .topbar/.side). Making them
+   translucent is enough to show the SAME blur already paid for once — a second backdrop-filter
+   here would just blur an already-blurred layer again for no visual gain at real GPU cost, which
+   is the "duplicate/overlapping glass layers" this was explicitly asked to avoid. */
+body.bd-video .axisback{background:rgba(15,16,21,.55)}
+body.bd-video .sym{background:rgba(255,255,255,.05)}
+body.bd-video table.lv{background:rgba(17,18,22,.46)}
+body.bd-video .lv tr.lvrow:hover td{background:rgba(255,255,255,.07)}
+body.bd-video .scancard{background:rgba(255,255,255,.05)}
+body.bd-video .satyinfo{background:rgba(15,16,21,.55)}
+/* ── liquid glass, part 3: floating overlays (dropdowns/menus/popovers) ──
+   These are position:fixed/absolute and appear ON TOP of whatever happens to be under their own
+   footprint at the moment they open — sometimes chrome, sometimes the busy candle/heatmap area,
+   sometimes raw video peeking through a gap. Unlike part 2 above, they can't just inherit a
+   parent's blur (their content behind them isn't guaranteed to be blurred already), so each gets
+   its OWN backdrop-filter — the same .card material recipe reused again, not a new one, and the
+   same reasoning .card already established: only ever present intermittently (open on demand),
+   so this is the same bounded cost the app already pays for the settings sheet, not a new
+   permanent one. Internal color-encoding widgets are deliberately left alone: the picker's own
+   saturation square/hue+alpha rails/swatch grid and the GEX heatmap's per-cell fills ARE the data
+   — glassing those would corrupt the exact colors the user is picking/reading. */
+body.bd-video .tfmenu,body.bd-video .ctmenu,body.bd-video #ctxMenu,
+body.bd-video #picker,body.bd-video #tipbox,body.bd-video #setup .presetlist{
+  background:linear-gradient(165deg,rgba(255,255,255,.12),rgba(255,255,255,.02) 45%,rgba(22,24,30,.62)),
+    rgba(22,24,30,.58);
+  -webkit-backdrop-filter:blur(22px) saturate(180%);
+  backdrop-filter:blur(22px) saturate(180%);
+  box-shadow:0 14px 40px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.10);
+}
+body.bd-video #ctxMenu .ci:hover,body.bd-video .tfmenu .seg button:hover,
+body.bd-video .tfmenu .seg button.on,body.bd-video .ctitem:hover{background:rgba(255,255,255,.09)}
+/* ── liquid glass, part 4: Settings (#setup) inner surfaces ──
+   .card already carries the base glass material (see its own comment above) and originally gave
+   its inputs/selects a translucent rgba(255,255,255,.06) fill to match — but a later, more
+   specific "flat pass" (#setup .setbody / .explainhdr.setsec / .presetbtn / .setbody input,select)
+   overrides that with fully opaque #101115/#1a1c22/#0a0b0d fills purely by higher CSS specificity
+   (#setup ID beats .card class). That's the root cause Settings reads as flat dark boxes floating
+   inside a glass sheet instead of one material — not a missing effect, an existing rule silently
+   winning the cascade. Restoring translucency here (still gated to video mode — .card's own blur
+   already covers non-video modes with the flat colors, which stay exactly as they were) needs no
+   extra backdrop-filter: #setbody/.presetbtn/inputs are all descendants of the one already-blurred
+   .card, same reasoning as part 2 above. */
+body.bd-video #setup .setbody{background:rgba(255,255,255,.045)}
+body.bd-video #setup .explainhdr.setsec{background:rgba(255,255,255,.055)}
+body.bd-video #setup .explainhdr.setsec:hover{background:rgba(255,255,255,.09)}
+body.bd-video #setup .explainhdr.setsec.open{background:rgba(10,132,255,.20)}
+body.bd-video #setup .setbody input:not([type=checkbox]):not([type=file]),
+body.bd-video #setup .setbody select,body.bd-video #setup .row input:not([type=checkbox]):not([type=file]),
+body.bd-video #setup .row select,body.bd-video #setup .presetbtn{
+  background:rgba(255,255,255,.055);
+}
 /* ── misc polish ── */
 /* .px has no background of its own (it's plain colored text sitting on the topbar's glass), so a
    drop-shadow here rendered as a dark smudge floating behind transparent text with nothing to
@@ -1119,7 +1196,7 @@ select option{background:var(--panel2);color:var(--text)}
 input[type=number]{-moz-appearance:textfield;appearance:textfield}
 input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 /* -- level table -- */
-table.lv{border-collapse:separate;border-spacing:0;font-size:11.5px;background:var(--chartbg);color:var(--axistext);border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-top:2px}
+table.lv{border-collapse:separate;border-spacing:0;font-size:11.5px;background:var(--chartbg);color:var(--axistext);border-radius:12px;overflow:hidden;margin-top:2px}
 table.lv td{padding:6px 10px}
 /* Swatch sits at the table's own normal left padding (10px, inherited from table.lv td above) so
    it doesn't touch the table edge; the label follows INLINE right after it in that same cell (not
@@ -1159,14 +1236,13 @@ table.lv td{padding:6px 10px}
 #setup .explainhdr.setsec{
   width:100%;display:flex;align-items:center;gap:10px;
   background:#1a1c22;
-  border:1px solid var(--line2);
-  border-radius:13px;padding:11px 14px;margin:0 0 8px;
+  border-radius:13px;padding:13px 16px;margin:0 0 10px;
   color:var(--dim);font-size:13px;font-weight:560;letter-spacing:normal;text-transform:none;
-  transition:background .16s ease,border-color .16s ease,transform .12s cubic-bezier(.2,.8,.3,1);
+  transition:background .16s ease,transform .12s cubic-bezier(.2,.8,.3,1);
 }
 #setup .explainhdr.setsec:hover{background:#22242b;
-  border-color:var(--line2);transform:translateY(-1px)}
-#setup .explainhdr.setsec.open{color:var(--text);border-color:#0a84ff;
+  transform:translateY(-1px)}
+#setup .explainhdr.setsec.open{color:var(--text);
   background:rgba(10,132,255,.14)}
 #setup .explainhdr.setsec .caret{width:13px;height:13px;font-size:0;flex:none;margin-left:auto;order:9;
   color:var(--faint);border:solid currentColor;border-width:0 1.7px 1.7px 0;display:inline-block;
@@ -1175,25 +1251,24 @@ table.lv td{padding:6px 10px}
 #setup .explainhdr.setsec .sec-ic{width:18px;height:18px;flex:none;color:var(--faint);transition:color .16s ease}
 #setup .explainhdr.setsec.open .sec-ic{color:var(--accent)}
 #setup .setbody{
-  margin:6px 2px 16px;padding:14px 14px 6px;
-  background:#101115;border:1px solid var(--line);border-radius:12px;
+  margin:8px 2px 20px;padding:20px 20px 10px;
+  background:#101115;border-radius:12px;
 }
-#setup .setbody .row,#setup .setbody .styrow{margin:0 0 12px}
-#setup .setbody .row:last-child,#setup .setbody .styrow:last-child{margin-bottom:2px}
+#setup .setbody .row,#setup .setbody .styrow{margin:0 0 17px;gap:10px}
+#setup .setbody .row:last-child,#setup .setbody .styrow:last-child{margin-bottom:4px}
 /* sub-menu labels inside a merged section (e.g. Appearance = Candles + Crosshair + Chart Text +
-   Theme & Backdrop) — a thin rule + small accent caps, not a full header, so they read as
+   Theme & Backdrop) — small accent caps with extra top space, so they read as
    divisions of one section rather than sections of their own */
 .setsub{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);
-  margin:18px 0 8px;padding-top:14px;border-top:1px solid var(--line);font-weight:600}
-.setsub:first-child{margin-top:0;padding-top:0;border-top:none}
+  margin:26px 0 12px;padding-top:20px;font-weight:600}
+.setsub:first-child{margin-top:0;padding-top:0}
 
 #setup .setbody input[type=text],#setup .setbody input:not([type=checkbox]):not([type=file]),#setup .setbody select,
 #setup .row input:not([type=checkbox]):not([type=file]),#setup .row select{
   background:#0a0b0d;
-  border:1px solid var(--line);border-radius:9px;
+  border-radius:9px;
 }
 #setup .setbody input:focus,#setup .setbody select:focus,#setup .row input:focus,#setup .row select:focus{
-  border-color:#0a84ff;
   box-shadow:0 0 0 3px rgba(10,132,255,.18);
 }
 
@@ -1202,24 +1277,22 @@ table.lv td{padding:6px 10px}
 #setup input[type=checkbox]{
   appearance:none;-webkit-appearance:none;margin:0;padding:0;position:relative;flex:none;
   width:38px;height:22px;border-radius:12px;cursor:pointer;vertical-align:middle;
-  background:#26282e;border:1px solid var(--line2);
-  transition:background .18s ease,border-color .18s ease;
+  background:#26282e;
+  transition:background .18s ease;
 }
 #setup input[type=checkbox]::after{
-  content:'';position:absolute;top:1px;left:1px;width:16px;height:16px;border-radius:50%;
+  content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;
   background:#fff;
   transition:left .18s cubic-bezier(.2,.8,.3,1);
 }
 #setup input[type=checkbox]:checked{
   background:#0a84ff;
-  border-color:#0a84ff;
 }
-#setup input[type=checkbox]:checked::after{left:17px}
+#setup input[type=checkbox]:checked::after{left:19px}
 
 /* color swatches inside settings (candles/crosshair/chart/backdrop) */
 #setup .sw{
   width:24px;height:24px;border-radius:8px;
-  border:1px solid var(--line2);
   transition:transform .12s cubic-bezier(.2,.8,.3,1);
 }
 #setup .sw:hover{transform:translateY(-1px) scale(1.06)}
@@ -1234,10 +1307,9 @@ table.lv td{padding:6px 10px}
 #setup .presetbtn{
   flex:1;display:flex;align-items:center;gap:10px;text-align:left;cursor:pointer;min-width:0;
   font-family:var(--disp);font-size:12.5px;color:var(--text);
-  background:#0a0b0d;
-  border:1px solid var(--line);border-radius:9px;padding:6px 10px;
+  background:#0a0b0d;border:none;
+  border-radius:9px;padding:6px 10px;
 }
-#setup .presetbtn:hover{border-color:var(--line2)}
 #setup .presetbtn .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #setup .presetbtn .caret{width:11px;height:11px;flex:none;color:var(--faint);
   border:solid currentColor;border-width:0 1.5px 1.5px 0;display:inline-block;padding:2.5px;
@@ -1247,7 +1319,7 @@ table.lv td{padding:6px 10px}
 #setup .presetlist{
   position:absolute;left:0;top:calc(100% + 8px);z-index:120;width:280px;max-height:280px;overflow-y:auto;padding:6px;border-radius:14px;
   background:#1a1c22;
-  border:1px solid var(--line2);
+  box-shadow:0 14px 40px rgba(0,0,0,.5);
 }
 #setup .presetlist::-webkit-scrollbar{width:9px}
 #setup .presetlist::-webkit-scrollbar-thumb{background:#3a3d45;border-radius:999px;border:2px solid transparent;background-clip:content-box}
@@ -1268,8 +1340,7 @@ table.lv td{padding:6px 10px}
   display:flex;align-items:center;gap:8px;color:var(--faint)!important;
 }
 #rsiModal h3::after,#stModal h3::after,#satyModal h3::after,#rbModal h3::after,#alertEditModal h3::after,#vwapModal h3::after,#kcModal h3::after{
-  content:'';flex:1;height:1px;
-  background:var(--line);
+  content:'';flex:1;
 }
 
 #rsiModal input:not([type=checkbox]):not([type=file]),#rsiModal select,
@@ -1280,13 +1351,12 @@ table.lv td{padding:6px 10px}
 #vwapModal input:not([type=checkbox]):not([type=file]),#vwapModal select,
 #kcModal input:not([type=checkbox]):not([type=file]),#kcModal select{
   background:#0a0b0d;
-  border:1px solid var(--line);border-radius:9px;
+  border-radius:9px;
 }
 #rsiModal input:focus,#rsiModal select:focus,#stModal input:focus,#stModal select:focus,
 #satyModal input:focus,#satyModal select:focus,#rbModal input:focus,#rbModal select:focus,
 #alertEditModal input:focus,#alertEditModal select:focus,#alertEditModal textarea:focus,
 #vwapModal input:focus,#vwapModal select:focus,#kcModal input:focus,#kcModal select:focus{
-  border-color:#0a84ff;
   box-shadow:0 0 0 3px rgba(10,132,255,.18);
 }
 
@@ -1295,13 +1365,13 @@ table.lv td{padding:6px 10px}
 #vwapModal input[type=checkbox],#kcModal input[type=checkbox]{
   appearance:none;-webkit-appearance:none;margin:0;padding:0;position:relative;flex:none;
   width:38px;height:22px;border-radius:12px;cursor:pointer;vertical-align:middle;
-  background:#26282e;border:1px solid var(--line2);
-  transition:background .18s ease,border-color .18s ease;
+  background:#26282e;
+  transition:background .18s ease;
 }
 #rsiModal input[type=checkbox]::after,#stModal input[type=checkbox]::after,
 #satyModal input[type=checkbox]::after,#rbModal input[type=checkbox]::after,#alertEditModal input[type=checkbox]::after,
 #vwapModal input[type=checkbox]::after,#kcModal input[type=checkbox]::after{
-  content:'';position:absolute;top:1px;left:1px;width:16px;height:16px;border-radius:50%;
+  content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;
   background:#fff;
   transition:left .18s cubic-bezier(.2,.8,.3,1);
 }
@@ -1309,18 +1379,17 @@ table.lv td{padding:6px 10px}
 #satyModal input[type=checkbox]:checked,#rbModal input[type=checkbox]:checked,#alertEditModal input[type=checkbox]:checked,
 #vwapModal input[type=checkbox]:checked,#kcModal input[type=checkbox]:checked{
   background:#0a84ff;
-  border-color:#0a84ff;
 }
 #rsiModal input[type=checkbox]:checked::after,#stModal input[type=checkbox]:checked::after,
 #satyModal input[type=checkbox]:checked::after,#rbModal input[type=checkbox]:checked::after,#alertEditModal input[type=checkbox]:checked::after,
-#vwapModal input[type=checkbox]:checked::after,#kcModal input[type=checkbox]:checked::after{left:17px}
+#vwapModal input[type=checkbox]:checked::after,#kcModal input[type=checkbox]:checked::after{left:19px}
 /* VWAP/Keltner's per-row checkboxes are compact (fit the .vwsr grid's 16px column), same idiom
    as Saty ATR Levels' .satysr rows use for the same reason. */
 #vwapModal .vwsr input[type=checkbox],#kcModal .vwsr input[type=checkbox]{
   appearance:none;-webkit-appearance:none;width:15px;height:15px;border-radius:4px;margin:0;padding:0;
-  background:#1a1c22;border:1px solid var(--line2);cursor:pointer;position:relative;
+  background:#1a1c22;cursor:pointer;position:relative;
 }
-#vwapModal .vwsr input[type=checkbox]:checked,#kcModal .vwsr input[type=checkbox]:checked{background:#0a84ff;border-color:#0a84ff}
+#vwapModal .vwsr input[type=checkbox]:checked,#kcModal .vwsr input[type=checkbox]:checked{background:#0a84ff}
 #vwapModal .vwsr input[type=checkbox]:checked::after,#kcModal .vwsr input[type=checkbox]:checked::after{
   content:'';position:absolute;left:4px;top:1px;width:4px;height:8px;
   border:solid #fff;border-width:0 1.6px 1.6px 0;transform:rotate(45deg);
@@ -1335,9 +1404,9 @@ table.lv td{padding:6px 10px}
 #alertBellBtn{position:relative}
 .albadge{position:absolute;top:1px;right:1px;background:var(--short);color:#fff;font-size:9px;line-height:1;
   border-radius:8px;padding:2px 4px;min-width:14px;text-align:center;pointer-events:none}
-.altab{opacity:.55;border-radius:0!important;border-bottom:2px solid transparent!important}
-.altab.on{opacity:1;border-bottom:2px solid #0a84ff!important}
-.alrow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 4px;border-bottom:1px solid var(--line)}
+.altab{opacity:.55;border-radius:0!important}
+.altab.on{opacity:1;color:#0a84ff!important}
+.alrow{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 4px}
 .altitle{font-size:12px}
 .alsub{font-size:11px;color:var(--dim)}
 .alst.act{color:var(--long)}
@@ -1352,12 +1421,11 @@ table.lv td{padding:6px 10px}
    checkbox instead, sized to actually fit the grid track. */
 #satyModal .satysr input[type=checkbox]{
   appearance:none;-webkit-appearance:none;width:15px;height:15px;border-radius:4px;margin:0;padding:0;
-  background:#1a1c22;border:1px solid var(--line2);cursor:pointer;
+  background:#1a1c22;cursor:pointer;
   position:relative;
 }
 #satyModal .satysr input[type=checkbox]:checked{
   background:#0a84ff;
-  border-color:#0a84ff;
 }
 #satyModal .satysr input[type=checkbox]:checked::after{
   content:'';position:absolute;left:4px;top:1px;width:4px;height:8px;
@@ -1366,7 +1434,6 @@ table.lv td{padding:6px 10px}
 
 #rsiModal .sw,#stModal .sw,#rbModal .sw,#satyModal .sw{
   width:24px;height:24px;border-radius:8px;
-  border:1px solid var(--line2);
   transition:transform .12s cubic-bezier(.2,.8,.3,1);
 }
 #rsiModal .sw:hover,#stModal .sw:hover,#rbModal .sw:hover,#satyModal .sw:hover,#vwapModal .sw:hover,#kcModal .sw:hover{transform:translateY(-1px) scale(1.06)}
@@ -1395,7 +1462,6 @@ table.lv td{padding:6px 10px}
    pill that stays visible against any backdrop. */
 .tabpill{position:absolute;top:4px;bottom:4px;left:0;width:0;border-radius:9px;pointer-events:none;z-index:0;
   background:rgba(10,132,255,.16);
-  border:1px solid var(--accent);
   transition:transform .38s cubic-bezier(.16,.84,.2,1), width .38s cubic-bezier(.16,.84,.2,1),
     background .2s ease;
 }
@@ -1409,11 +1475,11 @@ table.lv td{padding:6px 10px}
    margin-left is set inline per instance (repeated 9x across 3 panes), so !important is the only
    way to raise it here without touching every one of those instances individually. */
 .indlist{gap:6px;align-items:flex-start}
-.indtog{gap:9px;padding:2px 4px;border-radius:4px;border:1px solid transparent;transition:background .12s ease,border-color .12s ease}
-/* TradingView wraps its own on-chart indicator row (name + eye + settings) in one bordered
-   plate on hover — reproduced here on .indtog itself so the border wraps the label AND both
+.indtog{gap:9px;padding:2px 4px;border-radius:4px;transition:background .12s ease}
+/* TradingView wraps its own on-chart indicator row (name + eye + settings) in one highlighted
+   plate on hover — reproduced here on .indtog itself so the plate wraps the label AND both
    icons as a single unit, not just the text. */
-.indtog:hover{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.14)}
+.indtog:hover{background:rgba(255,255,255,.06)}
 /* Icon sizes are proportional to the indicator label (9px): TradingView's own eye/gear read
    at roughly 1.4x the label's font-size, not a fixed px value that would look oversized next
    to a smaller label or cramped next to a larger one. */
@@ -1507,6 +1573,10 @@ table.lv td{padding:6px 10px}
   window.applyBackdrop=function(){
     urls.forEach(function(u){try{URL.revokeObjectURL(u);}catch(e){}});urls=[];
     var bd=cfg(); window.bdMode=bd.mode||'default';
+    // Gates the liquid-glass backdrop-filter rules below (see .bd-video in <style>) to MP4 mode
+    // only — that filter is a real per-frame GPU compositing cost, so default/color/picture never
+    // pay for it since there's nothing behind these panels worth blurring in those modes.
+    document.body.classList.toggle('bd-video', window.bdMode==='video');
     /* The side panel/topbar/ticker box/axis backing/pane separators/Levels table/Saty info bar
        all track this one colour (--chartbg, see the :root definition), kept live in sync with
        whichever backdrop is active. A solid-colour backdrop is used AS PICKED, full strength —
@@ -1537,7 +1607,7 @@ table.lv td{padding:6px 10px}
     // below at load time.
     if(typeof panes!=='undefined'){
       panes.forEach(function(p){if(!p)return;[p.chart,p.vchart,p.rchart].forEach(function(c){
-        try{c.applyOptions({rightPriceScale:{borderColor:chartBg},timeScale:{borderColor:chartBg}});}catch(e){}
+        try{c.applyOptions({rightPriceScale:{borderColor:'transparent'},timeScale:{borderColor:'transparent'}});}catch(e){}
       });});
     }
     if(window.bdMode==='color'){
@@ -1925,7 +1995,7 @@ table.lv td{padding:6px 10px}
       <h1 style="margin:0">Alerts</h1>
       <button class="tbtn" id="alertsAddBtn" title="Create alert">+</button>
     </div>
-    <div class="row" style="gap:0;border-bottom:1px solid var(--line);margin-bottom:8px">
+    <div class="row" style="gap:0;margin-bottom:8px">
       <button class="tbtn altab on" id="alertsTabActive">Alerts</button>
       <button class="tbtn altab" id="alertsTabLog">Log</button>
     </div>
@@ -1968,7 +2038,7 @@ table.lv td{padding:6px 10px}
     <div class="row" id="alExpCustomRow" style="display:none"><input type="datetime-local" id="alExpCustom" style="flex:1"></div>
     <h3 class="setsub">Message</h3>
     <div class="row"><input id="alName" placeholder="Alert name (optional)" style="flex:1"></div>
-    <div class="row"><textarea id="alMessage" rows="2" style="flex:1;font:inherit;background:var(--bg2,#0f1520);color:inherit;border:1px solid var(--line);border-radius:6px;padding:6px" placeholder="Auto-generated from the condition unless you type your own"></textarea></div>
+    <div class="row"><textarea id="alMessage" rows="2" style="flex:1;font:inherit;background:var(--bg2,#0f1520);color:inherit;border-radius:6px;padding:6px" placeholder="Auto-generated from the condition unless you type your own"></textarea></div>
     <h3 class="setsub">Notifications</h3>
     <div class="row"><label style="min-width:0"><input type="checkbox" id="alNotifyToast" checked> Show toast notification</label></div>
     <div class="row"><label style="min-width:0"><input type="checkbox" id="alNotifySound"> Play sound</label></div>
@@ -2057,6 +2127,22 @@ table.lv td{padding:6px 10px}
 const $=s=>document.querySelector(s);
 const $$=s=>[...document.querySelectorAll(s)];
 function showErr(m){try{log(String(m),'short');}catch(e){console.error(m);}}
+// Shared throttle for diagnostics coming out of a catch(e){} that used to swallow silently —
+// a live-tick render/update failure (structure rollover, one indicator's redraw, one series'
+// incremental .update) needs to be VISIBLE (the whole point: it used to leave a pane frozen
+// with zero trail), but the identical failure can recur every tick/poll for as long as its
+// root cause persists, and logging it that often would flood the Log panel faster than
+// anything useful in it. Keyed by call-site + context (pane/indicator/op), not just the
+// message text, so two genuinely different failures never suppress each other; the same key
+// logs immediately the first time, then stays quiet for 30s before it can log again.
+const _diagErrLastAt=new Map();
+function logDiagError(key,msg){
+  const now=Date.now();
+  const last=_diagErrLastAt.get(key)||0;
+  if(now-last<30000)return;
+  _diagErrLastAt.set(key,now);
+  showErr(msg);
+}
 window.addEventListener('error',ev=>{
   const m=ev.message||ev.type||'';
   if(/ResizeObserver loop/i.test(m))return; // benign browser notice, not a failure
@@ -2110,7 +2196,7 @@ function diagOpenFromSettings(){
   box=document.createElement('div');
   box.id='diagCountdownBox';
   box.style.cssText='position:fixed;bottom:12px;right:12px;z-index:99999;min-width:170px;'
-    +'text-align:center;background:#0b0d14;color:#8ab4ff;border:1px solid #8ab4ff;'
+    +'text-align:center;background:#0b0d14;color:#8ab4ff;'
     +'border-radius:6px;padding:6px 10px;font:12px/1.4 monospace;'
     +'box-shadow:0 2px 8px rgba(0,0,0,.4);';
   document.body.appendChild(box);
@@ -2123,7 +2209,7 @@ function diagStartCapture(box){
   DIAG_ACTIVE=true;DIAG_START_MS=Date.now();
   setTimeout(()=>{DIAG_ACTIVE=false;},DIAG_WINDOW_MS);   // one-shot: fires once, nothing recurring
   log('LOCAL-DIAG capture window started — recording for 30 minutes','warn');
-  box.style.cursor='default';box.style.borderColor='#2dd4a7';box.style.color='#2dd4a7';
+  box.style.cursor='default';box.style.color='#2dd4a7';
   let iv;
   const render=()=>{
     const remain=Math.max(0,DIAG_WINDOW_MS-(Date.now()-DIAG_START_MS));
@@ -2140,7 +2226,7 @@ function diagStartCapture(box){
 // timed animation. Produces an actual file via a Blob + object URL, downloadable like any other
 // browser download (drag the saved file in to hand over the whole capture verbatim).
 function diagBuildDownload(box){
-  box.style.borderColor='#f0b429';box.style.color='#f0b429';
+  box.style.color='#f0b429';
   const entries=window.SWAGINO_DIAG_LOG;
   const total=entries.length;
   if(total===0){
@@ -2163,7 +2249,7 @@ function diagBuildDownload(box){
 function diagRenderDownloadLink(box,blob){
   const url=URL.createObjectURL(blob);
   const fname='swagino-diag-'+new Date(DIAG_START_MS).toISOString().replace(/[:.]/g,'-')+'.json';
-  box.style.borderColor='#2dd4a7';box.style.color='#2dd4a7';box.textContent='';
+  box.style.color='#2dd4a7';box.textContent='';
   const a=document.createElement('a');
   a.href=url;a.download=fname;
   a.textContent='⬇ Download diag log ('+(blob.size/1024).toFixed(1)+' KB)';
@@ -2769,15 +2855,12 @@ const CHART_THEMES=[
 
 /* ---------- panes ---------- */
 function chartOpts(extra){
-  // Matches whatever applyBackdrop() last resolved --chartbg to (falls back to its own default
-  // if read before that ran once, which it always has by the time any chart is created).
-  const axisBorder=getComputedStyle(document.documentElement).getPropertyValue('--chartbg').trim()||'#1e1e1e';
   return Object.assign({
   layout:{background:{color:'rgba(0,0,0,0)'},textColor:cfg.axisTextColor,fontFamily:"ui-monospace,'SF Mono','SFMono-Regular','JetBrains Mono',Menlo,Consolas,monospace",fontSize:11,attributionLogo:false},
   localization:{timeFormatter:fmtCross},
   grid:{vertLines:{visible:false},horzLines:{visible:false}},
-  rightPriceScale:{borderColor:axisBorder,autoScale:true},
-  timeScale:{borderColor:axisBorder,timeVisible:true,secondsVisible:false,tickMarkFormatter:fmtTick},
+  rightPriceScale:{borderColor:'transparent',autoScale:true},
+  timeScale:{borderColor:'transparent',timeVisible:true,secondsVisible:false,tickMarkFormatter:fmtTick},
   // TradingView with "Auto (fits data to screen)" unchecked: the price range is yours to
   // set. Dragging the price axis rescales it, dragging the chart body pans it vertically,
   // and a double-click on the axis re-fits once without turning Auto back on.
@@ -2983,11 +3066,11 @@ function makePane(idx){
      independent, so a 40-million bar cannot touch the price range — and because it is on
      the same chart there is no second time axis to keep in step, which is one fewer thing
      that can drift out of alignment. */
-  const vchart=LightweightCharts.createChart(vEl,chartOpts({timeScale:{visible:false},rightPriceScale:{borderColor:'#1e1e1e',scaleMargins:{top:0.12,bottom:0}}}));
+  const vchart=LightweightCharts.createChart(vEl,chartOpts({timeScale:{visible:false},rightPriceScale:{borderColor:'transparent',scaleMargins:{top:0.12,bottom:0}}}));
   const vol=vchart.addHistogramSeries({priceFormat:{type:'volume'},priceLineVisible:false,lastValueVisible:false});
   try{vchart.priceScale('right').applyOptions({scaleMargins:{top:0.12,bottom:0}});}catch(e){}
   try{vchart.applyOptions({crosshair:{horzLine:{visible:false,labelVisible:true}}});}catch(e){}
-  const rchart=LightweightCharts.createChart(rEl,chartOpts({timeScale:{visible:false},rightPriceScale:{borderColor:'#1e1e1e',scaleMargins:{top:0.05,bottom:0.05}}}));
+  const rchart=LightweightCharts.createChart(rEl,chartOpts({timeScale:{visible:false},rightPriceScale:{borderColor:'transparent',scaleMargins:{top:0.05,bottom:0.05}}}));
   const LOCK=()=>({priceRange:{minValue:0,maxValue:100}}); // RSI scale locked 0–100, TradingView-style
   const NOFILL='rgba(0,0,0,0)';
   // fill(rsiUpperBand, rsiLowerBand, ...) — a flat band between 70 and 30. Drawn as a
@@ -4001,15 +4084,29 @@ function detectPattern(data,sw,opts){
       // shoulders, when what that actually is is a triple top. Anything inside the equality
       // tolerance is not a head — it is a third touch.
       if(head.price-Math.max(s1.price,s2.price)>tol&&Math.abs(s1.price-s2.price)<=tol*2){
+        // Neckline through the FIRST and LAST trough between the shoulders — a true neckline is
+        // rarely perfectly flat, so this fits the real two touch points instead of collapsing
+        // them to a single flattened price (a straight average of one endpoint, not a fit).
         const necks=L.filter(x=>x.i>s1.i&&x.i<s2.i);
-        if(necks.length>=1)
-          return{name:'Head & shoulders',bias:'bearish',neckline:necks.reduce((a,b)=>a.price<b.price?a:b).price,from:s1.i,to:s2.i};
+        if(necks.length>=1){
+          const n0=necks[0],n1=necks[necks.length-1];
+          const m=n1.i>n0.i?(n1.price-n0.price)/(n1.i-n0.i):0,b=n0.price-m*n0.i;
+          // Same "already left its own boundary -> drop it" rule every other shape below
+          // follows: once price closes through the neckline the pattern has played out, not
+          // just formed, so it stops being drawn instead of lingering as a "broken" H&S.
+          if(data[data.length-1].close>b+m*(data.length-1))
+            return{name:'Head & shoulders',bias:'bearish',neckline:{m,b},from:s1.i,to:s2.i};
+        }
       }
       const [t1,trough,t2]=L.slice(-3);
       if(L.length>=3&&Math.min(t1.price,t2.price)-trough.price>tol&&Math.abs(t1.price-t2.price)<=tol*2){
         const necks=H.filter(x=>x.i>t1.i&&x.i<t2.i);
-        if(necks.length>=1)
-          return{name:'Inverse head & shoulders',bias:'bullish',neckline:necks.reduce((a,b)=>a.price>b.price?a:b).price,from:t1.i,to:t2.i};
+        if(necks.length>=1){
+          const n0=necks[0],n1=necks[necks.length-1];
+          const m=n1.i>n0.i?(n1.price-n0.price)/(n1.i-n0.i):0,b=n0.price-m*n0.i;
+          if(data[data.length-1].close<b+m*(data.length-1))
+            return{name:'Inverse head & shoulders',bias:'bullish',neckline:{m,b},from:t1.i,to:t2.i};
+        }
       }
     }
     // three touches beat two: a triple is a stronger read and was previously reported as a
@@ -4021,7 +4118,7 @@ function detectPattern(data,sw,opts){
         if(necks.length>=2){
           const nk=necks.reduce((x,y)=>x.price<y.price?x:y).price;
           if(data[data.length-1].close>=nk)
-            return{name:'Triple top',bias:'bearish',neckline:nk,from:a.i,to:c.i};
+            return{name:'Triple top',bias:'bearish',neckline:{m:0,b:nk},from:a.i,to:c.i};
         }
       }
     }
@@ -4032,7 +4129,7 @@ function detectPattern(data,sw,opts){
         if(necks.length>=2){
           const nk=necks.reduce((x,y)=>x.price>y.price?x:y).price;
           if(data[data.length-1].close<=nk)
-            return{name:'Triple bottom',bias:'bullish',neckline:nk,from:a.i,to:c.i};
+            return{name:'Triple bottom',bias:'bullish',neckline:{m:0,b:nk},from:a.i,to:c.i};
         }
       }
     }
@@ -4041,14 +4138,14 @@ function detectPattern(data,sw,opts){
       const mid=L.find(x=>x.i>a.i&&x.i<b.i);
       if(mid&&Math.abs(a.price-b.price)<=tol)
         return data[data.length-1].close<mid.price?null   // neckline lost -> pattern is over
-          :{name:'Double top',bias:'bearish',neckline:mid.price,from:a.i,to:b.i};
+          :{name:'Double top',bias:'bearish',neckline:{m:0,b:mid.price},from:a.i,to:b.i};
     }
     if(L.length>=2){
       const a=L[L.length-2],b=L[L.length-1];
       const mid=H.find(x=>x.i>a.i&&x.i<b.i);
       if(mid&&Math.abs(a.price-b.price)<=tol)
         return data[data.length-1].close>mid.price?null   // neckline reclaimed -> pattern is over
-          :{name:'Double bottom',bias:'bullish',neckline:mid.price,from:a.i,to:b.i};
+          :{name:'Double bottom',bias:'bullish',neckline:{m:0,b:mid.price},from:a.i,to:b.i};
     }
     return null;
   };
@@ -4459,7 +4556,8 @@ function renderVwap(p,data){
 }
 function vwapRedrawAll(){
   saveCfg();
-  visPanes().forEach(p=>{try{renderVwap(p,seriesForTF(p.tf,paneData(p)));positionVwapTags(p);}catch(e){}});
+  visPanes().forEach(p=>{try{renderVwap(p,seriesForTF(p.tf,paneData(p)));positionVwapTags(p);}
+    catch(e){logDiagError('render|vwap|'+p.idx,`VWAP redraw failed — pane ${p.idx+1}, ${p.sym||cfg.sym} ${p.tf==='D'?'1D':p.tf==='W'?'1W':p.tf+'m'}: ${e&&e.message||e}`);}});
 }
 // Dynamic 3-row builder, modeled directly on Saty ATR Levels' satyBuildStyle(): one row per
 // VWAP line — checkbox, name (its permanently-fixed anchor, spelled out in full), colour+width+
@@ -4664,7 +4762,8 @@ function renderKc(p,data){
 }
 function kcRedrawAll(){
   saveCfg();
-  visPanes().forEach(p=>{try{renderKc(p,seriesForTF(p.tf,paneData(p)));}catch(e){}});
+  visPanes().forEach(p=>{try{renderKc(p,seriesForTF(p.tf,paneData(p)));}
+    catch(e){logDiagError('render|kc|'+p.idx,`Keltner redraw failed — pane ${p.idx+1}, ${p.sym||cfg.sym} ${p.tf==='D'?'1D':p.tf==='W'?'1W':p.tf+'m'}: ${e&&e.message||e}`);}});
 }
 // Two-row builder (Upper/Lower only — no Basis, no Background, no anchor/length picker: those six
 // inputs are fixed and shown disabled in the modal's own "Automated" block instead).
@@ -4723,6 +4822,13 @@ function ensureChartType(p){
   [p.rbFast,p.rbPivot,p.rbSlow,p.rbFastConv,p.rbSlowConv].forEach(s=>{try{p.chart.removeSeries(s);}catch(e){}});
   (p.vwLines||[]).forEach(s=>{try{p.chart.removeSeries(s);}catch(e){}});
   (p.kcLines||[]).forEach(s=>{try{p.chart.removeSeries(s);}catch(e){}});
+  // Pattern trendlines are reused across renders (see renderPane), which means they can be
+  // OLDER series than a freshly re-added candle series — removeSeries+addSeries always makes
+  // the new one the topmost in z-order, so without this a chart-type swap would silently
+  // bury the trendlines behind the candles. Dropping the references here makes renderPane's
+  // own lazy "if(!p.patLineA)" check recreate them fresh on the very next render, back on top.
+  [p.patLineA,p.patLineB].forEach(s=>{if(s)try{p.chart.removeSeries(s);}catch(e){}});
+  p.patLineA=p.patLineB=null;
   p.candles=want==='line'
     ?p.chart.addLineSeries({lastValueVisible:false,lineWidth:2})
     :p.chart.addCandlestickSeries({lastValueVisible:false});
@@ -4829,7 +4935,8 @@ function renderPane(p){
     return{time:d.time,value:d.volume,color:up?volRgba(cfg.volume.upC):volRgba(cfg.volume.dnC)};
   }));
   const closes=data.map(d=>d.close);
-  try{renderRibbon(p,data);}catch(e){}
+  try{renderRibbon(p,data);}
+  catch(e){logDiagError('render|ribbon|'+p.idx,`Ribbon render failed — pane ${p.idx+1}, ${p.sym||cfg.sym} ${p.tf==='D'?'1D':p.tf==='W'?'1W':p.tf+'m'}: ${e&&e.message||e}`);}
   // Verified live (bisected series-by-series with a synthetic 8000-bar pane, 30 on/off toggle
   // cycles): once rbFast + rbPivot + rbSlow all carry real (non-empty) data at once, EVERY
   // candles.priceToCoordinate() call starts returning null — the whole candle series goes
@@ -4848,14 +4955,16 @@ function renderPane(p){
   // pure waste on the common no-ribbon path, measured as roughly a third of renderPane's time
   // on a fully-deepened history. The push at the top of renderPane already stands on its own.
   if(cfg['ribbon'+p.idx]){p.candles.setData([]);pushMainSeriesData(p);}
-  try{renderVwap(p,data);}catch(e){}
+  try{renderVwap(p,data);}
+  catch(e){logDiagError('render|vwap|'+p.idx,`VWAP render failed — pane ${p.idx+1}, ${p.sym||cfg.sym} ${p.tf==='D'?'1D':p.tf==='W'?'1W':p.tf+'m'}: ${e&&e.message||e}`);}
   // Same wedge as the ribbon's, and by the exact same mechanism the comment above documents: it
   // was pinned to three overlay line series carrying real data simultaneously, which three
   // independently-anchored VWAP lines is. Applying the identical clear+repopulate remedy here,
   // gated on VWAP being on, rather than assuming three lines from a DIFFERENT indicator can't
   // also trigger it.
   if(cfg['vwap'+p.idx]){p.candles.setData([]);pushMainSeriesData(p);}
-  try{renderKc(p,data);}catch(e){}
+  try{renderKc(p,data);}
+  catch(e){logDiagError('render|kc|'+p.idx,`Keltner render failed — pane ${p.idx+1}, ${p.sym||cfg.sym} ${p.tf==='D'?'1D':p.tf==='W'?'1W':p.tf+'m'}: ${e&&e.message||e}`);}
   // Same wedge, same remedy, gated on Keltner being on — see the ribbon/VWAP comments above for
   // why this is applied per-indicator rather than assumed safe just because KC only adds two
   // lines of its own (a different indicator's lines already on the same pane can combine with it).
@@ -5063,7 +5172,7 @@ function renderPane(p){
   p.swLabels=null;
   if(p.brkLines)p.brkLines.forEach(l=>{try{p.candles.removePriceLine(l);}catch(e){}});
   p.brkLines=[];
-  p.pattern=null;p.brks=[];p.patLineEnd=null;p.patMid=null;p.trend=null;p.prov=null;
+  p.pattern=null;p.brks=[];p.patMid=null;p.trend=null;p.prov=null;p.patternOpen=false;
   if(stOn&&p.sw&&p.sw.length){
     p.trend=trendFrom(p.sw);
     p.prov=null;   // unconfirmed "XX?" markers removed: they read as noise on the chart
@@ -5092,6 +5201,17 @@ function renderPane(p){
       // a pattern the user has binned stays binned until a genuinely different one forms
       p.patKey=p.pattern?patKey(p,data,p.pattern):null;
       if(p.patKey&&patDismissed.has(p.patKey)){p.pattern=null;p.patKey=null;}
+      // OPEN-TIP DISCLOSURE: a trendline fitted through the swing engine's still-open tip (the
+      // LAST entry in p.sw — see the OPEN-TIP TRANSPARENCY comment a few lines below) can
+      // legitimately move as that tip firms up or gets superseded, same as an already-disclosed
+      // open swing dot. Reuses that exact "is this the open tip" signal rather than inventing a
+      // second one — a boundary's own fitted `last` is the data-bar index of its most recent
+      // touch, so it only matches the open tip's own index when that specific swing is actually
+      // load-bearing for THIS line, not merely present somewhere in the pattern's span.
+      const openTip=p.sw.length?p.sw[p.sw.length-1]:null;
+      p.patternOpen=!!(p.pattern&&openTip&&(
+        (p.pattern.upper&&p.pattern.upper.last===openTip.i)||
+        (p.pattern.lower&&p.pattern.lower.last===openTip.i)));
     }
     // Swing labels are collected for the HTML overlay layer rather than pushed to the
     // chart as markers — see the price-scale note above: markers pad the autoscale range
@@ -5118,33 +5238,52 @@ function renderPane(p){
     // width of the chart. positionBreaks() now draws that tick (plus the label and axis
     // price badge) entirely in the HTML overlay layer, so no native price line is created here.
   }
-  // pattern trendlines
-  if(!p.patLines)p.patLines=[];
-  p.patLines.forEach(sr=>{try{p.chart.removeSeries(sr);}catch(e){}});p.patLines=[];
-  if(stOn&&p.pattern&&p.pattern.upper&&p.pattern.lower){
-    const mk=(f)=>{
-      // selected pattern draws its boundaries solid and thicker, so clicking the name
-      // makes it obvious which two lines the bin is about to remove
-      // amber, not blue: the default boundary colour is already blue, so a blue "selected"
-      // state would have looked identical to the normal one
-      const selected=patSelected&&patSelected===p.patKey;
-      const sr=p.chart.addLineSeries({
-        color:selected?'#ffb74d':cfg.structCfg.patC,
-        lineWidth:selected?(+cfg.structCfg.patW||1)+2:(+cfg.structCfg.patW||1),
-        lineStyle:selected?lwcStyle('solid'):lwcStyle(cfg.structCfg.patSt||'dashed'),
-        priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false,
-        autoscaleInfoProvider:NO_SCALE});
-      const a=Math.max(0,p.pattern.from),b=data.length-1;
-      const endV=+(f.b+f.m*b).toFixed(2);
-      sr.setData([{time:data[a].time,value:+(f.b+f.m*a).toFixed(2)},{time:data[b].time,value:endV}]);
-      if(f===p.pattern.upper){
-        p.patLineEnd=endV;
-        const mid=Math.floor((a+b)/2);
-        p.patMid={time:data[mid].time,value:+(f.b+f.m*mid).toFixed(2)};
-      }
-      p.patLines.push(sr);
+  // pattern trendlines — two persistent series per pane, reused every render instead of
+  // removed and recreated. Almost every render draws the exact same two lines with only
+  // their right-hand endpoint inching forward one bar; addLineSeries/removeSeries makes
+  // LightweightCharts rebuild a whole rendering object for that, where applyOptions+setData
+  // on a series that already exists is the same visual result for a fraction of the cost.
+  if(!p.patLineA)p.patLineA=p.chart.addLineSeries({priceLineVisible:false,lastValueVisible:false,
+    crosshairMarkerVisible:false,autoscaleInfoProvider:NO_SCALE});
+  if(!p.patLineB)p.patLineB=p.chart.addLineSeries({priceLineVisible:false,lastValueVisible:false,
+    crosshairMarkerVisible:false,autoscaleInfoProvider:NO_SCALE});
+  p.patMid=null;
+  const pat=p.pattern,hasBounds=pat&&pat.upper&&pat.lower,hasNeck=pat&&pat.neckline;
+  if(stOn&&pat&&(hasBounds||hasNeck)){
+    // Selected pattern draws solid/thicker in amber so clicking the name makes it obvious
+    // which line(s) the bin button is about to remove. Otherwise the boundary colour follows
+    // the pattern's own bias — the same green/red already used for HH/HL vs LH/LL swings —
+    // so a bullish setup and a bearish one are distinguishable at a glance without adding a
+    // third, unrelated colour to the chart; a neutral shape (triangle, rectangle, diamond,
+    // broadening) keeps the original amber-adjacent yellow since it has no direction to show.
+    // Drawn at less than full opacity (volRgba) so a shape that spans most of the visible
+    // range reads as a guide sitting UNDER the price action, not another light competing
+    // with the candle bodies that already use these same two colours at full strength.
+    // OPEN-TIP DISCLOSURE: a further opacity drop when p.patternOpen (this line is fitted
+    // through the swing engine's still-unsettled tip) — the same "fainter until settled" idea
+    // .swdot.open/.swlab.open already use for an open swing, applied here instead of inventing
+    // a new signal. Skipped while selected: clicking the name is a deliberate, stronger state
+    // that should read at full strength regardless of settledness.
+    const selected=patSelected&&patSelected===p.patKey;
+    const biasColor=pat.bias==='bullish'?cfg.structCfg.upC:pat.bias==='bearish'?cfg.structCfg.dnC:cfg.structCfg.patC;
+    const color=selected?'#ffb74d':volRgba(biasColor,p.patternOpen?0.55:0.8);
+    const lineWidth=selected?(+cfg.structCfg.patW||1)+2:(+cfg.structCfg.patW||1);
+    const lineStyle=selected?lwcStyle('solid'):lwcStyle(cfg.structCfg.patSt||'dashed');
+    const a=Math.max(0,pat.from),b=data.length-1,mid=Math.floor((a+b)/2);
+    const draw=(series,f)=>{
+      series.applyOptions({color,lineWidth,lineStyle});
+      series.setData([{time:data[a].time,value:+(f.b+f.m*a).toFixed(2)},
+        {time:data[b].time,value:+(f.b+f.m*b).toFixed(2)}]);
     };
-    mk(p.pattern.upper);mk(p.pattern.lower);
+    if(hasBounds){
+      draw(p.patLineA,pat.upper);draw(p.patLineB,pat.lower);
+      p.patMid={time:data[mid].time,value:+(pat.upper.b+pat.upper.m*mid).toFixed(2)};
+    }else{
+      draw(p.patLineA,pat.neckline);p.patLineB.setData([]);
+      p.patMid={time:data[mid].time,value:+(pat.neckline.b+pat.neckline.m*mid).toFixed(2)};
+    }
+  }else{
+    p.patLineA.setData([]);p.patLineB.setData([]);
   }
   // the candle series carries no markers at all any more; anything that used to be one is
   // drawn by the overlay layer, which the price scale cannot see
@@ -5374,7 +5513,7 @@ function brkTipHtml(bk){
   const outcome=bk.state==='held' ? '<b style="color:'+G+'">Confirmed</b> \u2014 price kept going '+dirWord+'.'
     : bk.state==='failed' ? '<b style="color:'+Rd+'">Didn\u2019t hold</b> \u2014 price reversed back.'
     : '<b>Not decided yet.</b>';
-  return '<div style="line-height:1.5"><b>'+name+'</b> at '+px+'<br>'+what+'<br>'+outcome+'</div>';
+  return '<div><b class="tiptitle">'+name+' at '+px+'</b>'+what+'<br>'+outcome+'</div>';
 }
 // Same shape as brkTipHtml, for the HH/HL/LH/LL swing labels: one line for what this specific
 // swing IS (dynamic off x.label/x.price), one for what it implies for the next likely move.
@@ -5392,7 +5531,7 @@ function swingTipHtml(x){
   const px=(+x.price).toFixed(2),t=SWING_TIP[x.label]||[x.label,'',''];
   const openNote=x.open?'<br><b style="color:#f0b429">Not settled yet</b> — nothing has reversed off it '
     +'since, so a bigger high/low still forming nearby could replace this one before that happens.':'';
-  return '<div style="line-height:1.5"><b>'+t[0]+'</b> ('+x.label+') at '+px+'<br>'+t[1]+'<br>'+t[2]+openNote+'</div>';
+  return '<div><b class="tiptitle">'+t[0]+' ('+x.label+') at '+px+'</b>'+t[1]+'<br>'+t[2]+openNote+'</div>';
 }
 function positionBreaks(p){
   const host=$('#tips'+p.idx);if(!host)return;
@@ -5519,8 +5658,14 @@ function positionStruct(p){
     try{x=pxRound(p.chart.timeScale().timeToCoordinate(p.patMid.time));}catch(e){}
     if(y!=null&&x!=null&&y>0){
       const t=document.createElement('div');
-      t.className='patlab'+(patSelected===p.patKey?' sel':'');
-      t.style.color=S.patC;
+      // OPEN-TIP DISCLOSURE: same '.open' idea .swdot/.swlab already use for an unsettled swing
+      // (see renderPane's p.patternOpen comment) — fainter until the touching swing settles,
+      // never a separate "invalid"/"repainting" label, since this is expected forming behavior.
+      t.className='patlab'+(patSelected===p.patKey?' sel':'')+(p.patternOpen?' open':'');
+      // Matches the trendline's own bias colour (see renderPane's pattern-trendline block) at
+      // full strength — the line runs at reduced opacity so it doesn't compete with candles,
+      // but the label is text, not a wide fill, so it can afford to read at full saturation.
+      t.style.color=p.pattern.bias==='bullish'?S.upC:p.pattern.bias==='bearish'?S.dnC:S.patC;
       const w=$('#pc'+p.idx).clientWidth;
       const offKey=p.idx+'|'+p.patKey;
       const off=patLabelOffset[offKey];
@@ -5545,6 +5690,13 @@ function positionStruct(p){
         scheduleRenderAll();
       };
       t.appendChild(del);
+      // Instant tooltip (tipAttach, no native title= delay), same mechanism and the same
+      // "not settled yet" language swingTipHtml already uses for an open swing — this line
+      // touches that exact swing, so a bigger high/low forming nearby could still redraw it.
+      if(p.patternOpen)tipAttach(t,'<div><b class="tiptitle">'+p.pattern.name+'</b>'
+        +'<b style="color:#f0b429">Not settled yet</b> — part of this boundary rests on a '
+        +'swing that hasn’t settled, so a bigger high/low forming nearby could still redraw '
+        +'this line before that happens.</div>');
       // click to select (trendlines highlight with it); drag to move — a real drag (past a
       // small pixel threshold) suppresses the click that would otherwise fire on release.
       let dragged=false;
@@ -6474,7 +6626,8 @@ function paneTick(p){
   // Volume must advance with the tick too, or its series has no point at the forming bar's
   // time and the synced crosshair (crossSync -> setCrosshairPosition) snaps back to the last
   // closed candle. Same up/down colour rule renderPane uses for the histogram.
-  try{p.vol.update({time:bar.time,value:bar.volume,color:up?volRgba(cfg.volume.upC):volRgba(cfg.volume.dnC)});}catch(e){}
+  try{p.vol.update({time:bar.time,value:bar.volume,color:up?volRgba(cfg.volume.upC):volRgba(cfg.volume.dnC)});}
+  catch(e){logDiagError('tick|vol|'+p.idx,`Volume tick update failed — pane ${p.idx+1}, ${p.sym||cfg.sym} ${p.tf==='D'?'1D':p.tf==='W'?'1W':p.tf+'m'}: ${e&&e.message||e}`);}
   // The price line marks the last close, so it tracks the SAME resolved colour as the live point
   // above — Gradient or Candle Bias when active, plain up/down otherwise (was hardcoded to plain
   // up/down here regardless, which is the exact bug the countdown badge shared - see updateCountdown).
@@ -6485,6 +6638,10 @@ function paneTick(p){
      forming bar (seed from the bar before it) from one that STARTS a new bucket (seed
      from the bar just closed). */
   {
+    // Shared identifying context for every diagnostic logged out of this tick-update block —
+    // one pane/symbol/timeframe string, reused by ribbon/VWAP/KC/RSI below instead of each
+    // rebuilding it, so a look at the Log panel always names exactly which chart was affected.
+    const tickCtx=`pane ${p.idx+1}, ${p.sym||cfg.sym} ${p.tf==='D'?'1D':p.tf==='W'?'1W':p.tf+'m'}`;
     /* Same one-step recursion for the ribbon, so the clouds and lines track the forming bar
        instead of waiting for the next full render — seeded from the LAST CLOSED bar so an
        intrabar tick can never rewrite finalized EMA history (the anti-repaint guarantee, the
@@ -6496,12 +6653,14 @@ function paneTick(p){
       const step=(prev,len)=>{if(prev==null)return null;const k=2/(len+1);return bar.close*k+prev*(1-k);};
       const nf=step(RT.fast[sd],LN.f),np=step(RT.piv[sd],LN.p),ns=step(RT.slow[sd],LN.s),
             nfc=step(RT.fc[sd],LN.fc),nsc=step(RT.sc[sd],LN.sc);
-      const put=(sr,v,show)=>{if(v==null||!show)return;try{sr.update({time:bar.time,value:+v.toFixed(2)});}catch(e){}};
-      const putc=(sr,v,show,col)=>{if(v==null||!show)return;try{sr.update({time:bar.time,value:+v.toFixed(2),color:col});}catch(e){}};
-      putc(p.rbFast,nf,R.showFastHi,rbAlpha(nf>=np?R.bullFastCloud:R.bearFastCloud,RT.lineT));
-      putc(p.rbPivot,np,R.showPivotHi,rbAlpha(nf>=np?R.bullFastCloud:R.bearFastCloud,RT.lineT));
-      putc(p.rbSlow,ns,R.showSlowHi,rbAlpha(np>=ns?R.bullSlowCloud:R.bearSlowCloud,RT.lineT));
-      put(p.rbFastConv,nfc,R.showFastConv);put(p.rbSlowConv,nsc,R.showSlowConv);
+      const put=(sr,v,show,name)=>{if(v==null||!show)return;try{sr.update({time:bar.time,value:+v.toFixed(2)});}
+        catch(e){logDiagError('tick|rb'+name+'|'+p.idx,`Ribbon ${name} tick update failed — ${tickCtx}: ${e&&e.message||e}`);}};
+      const putc=(sr,v,show,col,name)=>{if(v==null||!show)return;try{sr.update({time:bar.time,value:+v.toFixed(2),color:col});}
+        catch(e){logDiagError('tick|rb'+name+'|'+p.idx,`Ribbon ${name} tick update failed — ${tickCtx}: ${e&&e.message||e}`);}};
+      putc(p.rbFast,nf,R.showFastHi,rbAlpha(nf>=np?R.bullFastCloud:R.bearFastCloud,RT.lineT),'fast');
+      putc(p.rbPivot,np,R.showPivotHi,rbAlpha(nf>=np?R.bullFastCloud:R.bearFastCloud,RT.lineT),'pivot');
+      putc(p.rbSlow,ns,R.showSlowHi,rbAlpha(np>=ns?R.bullSlowCloud:R.bearSlowCloud,RT.lineT),'slow');
+      put(p.rbFastConv,nfc,R.showFastConv,'fastConv');put(p.rbSlowConv,nsc,R.showSlowConv,'slowConv');
       if(p.rbLast){
         if(nf!=null)p.rbLast.fast={time:bar.time,value:+nf};
         if(np!=null)p.rbLast.piv={time:bar.time,value:+np};
@@ -6510,9 +6669,11 @@ function paneTick(p){
         if(nsc!=null)p.rbLast.sc={time:bar.time,value:+nsc};
       }
       if(nf!=null&&np!=null){try{p.rbCloudFast.update({time:bar.time,a:+nf,b:+np,
-        color:nf>=np?RT.colors.bullF:RT.colors.bearF});}catch(e){}}
+        color:nf>=np?RT.colors.bullF:RT.colors.bearF});}
+        catch(e){logDiagError('tick|rbCloudFast|'+p.idx,`Ribbon fast-cloud tick update failed — ${tickCtx}: ${e&&e.message||e}`);}}
       if(np!=null&&ns!=null){try{p.rbCloudSlow.update({time:bar.time,a:+np,b:+ns,
-        color:np>=ns?RT.colors.bullS:RT.colors.bearS});}catch(e){}}
+        color:np>=ns?RT.colors.bullS:RT.colors.bearS});}
+        catch(e){logDiagError('tick|rbCloudSlow|'+p.idx,`Ribbon slow-cloud tick update failed — ${tickCtx}: ${e&&e.message||e}`);}}
     }
     // VWAP — O(1) per tick, same reasoning as the ribbon's tail above: the forming bar's own
     // (price*volume, volume) contribution is kept apart from the anchor period's running total so
@@ -6536,7 +6697,8 @@ function paneTick(p){
         const totalV=L.cumV+L.lastV;
         if(totalV>0&&Lc.on){
           const v=(L.cumPV+L.lastPV)/totalV;
-          try{p.vwLines[k].update({time:bar.time,value:+v.toFixed(2)});}catch(e){}
+          try{p.vwLines[k].update({time:bar.time,value:+v.toFixed(2)});}
+          catch(e){logDiagError('tick|vwap'+k+'|'+p.idx,`VWAP (${Lc.anchor}) tick update failed — ${tickCtx}: ${e&&e.message||e}`);}
           if(p.vwLast)p.vwLast[k]={time:bar.time,value:v};
         }
       });
@@ -6560,8 +6722,10 @@ function paneTick(p){
         const newAtr=(tr+(KT.atrLen-1)*atrSeed)/KT.atrLen;
         const newUpper=newMa+newAtr*KT.mult,newLower=newMa-newAtr*KT.mult;
         const K=cfg.kc;
-        if(K.lines[0].on){try{p.kcLines[0].update({time:bar.time,value:+newUpper.toFixed(2)});}catch(e){}}
-        if(K.lines[1].on){try{p.kcLines[1].update({time:bar.time,value:+newLower.toFixed(2)});}catch(e){}}
+        if(K.lines[0].on){try{p.kcLines[0].update({time:bar.time,value:+newUpper.toFixed(2)});}
+          catch(e){logDiagError('tick|kcUpper|'+p.idx,`Keltner upper tick update failed — ${tickCtx}: ${e&&e.message||e}`);}}
+        if(K.lines[1].on){try{p.kcLines[1].update({time:bar.time,value:+newLower.toFixed(2)});}
+          catch(e){logDiagError('tick|kcLower|'+p.idx,`Keltner lower tick update failed — ${tickCtx}: ${e&&e.message||e}`);}}
       }
       KT.t=bar.time;
     }
@@ -6581,7 +6745,8 @@ function paneTick(p){
         rv=rdF===0?100:ruF===0?0:100-(100/(1+ruF/rdF));
         p._rsiLast=rv;
       }else if(p._rsiLast!=null)rv=p._rsiLast;   // skipped (warm-up/gap): carry last RSI so the panel keeps a timestamped point for the synced crosshair
-      if(rv!=null){try{p.rsi.update({time:bar.time,value:+rv.toFixed(4)});}catch(e){}}
+      if(rv!=null){try{p.rsi.update({time:bar.time,value:+rv.toFixed(4)});}
+        catch(e){logDiagError('tick|rsi|'+p.idx,`RSI tick update failed — ${tickCtx}: ${e&&e.message||e}`);}}
     }
     // MODULE 2c provisional RSI smoothing MA — same one-step idea as the raw RSI above, but
     // stepped over the RSI series (rsiMaTail, built alongside rsiTail in renderPane) instead of
@@ -6612,7 +6777,8 @@ function paneTick(p){
         for(let j=0;j<MT.len-1;j++){const v=win[j],w=vwin[j];if(v==null||w==null){ok=false;break;}pv+=v*w;vv+=w;}
         if(ok&&vv>0)mv=pv/vv;
       }
-      if(mv!=null){try{p.rsiMa.update({time:bar.time,value:+mv.toFixed(4)});}catch(e){}}
+      if(mv!=null){try{p.rsiMa.update({time:bar.time,value:+mv.toFixed(4)});}
+        catch(e){logDiagError('tick|rsiMa|'+p.idx,`RSI-MA tick update failed — ${tickCtx}: ${e&&e.message||e}`);}}
     }
   }
   p.lastClose=bar.close;p.lastOpen=bar.open;
@@ -6632,7 +6798,17 @@ function paneTick(p){
   // so this cannot re-fire on later ticks within the same still-forming bucket.
   try{
     if(p._structTailT!=null&&bar.time!==p._structTailT)lockView(p,()=>renderPane(p));
-  }catch(e){}
+  }catch(e){
+    // A failure here used to vanish silently, leaving Structure/Patterns/BOS-CHoCH frozen on
+    // the OLD bucket indefinitely — nothing else re-triggers renderPane for this pane once the
+    // rollover that would have is the thing that failed. Isolated to this one pane/tick exactly
+    // as before (the catch still swallows the exception itself so paneTick's own remaining
+    // per-tick work below, and every other pane's paneTick call, are unaffected) — only the
+    // silence is fixed, not the isolation.
+    logDiagError('rollover|'+p.idx,
+      `Structure/Pattern/BOS-CHoCH recompute failed on bucket rollover — pane ${p.idx+1}, `
+      +`${p.sym||cfg.sym} ${p.tf==='D'?'1D':p.tf==='W'?'1W':p.tf+'m'}: ${e&&e.message||e}`);
+  }
   // Overlay-label repositioning (positionTips) + the bar countdown do NOT run here on every tick.
   // Measured: that pair cost ~3.5ms of forced-layout DOM work per pane per trade print -- the
   // actual cause of the "severe lag while the market is open" bug (trades only stream while a
@@ -9058,16 +9234,12 @@ function gexStatus(){
   if(!gexLastT){el.innerHTML='<div style="text-align:center">'+(inGexWindow()
     ?'No board yet \u2014 pulling your Tradier chain on the next refresh.'
     :'Market closed \u2014 the board builds automatically from the 9:30 AM ET open.')+'</div>';return;}
-  const ageS=Math.floor((Date.now()-gexLastT)/1000);
-  const ageTxt=ageS<60?ageS+'s ago':Math.floor(ageS/60)+'m '+(ageS%60)+'s ago';
-  let nxt;
-  if(!inGexWindow())nxt='closed \u2014 resumes at the 9:30 AM ET open';
-  else if(gexNextT){
-    const r=Math.max(0,Math.floor((gexNextT-Date.now())/1000));
-    nxt='next in '+Math.floor(r/60)+':'+String(r%60).padStart(2,'0');
-  }else nxt='starting\u2026';
-  el.innerHTML=`<b>Computed ${h12(etParts(new Date(gexLastT)).hms)} ET</b> \u00b7 ${ageTxt}`
-    +(gexSrc?` \u00b7 ${gexSrc}`:'')+`<br>Auto-refresh: <b>${nxt}</b>`
+  // The board's own refresh cadence (Computed HH:MM/age/Auto-refresh countdown) was dropped \u2014
+  // it's polling plumbing, not something a reader needs to see on every tick. The one thing
+  // worth keeping is WHERE the numbers came from (a live options feed vs a cached prior
+  // session), shown as a single clean, centered label.
+  const srcLabel=gexSrc?gexSrc.charAt(0).toUpperCase()+gexSrc.slice(1):'';
+  el.innerHTML=(srcLabel?`<div style="text-align:center"><b>${srcLabel}</b></div>`:'')
     +`<button class="explainhdr gxhowh${gxHowOpen?' open':''}" id="gxHowTgl" aria-expanded="${gxHowOpen}"><span class="caret">&#9662;</span> How to read it</button>`
     +`<div class="gxhow" id="gxHowBody" style="display:${gxHowOpen?'block':'none'}">these are not buy or sell signals \u2014 they are `
     +`where movement gets easier or harder. A <b class="pos">magnet</b> is a price the market `
@@ -10854,7 +11026,7 @@ buildPicker();wireStyle();wireHandles();buildHelpIcons();
 document.addEventListener('click',e=>{if(!e.target.closest('.ihelp')&&!e.target.closest('#tipbox'))ihelpHide();});
 // The icon itself now sits right under the table (moved there in the HTML, not just its
 // popup) so the plain icon-relative default positioning is all this needs.
-try{wireIhelp($('#lvConfluenceHelp'),'CONFLUENCE — a price where two or more independent level families agree within the current noise band. The glow brightens with the number of families.');}catch(e){}
+try{wireIhelp($('#lvConfluenceHelp'),'<b class="tiptitle">CONFLUENCE</b>a price where two or more independent level families agree within the current noise band. The glow brightens with the number of families.');}catch(e){}
 const g0=inGexWindow()?LS.gex:null;
 if(!g0){LS.gex=null;}
 if(g0){gexLastT=g0.t||0;gexSrc='last session';
