@@ -1061,47 +1061,64 @@ select option{background:var(--panel2);color:var(--text)}
 /* ── modals / cards ── */
 #setup,#rsiModal,#stModal,#satyModal,#rbModal{
   background:rgba(0,0,0,.72)!important}
-/* Apple "Liquid Glass" material - scoped to .card because that class is used exclusively by the
-   six settings surfaces (SWAGINO settings, RSI, Volume, Market Structure, Saty ATR, Saty Pivot
-   Ribbon) and nothing else in the app, so this can restyle the class directly with no risk of
-   bleeding into non-settings UI. A soft diagonal light gradient over a frosted, blurred-through
-   base stands in for the real material's dynamic specular highlight; the inset top highlight plus
-   a hairline outer edge is what reads as a curved glass surface catching light rather than a flat
-   tinted panel, and the layered outer shadow gives it the same "floating" depth iOS gives sheets. */
+/* ========================= LIQUID GLASS — painted-material architecture =====================
+   PERFORMANCE ARCHITECTURE (rebuilt 2026-09-05, measured): every glass surface in this app is now
+   PAINTED, never live-sampled. The distinction is the whole ballgame for performance:
+
+     backdrop-filter:blur()  — every frame, the GPU must COPY the pixels behind the element and run
+       a multi-tap blur convolution over them, then blend. Cost scales with (blurred area × device
+       pixels × dpr²) and STACKS multiplicatively when regions overlap. Over a live-decoding 4K
+       video or a streaming chart canvas it never stops — a permanent per-frame GPU/compositor load.
+       This is what caused the reported lag (typing stutter, other-tab video-playback drops, general
+       browser slowdown); those are the textbook signature of compositor/GPU saturation. Two prior
+       commits already stripped it off the permanent chrome; this pass removes the LAST of it (the
+       settings modal and the floating dropdowns/popovers below) so the app carries ZERO of it.
+
+     painted glass (this)    — a static specular light-streak (--glass-sheen), inset edge highlights,
+       and a drop shadow, layered over a translucent tint. All of it paints ONCE when the element is
+       created/restyled and is cached in that element's composited layer. A translucent cached layer
+       sitting over the video/chart is re-BLENDED each frame (a single textured-quad alpha op — free
+       on any GPU), NOT re-CONVOLVED. So the effect costs the compositor essentially nothing on a
+       permanent surface and nothing at all on an on-demand one, on any machine, at any dpr.
+
+   --glass-sheen is the shared specular streak, defined once so the light direction/shape stays
+   consistent across every glass surface (chrome, modals, popovers). Apple's Liquid Glass reads as
+   glass mostly through this specular highlight + edge lighting + depth, not through frost — which
+   is exactly why dropping the blur keeps the look while removing the cost. */
+:root{
+  --glass-sheen:linear-gradient(165deg,rgba(255,255,255,.12),rgba(255,255,255,.02) 44%,rgba(255,255,255,0) 72%);
+}
+/* .card is used exclusively by the six settings surfaces (SWAGINO settings, RSI, Volume, Market
+   Structure, Saty ATR, Saty Pivot Ribbon) and nothing else, so this restyles the class directly.
+   It sits over #setup's own near-opaque dark scrim (rgba(6,9,15,.92)), so the content behind is
+   already hidden — the translucent tint here shows that scrim, and the sheen + inset highlight +
+   hairline edge + layered outer shadow are what read as a lit, floating pane of glass. No blur:
+   there is nothing legible behind the scrim to frost, so a live convolution would be pure cost. */
 .card{
-  background:linear-gradient(165deg,rgba(255,255,255,.14),rgba(255,255,255,.03) 45%,rgba(20,21,26,.4)),
-    rgba(30,32,38,.62);
-  /* blur cost scales roughly with radius^2 — 22px keeps the frosted look while cutting the
-     worst-case compositor cost of this filter (sampled continuously off a live-streaming chart)
-     by more than half versus the original 38px. */
-  -webkit-backdrop-filter:blur(22px) saturate(180%);
-  backdrop-filter:blur(22px) saturate(180%);
+  background:var(--glass-sheen),linear-gradient(180deg,rgba(34,36,44,.82),rgba(22,24,30,.90));
   border-radius:26px;
   box-shadow:0 24px 70px rgba(0,0,0,.55),0 2px 10px rgba(0,0,0,.35),
-    inset 0 1px 0 rgba(255,255,255,.28);
+    inset 0 1px 0 rgba(255,255,255,.26),inset 0 0 0 1px rgba(255,255,255,.06);
 }
-.card .tbtn{background:rgba(255,255,255,.08);
-  -webkit-backdrop-filter:blur(14px); backdrop-filter:blur(14px)}
+.card .tbtn{background:rgba(255,255,255,.08)}
 .card .tbtn:hover{background:rgba(255,255,255,.15)}
 .card .tbtn.primary{background:rgba(10,132,255,.82)}
 .card .tbtn.primary:hover{background:rgba(61,156,255,.9)}
 .card input,.card select,.card textarea{background:rgba(255,255,255,.06)}
 .card input:focus,.card select:focus,.card textarea:focus{background:rgba(255,255,255,.1)}
-/* MP4-backdrop tint — PERFORMANCE INCIDENT (2026-09-05): this used to also carry
-   backdrop-filter:blur(22px) saturate(180%), reasoned (wrongly) as "the same cost .card already
-   pays". The difference that reasoning missed: .card only exists while a modal is open, but
-   .topbar/.side are PERMANENT chrome — the blur was being resampled off an actively-decoding 4K
-   video, continuously, for as long as video-backdrop mode was on, on top of an identical blur on
-   .chartcol right next to it. Reported live as "extremely laggy... stuttering when typing, video
-   playback laggy" within minutes of this shipping (typing lag pinpoints .topbar specifically —
-   that's where #symInput lives). Removed outright rather than merely shrunk: backdrop-filter's
-   cost is inherent to sampling+blurring the layer beneath it every frame, not just the radius
-   picked, so no radius here is actually free. A flat tint reads as intentional dark chrome over
-   the video without the compositor cost; opacity raised slightly versus the blurred version to
-   compensate for legibility now that the video behind it isn't being softened first. */
+/* Permanent chrome (topbar/side) — PAINTED glass, no backdrop-filter (see the architecture note
+   above the .card rule). These are the surfaces whose live blur caused the original incident, so
+   they carry the painted material only: the shared specular sheen + a vertical dark tint (kept
+   fairly opaque so text stays legible over the moving video underneath) + a lit top edge. The tint
+   is still translucent, so the video reads through it as a soft dark-glass wash — re-blended each
+   frame as a cached layer, which is free — rather than being convolved. Gated to video mode: in
+   solid-colour/picture/default modes these panels use their own flat --chartbg fill (there is no
+   moving backdrop to justify translucency), exactly as before. */
 body.bd-video .topbar,body.bd-video .side{
-  background:linear-gradient(165deg,rgba(255,255,255,.08),rgba(255,255,255,.02) 45%,rgba(11,11,14,.82)),
-    rgba(11,11,14,.72);
+  background:var(--glass-sheen),
+    linear-gradient(180deg,rgba(20,22,28,.62),rgba(11,11,14,.80)),
+    rgba(11,11,14,.58);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.13);
 }
 /* ── liquid glass, part 2: surfaces nested inside .topbar/.side/.chartcol ──
    Audited every opaque `background:var(--chartbg)`/flat-panel fill that lives inside those three
@@ -1118,38 +1135,36 @@ body.bd-video table.lv{background:rgba(17,18,22,.46)}
 body.bd-video .lv tr.lvrow:hover td{background:rgba(255,255,255,.07)}
 body.bd-video .scancard{background:rgba(255,255,255,.05)}
 body.bd-video .satyinfo{background:rgba(15,16,21,.55)}
-/* ── liquid glass, part 3: floating overlays (dropdowns/menus/popovers) ──
-   These are position:fixed/absolute and appear ON TOP of whatever happens to be under their own
-   footprint at the moment they open — sometimes chrome, sometimes the busy candle/heatmap area,
-   sometimes raw video peeking through a gap. Unlike part 2 above, they can't just inherit a
-   parent's blur (their content behind them isn't guaranteed to be blurred already), so each gets
-   its OWN backdrop-filter — the same .card material recipe reused again, not a new one, and the
-   same reasoning .card already established: only ever present intermittently (open on demand),
-   so this is the same bounded cost the app already pays for the settings sheet, not a new
-   permanent one. Internal color-encoding widgets are deliberately left alone: the picker's own
-   saturation square/hue+alpha rails/swatch grid and the GEX heatmap's per-cell fills ARE the data
-   — glassing those would corrupt the exact colors the user is picking/reading. */
+/* ── floating overlays (dropdowns/menus/popovers) — PAINTED glass, no backdrop-filter ──
+   These are position:fixed/absolute and appear ON TOP of whatever happens to be under them when
+   they open — often the busy candle/heatmap area or raw video through a gap. They previously each
+   carried their OWN backdrop-filter, which meant opening a dropdown fired a live blur convolution
+   over the chart region every frame it was open — a real interaction-time cost on top of the
+   permanent one. Replaced with painted glass: the shared sheen over a NEAR-opaque dark tint
+   (.90–.95 — higher than the chrome above, because without blur a thinner tint would let sharp
+   candle lines bleed through and hurt legibility; this keeps them crisp while still reading as a
+   lit glass chip via the sheen + top highlight + hairline edge + drop shadow). Internal
+   colour-encoding widgets are still left alone: the picker's saturation square / hue+alpha rails /
+   swatch grid and the GEX heatmap cells ARE the data and must not be tinted. */
 body.bd-video .tfmenu,body.bd-video .ctmenu,body.bd-video #ctxMenu,
 body.bd-video #picker,body.bd-video #tipbox,body.bd-video #setup .presetlist{
-  background:linear-gradient(165deg,rgba(255,255,255,.12),rgba(255,255,255,.02) 45%,rgba(22,24,30,.62)),
-    rgba(22,24,30,.58);
-  -webkit-backdrop-filter:blur(22px) saturate(180%);
-  backdrop-filter:blur(22px) saturate(180%);
-  box-shadow:0 14px 40px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.10);
+  background:var(--glass-sheen),
+    linear-gradient(180deg,rgba(28,30,38,.92),rgba(20,22,28,.95));
+  box-shadow:0 14px 40px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.13),
+    inset 0 0 0 1px rgba(255,255,255,.05);
 }
 body.bd-video #ctxMenu .ci:hover,body.bd-video .tfmenu .seg button:hover,
 body.bd-video .tfmenu .seg button.on,body.bd-video .ctitem:hover{background:rgba(255,255,255,.09)}
-/* ── liquid glass, part 4: Settings (#setup) inner surfaces ──
-   .card already carries the base glass material (see its own comment above) and originally gave
-   its inputs/selects a translucent rgba(255,255,255,.06) fill to match — but a later, more
+/* ── Settings (#setup) inner surfaces ──
+   .card carries the painted glass material (see the architecture note above it); its inputs/
+   selects originally used a translucent rgba(255,255,255,.06) fill to match, but a later, more
    specific "flat pass" (#setup .setbody / .explainhdr.setsec / .presetbtn / .setbody input,select)
    overrides that with fully opaque #101115/#1a1c22/#0a0b0d fills purely by higher CSS specificity
-   (#setup ID beats .card class). That's the root cause Settings reads as flat dark boxes floating
-   inside a glass sheet instead of one material — not a missing effect, an existing rule silently
-   winning the cascade. Restoring translucency here (still gated to video mode — .card's own blur
-   already covers non-video modes with the flat colors, which stay exactly as they were) needs no
-   extra backdrop-filter: #setbody/.presetbtn/inputs are all descendants of the one already-blurred
-   .card, same reasoning as part 2 above. */
+   (#setup ID beats .card class). That's why Settings read as flat dark boxes floating inside a
+   glass sheet instead of one material — an existing rule silently winning the cascade, not a
+   missing effect. Restoring translucency here (gated to video mode) lets the parent .card's
+   painted tint show through so they read as one material. No backdrop-filter — these are plain
+   translucent fills over the already-painted .card, so there is nothing per-frame to pay. */
 body.bd-video #setup .setbody{background:rgba(255,255,255,.045)}
 body.bd-video #setup .explainhdr.setsec{background:rgba(255,255,255,.055)}
 body.bd-video #setup .explainhdr.setsec:hover{background:rgba(255,255,255,.09)}
