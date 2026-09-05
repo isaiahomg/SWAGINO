@@ -102,11 +102,9 @@ STATIC_TYPES = {
     ".ttf": "font/ttf",
     ".otf": "font/otf",
     ".map": "application/json",
-    ".mp4": "video/mp4",
-    ".webm": "video/webm",
 }
 
-# Text-ish types worth gzipping. Images/fonts/video are already compressed formats -
+# Text-ish types worth gzipping. Images/fonts are already compressed formats -
 # re-gzipping them wastes CPU for zero (sometimes negative) size benefit.
 COMPRESSIBLE_TYPES = (
     "text/html", "text/css", "text/javascript", "application/javascript",

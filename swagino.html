@@ -77,8 +77,6 @@ input:focus,textarea:focus,select:focus{outline:1px solid var(--pivot)}
 @media (hover:none),(pointer:coarse){ input,select,textarea{font-size:16px} }
 input[type=checkbox]{accent-color:var(--pivot)}
 .app{display:grid;grid-template-rows:auto 1fr;height:100vh;height:100dvh;position:relative;z-index:1}
-/* live video backdrop sits behind the app; the frosted chrome blurs it like the image backdrop */
-.bgvideo{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;pointer-events:none;border:0;background:transparent}
 .topbar{display:flex;align-items:center;gap:12px;padding:0 12px;background:var(--panel);
   position:relative;z-index:50;flex-wrap:wrap;min-height:44px;row-gap:6px}
 /* Keeps .topbar's popovers (the timeframe/chart-type dropdowns) painting above .chartcol
@@ -167,9 +165,9 @@ input[type=checkbox]{accent-color:var(--pivot)}
 /* Solid --chartbg (opaque, matches topbar/side/etc exactly) when the Backdrop is 'default' or
    'color' — those two have one flat colour to match anyway, so a translucent tint over them was
    only ever mixing that colour toward near-black and reintroducing the seam the rest of this UI
-   was just brought in line with. For 'picture'/'video' this still needs to show the wallpaper
-   through the (transparent) chart canvas, so applyBackdrop() swaps this var back to the original
-   rgba(15,16,21,.5) scrim in those two modes only — see --chartcol-bg's own definition. */
+   was just brought in line with. For 'picture' this still needs to show the wallpaper through the
+   (transparent) chart canvas, so applyBackdrop() swaps this var back to the original
+   rgba(15,16,21,.5) scrim in that mode only — see --chartcol-bg's own definition. */
 .chartcol{background:var(--chartcol-bg)}
 .panerow{flex:1;display:flex;flex-direction:column;min-height:0}
 .panerow.split{flex-direction:row}
@@ -857,9 +855,9 @@ input:disabled,select:disabled{opacity:.45;cursor:not-allowed}
 @media (prefers-reduced-motion:reduce){.tbheart{animation:none;opacity:1;
   filter:drop-shadow(0 0 4px rgba(255,79,163,.7))}}
 /* These two (plus .bspin, the pending-break spinner) ran forever regardless of tab visibility —
-   small individually, but the app's own stated rule for the video backdrop was "costs nothing
-   off-screen"; these three infinite animations never followed it. Paused via this class, toggled
-   by the same visibilitychange hook that already pauses the video (see videoTick() below). */
+   small individually, but an off-screen page should not keep the compositor busy running them.
+   Paused via this class, toggled by the visibilitychange hook in the backdrop-controller script
+   (see visTick(), top of <body>). */
 body.tab-hidden .tbheart,body.tab-hidden .tbjet,body.tab-hidden .bspin{animation-play-state:paused}
 .tbpic{height:28px;width:28px;flex:0 0 28px;display:block;
   border:none;border-radius:6px;background:transparent}
@@ -897,7 +895,7 @@ body.tab-hidden .tbheart,body.tab-hidden .tbjet,body.tab-hidden .bspin{animation
   /* The chart canvases themselves are transparent (layout.background is rgba(0,0,0,0) — see
      createChart) — what actually reads as "the chart's background" is .chartcol's
      rgba(15,16,21,.5) scrim composited over html,body's #060607 (the Backdrop's "default"
-     state, no custom colour/picture/video set). That composite, resolved to one opaque hex, is
+     state, no custom colour/picture set). That composite, resolved to one opaque hex, is
      the single reference the side panel/topbar/separators all point at below — so a future
      change to either colour only has one place to update, not three independent literals. */
   --chartbg:#0b0b0e;
@@ -906,7 +904,7 @@ body.tab-hidden .tbheart,body.tab-hidden .tbjet,body.tab-hidden .bspin{animation
      on solid chrome. Kept in lockstep with --chartbg by applyBackdrop(). */
   --chartbg-rgb:11,11,14;
   /* .chartcol's own background — solid --chartbg for 'default'/'color' (see .chartcol's own
-     comment), the original translucent scrim for 'picture'/'video'. Default value here matches
+     comment), the original translucent scrim for 'picture'. Default value here matches
      'default' mode's resolved --chartbg exactly, so this looks identical before applyBackdrop()'s
      first run ever touches it. */
   --chartcol-bg:#0b0b0e;
@@ -955,11 +953,10 @@ input[type=checkbox]{accent-color:var(--accent)}
 input,select,textarea{background:#0a0b0d; border:none; border-radius:9px; color:var(--text); padding:6px 10px;
   transition:box-shadow .15s ease, background .15s ease}
 input:focus,select:focus,textarea:focus{outline:none; background:#101115; box-shadow:0 0 0 3.5px rgba(10,132,255,.25)}
-/* The dropdown's OWN closed box picks up the semi-transparent glass background above just fine,
-   but its expanded <option> list is an OS-rendered popup that never receives backdrop-filter/
-   transparency — it falls back to the browser's own default (opaque white), while the options
-   still inherit the light `color:var(--text)` set above. White text on a white background is
-   invisible. <option> needs its own SOLID (non-transparent) colors, not the glass effect. */
+/* The dropdown's OWN closed box takes the dark field background above just fine, but its expanded
+   <option> list is an OS-rendered popup that can fall back to the browser's own default (opaque
+   white) while the options still inherit the light `color:var(--text)` set above. White text on a
+   white background is invisible. <option> needs its own explicit solid colors. */
 select option{background:var(--panel2);color:var(--text)}
 /* compact ticker box that wraps tightly around the text (field-sizing = fit-content for inputs;
    the size="6" attribute is the fallback where field-sizing is unsupported) */
@@ -1061,121 +1058,10 @@ select option{background:var(--panel2);color:var(--text)}
 /* ── modals / cards ── */
 #setup,#rsiModal,#stModal,#satyModal,#rbModal{
   background:rgba(0,0,0,.72)!important}
-/* ========================= LIQUID GLASS — painted-material architecture =====================
-   PERFORMANCE ARCHITECTURE (rebuilt 2026-09-05, measured): every glass surface in this app is now
-   PAINTED, never live-sampled. The distinction is the whole ballgame for performance:
-
-     backdrop-filter:blur()  — every frame, the GPU must COPY the pixels behind the element and run
-       a multi-tap blur convolution over them, then blend. Cost scales with (blurred area × device
-       pixels × dpr²) and STACKS multiplicatively when regions overlap. Over a live-decoding 4K
-       video or a streaming chart canvas it never stops — a permanent per-frame GPU/compositor load.
-       This is what caused the reported lag (typing stutter, other-tab video-playback drops, general
-       browser slowdown); those are the textbook signature of compositor/GPU saturation. Two prior
-       commits already stripped it off the permanent chrome; this pass removes the LAST of it (the
-       settings modal and the floating dropdowns/popovers below) so the app carries ZERO of it.
-
-     painted glass (this)    — a static specular light-streak (--glass-sheen), inset edge highlights,
-       and a drop shadow, layered over a translucent tint. All of it paints ONCE when the element is
-       created/restyled and is cached in that element's composited layer. A translucent cached layer
-       sitting over the video/chart is re-BLENDED each frame (a single textured-quad alpha op — free
-       on any GPU), NOT re-CONVOLVED. So the effect costs the compositor essentially nothing on a
-       permanent surface and nothing at all on an on-demand one, on any machine, at any dpr.
-
-   --glass-sheen is the shared specular streak, defined once so the light direction/shape stays
-   consistent across every glass surface (chrome, modals, popovers). Apple's Liquid Glass reads as
-   glass mostly through this specular highlight + edge lighting + depth, not through frost — which
-   is exactly why dropping the blur keeps the look while removing the cost. */
-:root{
-  --glass-sheen:linear-gradient(165deg,rgba(255,255,255,.12),rgba(255,255,255,.02) 44%,rgba(255,255,255,0) 72%);
-}
-/* .card is used exclusively by the six settings surfaces (SWAGINO settings, RSI, Volume, Market
-   Structure, Saty ATR, Saty Pivot Ribbon) and nothing else, so this restyles the class directly.
-   It sits over #setup's own near-opaque dark scrim (rgba(6,9,15,.92)), so the content behind is
-   already hidden — the translucent tint here shows that scrim, and the sheen + inset highlight +
-   hairline edge + layered outer shadow are what read as a lit, floating pane of glass. No blur:
-   there is nothing legible behind the scrim to frost, so a live convolution would be pure cost. */
-.card{
-  background:var(--glass-sheen),linear-gradient(180deg,rgba(34,36,44,.82),rgba(22,24,30,.90));
-  border-radius:26px;
-  box-shadow:0 24px 70px rgba(0,0,0,.55),0 2px 10px rgba(0,0,0,.35),
-    inset 0 1px 0 rgba(255,255,255,.26),inset 0 0 0 1px rgba(255,255,255,.06);
-}
-.card .tbtn{background:rgba(255,255,255,.08)}
-.card .tbtn:hover{background:rgba(255,255,255,.15)}
-.card .tbtn.primary{background:rgba(10,132,255,.82)}
-.card .tbtn.primary:hover{background:rgba(61,156,255,.9)}
-.card input,.card select,.card textarea{background:rgba(255,255,255,.06)}
-.card input:focus,.card select:focus,.card textarea:focus{background:rgba(255,255,255,.1)}
-/* Permanent chrome (topbar/side) — PAINTED glass, no backdrop-filter (see the architecture note
-   above the .card rule). These are the surfaces whose live blur caused the original incident, so
-   they carry the painted material only: the shared specular sheen + a vertical dark tint (kept
-   fairly opaque so text stays legible over the moving video underneath) + a lit top edge. The tint
-   is still translucent, so the video reads through it as a soft dark-glass wash — re-blended each
-   frame as a cached layer, which is free — rather than being convolved. Gated to video mode: in
-   solid-colour/picture/default modes these panels use their own flat --chartbg fill (there is no
-   moving backdrop to justify translucency), exactly as before. */
-body.bd-video .topbar,body.bd-video .side{
-  background:var(--glass-sheen),
-    linear-gradient(180deg,rgba(20,22,28,.62),rgba(11,11,14,.80)),
-    rgba(11,11,14,.58);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.13);
-}
-/* ── liquid glass, part 2: surfaces nested inside .topbar/.side/.chartcol ──
-   Audited every opaque `background:var(--chartbg)`/flat-panel fill that lives inside those three
-   regions: the axis strips, the ticker/search pill, the Levels/GEX table, and the Scanner cards
-   were all still fully opaque, so they read as solid islands cut out of the surrounding tint
-   instead of belonging to it. Made translucent so the tint (and the video behind it — see the
-   PERFORMANCE INCIDENT note above the .topbar/.side rule: their backdrop-filter was removed, so
-   this is now a plain unblurred tint, not "glass") shows through consistently instead of stopping
-   dead at these panels' edges. None of these get their own backdrop-filter — that would add a
-   real GPU cost back in for these small, frequently-repainted panels specifically. */
-body.bd-video .axisback{background:rgba(15,16,21,.55)}
-body.bd-video .sym{background:rgba(255,255,255,.05)}
-body.bd-video table.lv{background:rgba(17,18,22,.46)}
-body.bd-video .lv tr.lvrow:hover td{background:rgba(255,255,255,.07)}
-body.bd-video .scancard{background:rgba(255,255,255,.05)}
-body.bd-video .satyinfo{background:rgba(15,16,21,.55)}
-/* ── floating overlays (dropdowns/menus/popovers) — PAINTED glass, no backdrop-filter ──
-   These are position:fixed/absolute and appear ON TOP of whatever happens to be under them when
-   they open — often the busy candle/heatmap area or raw video through a gap. They previously each
-   carried their OWN backdrop-filter, which meant opening a dropdown fired a live blur convolution
-   over the chart region every frame it was open — a real interaction-time cost on top of the
-   permanent one. Replaced with painted glass: the shared sheen over a NEAR-opaque dark tint
-   (.90–.95 — higher than the chrome above, because without blur a thinner tint would let sharp
-   candle lines bleed through and hurt legibility; this keeps them crisp while still reading as a
-   lit glass chip via the sheen + top highlight + hairline edge + drop shadow). Internal
-   colour-encoding widgets are still left alone: the picker's saturation square / hue+alpha rails /
-   swatch grid and the GEX heatmap cells ARE the data and must not be tinted. */
-body.bd-video .tfmenu,body.bd-video .ctmenu,body.bd-video #ctxMenu,
-body.bd-video #picker,body.bd-video #tipbox,body.bd-video #setup .presetlist{
-  background:var(--glass-sheen),
-    linear-gradient(180deg,rgba(28,30,38,.92),rgba(20,22,28,.95));
-  box-shadow:0 14px 40px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.13),
-    inset 0 0 0 1px rgba(255,255,255,.05);
-}
-body.bd-video #ctxMenu .ci:hover,body.bd-video .tfmenu .seg button:hover,
-body.bd-video .tfmenu .seg button.on,body.bd-video .ctitem:hover{background:rgba(255,255,255,.09)}
-/* ── Settings (#setup) inner surfaces ──
-   .card carries the painted glass material (see the architecture note above it); its inputs/
-   selects originally used a translucent rgba(255,255,255,.06) fill to match, but a later, more
-   specific "flat pass" (#setup .setbody / .explainhdr.setsec / .presetbtn / .setbody input,select)
-   overrides that with fully opaque #101115/#1a1c22/#0a0b0d fills purely by higher CSS specificity
-   (#setup ID beats .card class). That's why Settings read as flat dark boxes floating inside a
-   glass sheet instead of one material — an existing rule silently winning the cascade, not a
-   missing effect. Restoring translucency here (gated to video mode) lets the parent .card's
-   painted tint show through so they read as one material. No backdrop-filter — these are plain
-   translucent fills over the already-painted .card, so there is nothing per-frame to pay. */
-body.bd-video #setup .setbody{background:rgba(255,255,255,.045)}
-body.bd-video #setup .explainhdr.setsec{background:rgba(255,255,255,.055)}
-body.bd-video #setup .explainhdr.setsec:hover{background:rgba(255,255,255,.09)}
-body.bd-video #setup .explainhdr.setsec.open{background:rgba(10,132,255,.20)}
-body.bd-video #setup .setbody input:not([type=checkbox]):not([type=file]),
-body.bd-video #setup .setbody select,body.bd-video #setup .row input:not([type=checkbox]):not([type=file]),
-body.bd-video #setup .row select,body.bd-video #setup .presetbtn{
-  background:rgba(255,255,255,.055);
-}
+/* Modals/cards use the plain solid --panel styling defined on .card near the top of this
+   stylesheet; the chart chrome (topbar/side/menus) uses its normal opaque --chartbg fills. */
 /* ── misc polish ── */
-/* .px has no background of its own (it's plain colored text sitting on the topbar's glass), so a
+/* .px has no background of its own (it's plain colored text sitting on the topbar), so a
    drop-shadow here rendered as a dark smudge floating behind transparent text with nothing to
    cast it - removed so the price sits flush with the topbar instead of looking like a rendering
    artifact. border-radius stays (harmless, was never visible without a filled box behind it). */
@@ -1340,7 +1226,7 @@ table.lv td{padding:6px 10px}
 #setup .presetitem .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #setup .presetscrim{position:fixed;inset:0;z-index:110}
 
-/* ═══════════ Indicator menus (RSI/Structure/Saty/Ribbon) — the same glass pass as #setup's ═══
+/* ═══════════ Indicator menus (RSI/Structure/Saty/Ribbon) — the same styling pass as #setup's ═══
    section contents above, applied to the other four modals that share its .card/.row/.hint/
    checkbox/select/.sw markup verbatim. Saty's own dense 31-row rung grid (.satysr, a 16px
    checkbox column) is the one exception carved back out below -- a full-size toggle switch
@@ -1547,20 +1433,12 @@ table.lv td{padding:6px 10px}
 </style>
 </head>
 <body>
-<!-- Optional live (video) backdrop the liquid glass frosts over. No default file is shipped —
-     starts empty and stays paused/hidden until Settings > Backdrop > MP4 video supplies one via
-     applyBackdrop() (an uploaded file, kept in IndexedDB). Muted+loop. -->
-<video id="bgVideo" class="bgvideo" autoplay muted loop playsinline aria-hidden="true" tabindex="-1"></video>
 <script>
 /* Backdrop controller — driven by the SWAGINO-settings "Background" dropdown. Modes: default = the
-   plain #060607 CSS fill, no image/video, nothing to fetch; picture = an uploaded image; color = a
-   solid hex; video = an uploaded MP4. Uploaded image/video files are kept in IndexedDB (localStorage
-   is too small for 2K media) and shown via an object URL. The <video> is paused when the tab is
-   hidden, when the mode isn't a video, or under prefers-reduced-motion — so a live wallpaper costs
-   nothing off-screen. */
+   plain #060607 CSS fill, no image to fetch; picture = an uploaded image; color = a solid hex. An
+   uploaded picture is kept in IndexedDB (localStorage is too small for 2K media) and shown via an
+   object URL. */
 (function(){
-  var v=document.getElementById('bgVideo');
-  var reduce=matchMedia('(prefers-reduced-motion: reduce)');
   var urls=[];
   window.bdMode='default';
   function cfg(){try{return JSON.parse(localStorage.getItem('lc_backdrop'))||{};}catch(e){return{};}}
@@ -1573,33 +1451,16 @@ table.lv td{padding:6px 10px}
   function bdGet(k){return idb().then(function(db){return new Promise(function(res,rej){
     var tx=db.transaction('f','readonly');var q=tx.objectStore('f').get(k);
     q.onsuccess=function(){res(q.result||null);};q.onerror=function(){rej(q.error);};});});}
-  function videoTick(){
-    // Same visibility signal the video below already used — also toggles .tab-hidden, which
-    // pauses the topbar's two decorative infinite animations and the pending-break spinner
-    // (see body.tab-hidden rule in <style>). Runs even when there's no video element (v is
-    // never null here — it's created above — but keep this above the early-return either way
-    // so those three animations pause regardless of backdrop mode, not just in video mode).
-    document.body.classList.toggle('tab-hidden', document.hidden);
-    if(!v) return;
-    if(window.bdMode==='color'||window.bdMode==='picture'){ v.pause(); return; }
-    if(reduce.matches){ v.pause(); return; }
-    if(document.hidden){ v.pause(); } else { var p=v.play(); if(p&&p.catch)p.catch(function(){}); }
-  }
   window.applyBackdrop=function(){
     urls.forEach(function(u){try{URL.revokeObjectURL(u);}catch(e){}});urls=[];
     var bd=cfg(); window.bdMode=bd.mode||'default';
-    // Gates the liquid-glass backdrop-filter rules below (see .bd-video in <style>) to MP4 mode
-    // only — that filter is a real per-frame GPU compositing cost, so default/color/picture never
-    // pay for it since there's nothing behind these panels worth blurring in those modes.
-    document.body.classList.toggle('bd-video', window.bdMode==='video');
     /* The side panel/topbar/ticker box/axis backing/pane separators/Levels table/Saty info bar
        all track this one colour (--chartbg, see the :root definition), kept live in sync with
        whichever backdrop is active. A solid-colour backdrop is used AS PICKED, full strength —
        not composited through .chartcol's own rgba(15,16,21,.5) scrim, which is a separate,
        pre-existing tint that only exists to keep candles legible over the plot area and made a
-       vivid pick read as muddy/desaturated everywhere else it touched. Picture/video have no
-       single colour to use at all, so they keep the same resolved shade the 'default' backdrop
-       uses (matches the answer already given: those two modes are not expected to be matched). */
+       vivid pick read as muddy/desaturated everywhere else it touched. 'picture' has no single
+       colour to use at all, so it keeps the same resolved shade the 'default' backdrop uses. */
     var chartBg='#0b0b0e',chartBgRgb='11,11,14';
     if(window.bdMode==='color'&&bd.color){
       var m=/^#([0-9a-f]{6})$/i.exec(bd.color);
@@ -1610,11 +1471,11 @@ table.lv td{padding:6px 10px}
       }
     }
     document.documentElement.style.setProperty('--chartbg',chartBg);
-    // .chartcol itself: solid (matches the chrome exactly) for 'default'/'color', the original
-    // translucent scrim for 'picture'/'video' — those two still need the wallpaper showing
-    // through the transparent chart canvas, which an opaque fill here would completely hide.
+    // .chartcol itself: solid (matches the chrome exactly) for 'default'/'color', the translucent
+    // scrim for 'picture' — which still needs the wallpaper showing through the transparent chart
+    // canvas, so an opaque fill here would hide it.
     document.documentElement.style.setProperty('--chartcol-bg',
-      (window.bdMode==='picture'||window.bdMode==='video')?'rgba(15,16,21,.5)':chartBg);
+      (window.bdMode==='picture')?'rgba(15,16,21,.5)':chartBg);
     document.documentElement.style.setProperty('--chartbg-rgb',chartBgRgb);
     // panes doesn't exist yet on the very first call (this script runs before the chart module
     // further down the page), but does on every later call (Settings changing the Backdrop) —
@@ -1625,24 +1486,21 @@ table.lv td{padding:6px 10px}
         try{c.applyOptions({rightPriceScale:{borderColor:'transparent'},timeScale:{borderColor:'transparent'}});}catch(e){}
       });});
     }
-    if(window.bdMode==='color'){
-      if(v){v.pause();v.removeAttribute('src');v.style.display='none';}
-      document.body.style.background=bd.color||'#0b0d14';
-    }else if(window.bdMode==='picture'){
-      if(v){v.pause();v.removeAttribute('src');v.style.display='none';}
+    if(window.bdMode==='picture'){
+      document.body.style.background='';
       bdGet('image').then(function(b){ if(!b||window.bdMode!=='picture')return;
         var u=URL.createObjectURL(b);urls.push(u);
         document.body.style.background="url('"+u+"') center center/cover no-repeat fixed, #060607";});
-    }else if(window.bdMode==='video'){
-      document.body.style.background='';
-      bdGet('video').then(function(b){ if(!v||window.bdMode!=='video')return;
-        if(b){var u=URL.createObjectURL(b);urls.push(u);v.src=u;} else {v.removeAttribute('src');v.load();}
-        v.style.display='';videoTick();});
-    }else{ document.body.style.background='';
-      if(v){v.removeAttribute('src');v.style.display='';v.load();} videoTick(); }
+    }else if(window.bdMode==='color'){
+      document.body.style.background=bd.color||'#0b0d14';
+    }else{ document.body.style.background=''; }
   };
-  document.addEventListener('visibilitychange', videoTick);
-  if(reduce.addEventListener) reduce.addEventListener('change', videoTick);
+  /* Pause the topbar's two decorative infinite animations + the pending-break spinner while the
+     tab is hidden (see the body.tab-hidden rule in <style>) — an off-screen page should not keep
+     the compositor busy running them. Independent of backdrop mode. */
+  function visTick(){ document.body.classList.toggle('tab-hidden', document.hidden); }
+  document.addEventListener('visibilitychange', visTick);
+  visTick();
   window.applyBackdrop();
 })();
 </script>
@@ -2100,12 +1958,10 @@ table.lv td{padding:6px 10px}
         <select id="bdMode" style="width:150px">
           <option value="picture">Picture</option>
           <option value="color">Solid colour</option>
-          <option value="video">MP4 video</option>
         </select></div>
       <div class="row" id="bdPicRow" style="display:none"><label>Image file</label><input type="file" id="bdPicFile" accept="image/*"></div>
       <div class="row" id="bdColRow" style="display:none"><label>Colour</label><span class="sw" id="swBdColor"></span></div>
-      <div class="row" id="bdVidRow" style="display:none"><label>MP4 file</label><input type="file" id="bdVidFile" accept="video/mp4,video/*"></div>
-      <div class="hint" id="bdMsg" style="margin:0">Picture and MP4 are stored in this browser (IndexedDB); solid colour and the chosen mode are remembered across reloads. Use files up to ~2K resolution.</div>
+      <div class="hint" id="bdMsg" style="margin:0">The picture is stored in this browser (IndexedDB); solid colour and the chosen mode are remembered across reloads. Use an image up to ~2K resolution.</div>
     </div>
     <button class="explainhdr setsec" data-sec="gex" aria-expanded="false"><svg class="sec-ic" viewBox="0 0 20 20" fill="none"><path d="M4 16V9M10 16V4M16 16v-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span class="caret">&#9662;</span> GEX</button>
     <div class="setbody" data-sec="gex" style="display:none">
@@ -2921,7 +2777,7 @@ function applyChartTheme(t){
     const modeEl=$('#bdMode'),sw=$('#swBdColor');
     if(modeEl)modeEl.value='color';
     if(sw)sw.style.background=t.bg;
-    ['bdPicRow','bdColRow','bdVidRow'].forEach(id=>{const el=$('#'+id);if(el)el.style.display=(id==='bdColRow')?'':'none';});
+    ['bdPicRow','bdColRow'].forEach(id=>{const el=$('#'+id);if(el)el.style.display=(id==='bdColRow')?'':'none';});
     if(typeof applyBackdrop==='function')applyBackdrop();
   }catch(e){}
 }
@@ -5867,13 +5723,11 @@ function positionConfLabels(p){
   });
 }
 // The six settings surfaces (SWAGINO Settings, RSI, Volume, Market Structure, Saty ATR, Saty
-// Pivot Ribbon) all share the .card "Liquid Glass" material, which blurs whatever is behind it —
-// the live chart. While one is open the chart is fully covered, so trackOverlays' 60fps probe
-// below is pure waste: it still calls into the charting library and reads layout every frame for
-// content nobody can see, right underneath a filter whose whole job is to keep re-sampling that
-// same invalidated region. Skipping it here removes the work at the source; the 1s status
-// interval (paintMarketPhase et al.) is left running so nothing goes stale, and it self-heals the
-// moment the modal closes.
+// Pivot Ribbon) all use the .card modal, which fully covers the live chart while open. So
+// trackOverlays' 60fps probe below is pure waste then: it still calls into the charting library
+// and reads layout every frame for content nobody can see. Skipping it here removes the work at
+// the source; the 1s status interval (paintMarketPhase et al.) is left running so nothing goes
+// stale, and it self-heals the moment the modal closes.
 function anyModalOpen(){
   return['setup','rsiModal','volModal','stModal','satyModal','rbModal'].some(id=>{
     const el=document.getElementById(id);return el&&el.style.display==='flex';
@@ -6288,11 +6142,9 @@ function updateForming(px,sz,closeOnly,cvol,tradeTs){
   // liquid symbol during market hours that's several times a SECOND, each one calling paneTick()
   // for every visible pane, which is up to ~10 individual .update() calls into LightweightCharts'
   // canvas series (candles, volume, 5 ribbon lines, 3 VWAP lines, 2 KC lines, RSI, RSI-MA) — real,
-  // continuous canvas repaints with zero regard for whether the tab was even on screen. Reported
-  // live as still-noticeable lag in OTHER tabs' high-quality video playback even after the
-  // liquid-glass backdrop-filter fix, which only addressed compositing cost while the tab itself
-  // was visible — this is the same GPU/compositor pipeline being kept busy from a BACKGROUND tab,
-  // all session long, which the backdrop-filter fix could never have touched. bars5/bars15/
+  // continuous canvas repaints with zero regard for whether the tab was even on screen. That kept
+  // the GPU/compositor pipeline busy from a BACKGROUND tab all session long, which showed up as
+  // lag in OTHER tabs' high-quality video playback. bars5/bars15/
   // dailyRows (the actual DATA, via upd()/touchSessionExtremes/dailyRows above) are untouched by
   // this gate — only the on-screen redraw is skipped. Safe because resyncOnReturn() (see the
   // visibilitychange listener) already re-fetches the authoritative bars and does exactly one full
@@ -10327,19 +10179,19 @@ $$('.setsec').forEach(h=>{
   };
 });
 /* Backdrop settings: mode dropdown + per-mode inputs. Changes apply and persist immediately —
-   image/video blobs via IndexedDB (bdPut), mode + colour in localStorage. applyBackdrop/bdPut live
-   in the inline backdrop-controller script that also owns the <video> pause rules. */
+   the picture blob via IndexedDB (bdPut), mode + colour in localStorage. applyBackdrop/bdPut live
+   in the inline backdrop-controller script at the top of <body>. */
 (function(){
   const modeEl=$('#bdMode');if(!modeEl||typeof applyBackdrop!=='function')return;
-  const rows={picture:$('#bdPicRow'),color:$('#bdColRow'),video:$('#bdVidRow')};
+  const rows={picture:$('#bdPicRow'),color:$('#bdColRow')};
   const showRows=m=>{for(const k in rows)if(rows[k])rows[k].style.display=(k===m)?'':'none';};
   const load=()=>{try{return JSON.parse(localStorage.getItem('lc_backdrop'))||{};}catch(e){return{};}};
   const save=patch=>{const bd=load();Object.assign(bd,patch);localStorage.setItem('lc_backdrop',JSON.stringify(bd));};
   let bd=load();
-  // 'default' was retired as a selectable mode (it only ever meant "the shipped backdrop
-  // files", which never existed) -- migrate any old saved value to the equivalent solid
-  // colour so a returning user's picker still opens on something sane, not a blank select.
-  if(!bd.mode||bd.mode==='default'){bd={mode:'color',color:bd.color||'#060607'};save(bd);}
+  // 'default' (retired) and 'video' (the removed MP4 backdrop) are no longer selectable modes;
+  // migrate any old saved value to the equivalent solid colour so a returning user's picker opens
+  // on something sane and valid, not a blank select.
+  if(!bd.mode||bd.mode==='default'||bd.mode==='video'){bd={mode:'color',color:bd.color||'#060607'};save(bd);applyBackdrop();}
   modeEl.value=bd.mode;showRows(modeEl.value);
   const setColor=c=>{save({mode:'color',color:c});modeEl.value='color';showRows('color');applyBackdrop();};
   bindSwatch($('#swBdColor'),()=>load().color||'#060607',setColor);
@@ -10348,7 +10200,6 @@ $$('.setsec').forEach(h=>{
     try{await bdPut(key,f);}catch(e){$('#bdMsg').textContent='Could not store file: '+(e&&e.message||e);return;}
     modeEl.value=mode;showRows(mode);save({mode});$('#bdMsg').textContent='Loaded '+f.name;applyBackdrop();};
   $('#bdPicFile').onchange=()=>upload('bdPicFile','image','picture');
-  $('#bdVidFile').onchange=()=>upload('bdVidFile','video','video');
 })();
 $('#setupBtn').onclick=openSetup;
 function setSidebar(hidden){
