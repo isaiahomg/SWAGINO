@@ -162,12 +162,10 @@ input[type=checkbox]{accent-color:var(--pivot)}
    panel is hidden, so the same button reads as "bring it back" instead of "hide" again. */
 #sbIcon.flip{transform:scaleX(-1)}
 .chartcol{display:flex;flex-direction:column;min-width:0;background:var(--ink)}
-/* Solid --chartbg (opaque, matches topbar/side/etc exactly) when the Backdrop is 'default' or
-   'color' — those two have one flat colour to match anyway, so a translucent tint over them was
-   only ever mixing that colour toward near-black and reintroducing the seam the rest of this UI
-   was just brought in line with. For 'picture' this still needs to show the wallpaper through the
-   (transparent) chart canvas, so applyBackdrop() swaps this var back to the original
-   rgba(15,16,21,.5) scrim in that mode only — see --chartcol-bg's own definition. */
+/* Solid --chartbg (opaque, matches topbar/side/etc exactly) — the Backdrop is a single flat
+   colour, so a translucent tint over it would only mix that colour toward near-black and
+   reintroduce the seam the rest of this UI was brought in line with. applyBackdrop() keeps
+   --chartcol-bg in lockstep with --chartbg — see --chartcol-bg's own definition. */
 .chartcol{background:var(--chartcol-bg)}
 .panerow{flex:1;display:flex;flex-direction:column;min-height:0}
 .panerow.split{flex-direction:row}
@@ -893,20 +891,17 @@ body.tab-hidden .tbheart,body.tab-hidden .tbjet,body.tab-hidden .bspin{animation
   --line:#26282e; --line2:#3a3d45; --panel:#0d0e11; --panel2:#141519;
   --accent:#0a84ff;
   /* The chart canvases themselves are transparent (layout.background is rgba(0,0,0,0) — see
-     createChart) — what actually reads as "the chart's background" is .chartcol's
-     rgba(15,16,21,.5) scrim composited over html,body's #060607 (the Backdrop's "default"
-     state, no custom colour/picture set). That composite, resolved to one opaque hex, is
-     the single reference the side panel/topbar/separators all point at below — so a future
-     change to either colour only has one place to update, not three independent literals. */
+     createChart) — what actually reads as "the chart's background" is .chartcol's fill over
+     html,body's #060607 (the Backdrop's default state, no custom colour set). Resolved to one
+     opaque hex, it is the single reference the side panel/topbar/separators all point at below —
+     so a future change only has one place to update, not three independent literals. */
   --chartbg:#0b0b0e;
   /* Same colour, as bare r,g,b components — for the one spot (.sessdrop .tfbtn) that needs an
      alpha on it rather than a flat fill, since it floats over chart content instead of sitting
      on solid chrome. Kept in lockstep with --chartbg by applyBackdrop(). */
   --chartbg-rgb:11,11,14;
-  /* .chartcol's own background — solid --chartbg for 'default'/'color' (see .chartcol's own
-     comment), the original translucent scrim for 'picture'. Default value here matches
-     'default' mode's resolved --chartbg exactly, so this looks identical before applyBackdrop()'s
-     first run ever touches it. */
+  /* .chartcol's own background — always the solid --chartbg (applyBackdrop keeps them equal). The
+     default here matches --chartbg so it looks identical before applyBackdrop()'s first run. */
   --chartcol-bg:#0b0b0e;
   /* Settings > Chart > Axis text color (cfg.axisTextColor) is what these elements are meant to
      follow — kept in sync by applyAxisTextColor(), the same function that already pushes that
@@ -1434,51 +1429,30 @@ table.lv td{padding:6px 10px}
 </head>
 <body>
 <script>
-/* Backdrop controller — driven by the SWAGINO-settings "Background" dropdown. Modes: default = the
-   plain #060607 CSS fill, no image to fetch; picture = an uploaded image; color = a solid hex. An
-   uploaded picture is kept in IndexedDB (localStorage is too small for 2K media) and shown via an
-   object URL. */
+/* Backdrop controller — the SWAGINO-settings "Background" is a solid colour (the only backdrop
+   mode; picture/MP4 were removed). A brand-new user with no saved colour falls back to the plain
+   #0b0b0e / CSS #060607 fill. */
 (function(){
-  var urls=[];
-  window.bdMode='default';
   function cfg(){try{return JSON.parse(localStorage.getItem('lc_backdrop'))||{};}catch(e){return{};}}
-  function idb(){return new Promise(function(res,rej){var r=indexedDB.open('swagino_bd',1);
-    r.onupgradeneeded=function(){r.result.createObjectStore('f');};
-    r.onsuccess=function(){res(r.result);};r.onerror=function(){rej(r.error);};});}
-  window.bdPut=function(k,blob){return idb().then(function(db){return new Promise(function(res,rej){
-    var tx=db.transaction('f','readwrite');tx.objectStore('f').put(blob,k);
-    tx.oncomplete=function(){res();};tx.onerror=function(){rej(tx.error);};});});};
-  function bdGet(k){return idb().then(function(db){return new Promise(function(res,rej){
-    var tx=db.transaction('f','readonly');var q=tx.objectStore('f').get(k);
-    q.onsuccess=function(){res(q.result||null);};q.onerror=function(){rej(q.error);};});});}
   window.applyBackdrop=function(){
-    urls.forEach(function(u){try{URL.revokeObjectURL(u);}catch(e){}});urls=[];
-    var bd=cfg(); window.bdMode=bd.mode||'default';
-    /* The side panel/topbar/ticker box/axis backing/pane separators/Levels table/Saty info bar
-       all track this one colour (--chartbg, see the :root definition), kept live in sync with
-       whichever backdrop is active. A solid-colour backdrop is used AS PICKED, full strength —
-       not composited through .chartcol's own rgba(15,16,21,.5) scrim, which is a separate,
-       pre-existing tint that only exists to keep candles legible over the plot area and made a
-       vivid pick read as muddy/desaturated everywhere else it touched. 'picture' has no single
-       colour to use at all, so it keeps the same resolved shade the 'default' backdrop uses. */
+    var bd=cfg();
+    var hasColor=bd.mode!=='default'&&/^#([0-9a-f]{6})$/i.test(bd.color||'');
+    /* The side panel/topbar/ticker box/axis backing/pane separators/Levels table/Saty info bar all
+       track this one colour (--chartbg, see the :root definition). --chartcol-bg matches it exactly
+       (the chart canvas is transparent, so the chartcol shows this same fill). A solid-colour
+       backdrop is used AS PICKED, full strength. */
     var chartBg='#0b0b0e',chartBgRgb='11,11,14';
-    if(window.bdMode==='color'&&bd.color){
+    if(hasColor){
       var m=/^#([0-9a-f]{6})$/i.exec(bd.color);
-      if(m){
-        chartBg=bd.color;
-        var n=parseInt(m[1],16);
-        chartBgRgb=((n>>16)&255)+','+((n>>8)&255)+','+(n&255);
-      }
+      chartBg=bd.color;
+      var n=parseInt(m[1],16);
+      chartBgRgb=((n>>16)&255)+','+((n>>8)&255)+','+(n&255);
     }
     document.documentElement.style.setProperty('--chartbg',chartBg);
-    // .chartcol itself: solid (matches the chrome exactly) for 'default'/'color', the translucent
-    // scrim for 'picture' — which still needs the wallpaper showing through the transparent chart
-    // canvas, so an opaque fill here would hide it.
-    document.documentElement.style.setProperty('--chartcol-bg',
-      (window.bdMode==='picture')?'rgba(15,16,21,.5)':chartBg);
+    document.documentElement.style.setProperty('--chartcol-bg',chartBg);
     document.documentElement.style.setProperty('--chartbg-rgb',chartBgRgb);
     // panes doesn't exist yet on the very first call (this script runs before the chart module
-    // further down the page), but does on every later call (Settings changing the Backdrop) —
+    // further down the page), but does on every later call (Settings changing the colour) —
     // guarded rather than ordered around, since applyBackdrop() itself is called once immediately
     // below at load time.
     if(typeof panes!=='undefined'){
@@ -1486,14 +1460,7 @@ table.lv td{padding:6px 10px}
         try{c.applyOptions({rightPriceScale:{borderColor:'transparent'},timeScale:{borderColor:'transparent'}});}catch(e){}
       });});
     }
-    if(window.bdMode==='picture'){
-      document.body.style.background='';
-      bdGet('image').then(function(b){ if(!b||window.bdMode!=='picture')return;
-        var u=URL.createObjectURL(b);urls.push(u);
-        document.body.style.background="url('"+u+"') center center/cover no-repeat fixed, #060607";});
-    }else if(window.bdMode==='color'){
-      document.body.style.background=bd.color||'#0b0d14';
-    }else{ document.body.style.background=''; }
+    document.body.style.background=hasColor?bd.color:'';
   };
   /* Pause the topbar's two decorative infinite animations + the pending-break spinner while the
      tab is hidden (see the body.tab-hidden rule in <style>) — an off-screen page should not keep
@@ -1954,14 +1921,8 @@ table.lv td{padding:6px 10px}
           <div class="presetlist" id="themeSelList" style="display:none"></div>
         </span>
         <span class="hint" style="margin:0;flex:1">Sets candle body/wick/border colors, the chart background, and axis text color. Everything stays individually editable below afterward.</span></div>
-      <div class="row"><label>Background</label>
-        <select id="bdMode" style="width:150px">
-          <option value="picture">Picture</option>
-          <option value="color">Solid colour</option>
-        </select></div>
-      <div class="row" id="bdPicRow" style="display:none"><label>Image file</label><input type="file" id="bdPicFile" accept="image/*"></div>
-      <div class="row" id="bdColRow" style="display:none"><label>Colour</label><span class="sw" id="swBdColor"></span></div>
-      <div class="hint" id="bdMsg" style="margin:0">The picture is stored in this browser (IndexedDB); solid colour and the chosen mode are remembered across reloads. Use an image up to ~2K resolution.</div>
+      <div class="row"><label>Background</label><span class="sw" id="swBdColor"></span>
+        <span class="hint" style="margin:0;flex:1">A solid background colour, remembered across reloads.</span></div>
     </div>
     <button class="explainhdr setsec" data-sec="gex" aria-expanded="false"><svg class="sec-ic" viewBox="0 0 20 20" fill="none"><path d="M4 16V9M10 16V4M16 16v-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span class="caret">&#9662;</span> GEX</button>
     <div class="setbody" data-sec="gex" style="display:none">
@@ -2774,10 +2735,8 @@ function applyChartTheme(t){
     const bd=JSON.parse(localStorage.getItem('lc_backdrop'))||{};
     bd.mode='color';bd.color=t.bg;
     localStorage.setItem('lc_backdrop',JSON.stringify(bd));
-    const modeEl=$('#bdMode'),sw=$('#swBdColor');
-    if(modeEl)modeEl.value='color';
+    const sw=$('#swBdColor');
     if(sw)sw.style.background=t.bg;
-    ['bdPicRow','bdColRow'].forEach(id=>{const el=$('#'+id);if(el)el.style.display=(id==='bdColRow')?'':'none';});
     if(typeof applyBackdrop==='function')applyBackdrop();
   }catch(e){}
 }
@@ -10178,28 +10137,19 @@ $$('.setsec').forEach(h=>{
     paint(open);
   };
 });
-/* Backdrop settings: mode dropdown + per-mode inputs. Changes apply and persist immediately —
-   the picture blob via IndexedDB (bdPut), mode + colour in localStorage. applyBackdrop/bdPut live
-   in the inline backdrop-controller script at the top of <body>. */
+/* Backdrop settings: a single solid-colour swatch (picture/MP4 modes were removed). Changes apply
+   and persist immediately — colour in localStorage. applyBackdrop lives in the inline
+   backdrop-controller script at the top of <body>. */
 (function(){
-  const modeEl=$('#bdMode');if(!modeEl||typeof applyBackdrop!=='function')return;
-  const rows={picture:$('#bdPicRow'),color:$('#bdColRow')};
-  const showRows=m=>{for(const k in rows)if(rows[k])rows[k].style.display=(k===m)?'':'none';};
+  const sw=$('#swBdColor');if(!sw||typeof applyBackdrop!=='function')return;
   const load=()=>{try{return JSON.parse(localStorage.getItem('lc_backdrop'))||{};}catch(e){return{};}};
   const save=patch=>{const bd=load();Object.assign(bd,patch);localStorage.setItem('lc_backdrop',JSON.stringify(bd));};
   let bd=load();
-  // 'default' (retired) and 'video' (the removed MP4 backdrop) are no longer selectable modes;
-  // migrate any old saved value to the equivalent solid colour so a returning user's picker opens
-  // on something sane and valid, not a blank select.
-  if(!bd.mode||bd.mode==='default'||bd.mode==='video'){bd={mode:'color',color:bd.color||'#060607'};save(bd);applyBackdrop();}
-  modeEl.value=bd.mode;showRows(modeEl.value);
-  const setColor=c=>{save({mode:'color',color:c});modeEl.value='color';showRows('color');applyBackdrop();};
-  bindSwatch($('#swBdColor'),()=>load().color||'#060607',setColor);
-  modeEl.onchange=()=>{showRows(modeEl.value);save({mode:modeEl.value});applyBackdrop();};
-  const upload=async(inputId,key,mode)=>{const f=$('#'+inputId).files[0];if(!f)return;
-    try{await bdPut(key,f);}catch(e){$('#bdMsg').textContent='Could not store file: '+(e&&e.message||e);return;}
-    modeEl.value=mode;showRows(mode);save({mode});$('#bdMsg').textContent='Loaded '+f.name;applyBackdrop();};
-  $('#bdPicFile').onchange=()=>upload('bdPicFile','image','picture');
+  // Solid colour is the only backdrop mode now; migrate any old saved mode ('default'/'picture'/
+  // 'video') to a valid colour so a returning user lands on a sensible setting.
+  if(bd.mode!=='color'||!bd.color){bd={mode:'color',color:bd.color||'#060607'};save(bd);applyBackdrop();}
+  const setColor=c=>{save({mode:'color',color:c});applyBackdrop();};
+  bindSwatch(sw,()=>load().color||'#060607',setColor);
 })();
 $('#setupBtn').onclick=openSetup;
 function setSidebar(hidden){
