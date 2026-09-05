@@ -856,6 +856,11 @@ input:disabled,select:disabled{opacity:.45;cursor:not-allowed}
     filter:drop-shadow(0 0 6px rgba(255,105,190,.95)) drop-shadow(0 0 12px rgba(255,79,163,.6))}}
 @media (prefers-reduced-motion:reduce){.tbheart{animation:none;opacity:1;
   filter:drop-shadow(0 0 4px rgba(255,79,163,.7))}}
+/* These two (plus .bspin, the pending-break spinner) ran forever regardless of tab visibility —
+   small individually, but the app's own stated rule for the video backdrop was "costs nothing
+   off-screen"; these three infinite animations never followed it. Paused via this class, toggled
+   by the same visibilitychange hook that already pauses the video (see videoTick() below). */
+body.tab-hidden .tbheart,body.tab-hidden .tbjet,body.tab-hidden .bspin{animation-play-state:paused}
 .tbpic{height:28px;width:28px;flex:0 0 28px;display:block;
   border:none;border-radius:6px;background:transparent}
 .tbpic-photo{object-fit:cover}
@@ -1554,6 +1559,12 @@ table.lv td{padding:6px 10px}
     var tx=db.transaction('f','readonly');var q=tx.objectStore('f').get(k);
     q.onsuccess=function(){res(q.result||null);};q.onerror=function(){rej(q.error);};});});}
   function videoTick(){
+    // Same visibility signal the video below already used — also toggles .tab-hidden, which
+    // pauses the topbar's two decorative infinite animations and the pending-break spinner
+    // (see body.tab-hidden rule in <style>). Runs even when there's no video element (v is
+    // never null here — it's created above — but keep this above the early-return either way
+    // so those three animations pause regardless of backdrop mode, not just in video mode).
+    document.body.classList.toggle('tab-hidden', document.hidden);
     if(!v) return;
     if(window.bdMode==='color'||window.bdMode==='picture'){ v.pause(); return; }
     if(reduce.matches){ v.pause(); return; }
@@ -6258,7 +6269,21 @@ function updateForming(px,sz,closeOnly,cvol,tradeTs){
     // without cvol (rare), leave it alone rather than guess - stale-but-correct beats wrong.
     if(haveCvol)r.volume=cvol;
   }
-  visPanes().forEach(p=>lockView(p,()=>paneTick(p)));
+  // GATED ON VISIBILITY (2026-09-05): this used to run unconditionally on every trade print — on a
+  // liquid symbol during market hours that's several times a SECOND, each one calling paneTick()
+  // for every visible pane, which is up to ~10 individual .update() calls into LightweightCharts'
+  // canvas series (candles, volume, 5 ribbon lines, 3 VWAP lines, 2 KC lines, RSI, RSI-MA) — real,
+  // continuous canvas repaints with zero regard for whether the tab was even on screen. Reported
+  // live as still-noticeable lag in OTHER tabs' high-quality video playback even after the
+  // liquid-glass backdrop-filter fix, which only addressed compositing cost while the tab itself
+  // was visible — this is the same GPU/compositor pipeline being kept busy from a BACKGROUND tab,
+  // all session long, which the backdrop-filter fix could never have touched. bars5/bars15/
+  // dailyRows (the actual DATA, via upd()/touchSessionExtremes/dailyRows above) are untouched by
+  // this gate — only the on-screen redraw is skipped. Safe because resyncOnReturn() (see the
+  // visibilitychange listener) already re-fetches the authoritative bars and does exactly one full
+  // renderAll() the moment the tab becomes visible again — the exact same "skip while hidden, catch
+  // up once on return" pattern barTimer's own poll loop already uses a few hundred lines down.
+  if(!document.hidden)visPanes().forEach(p=>lockView(p,()=>paneTick(p)));
   // Saty ATR Levels' "day balance" readout (range vs ATR, in positionSatyInfo) and its ladder
   // (drawSatyOn) are keyed to TODAY's daily high/low, which may have just moved above — but
   // both are only called from renderPane(), so without this the readout sits stale at its last
