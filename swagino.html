@@ -1082,42 +1082,31 @@ select option{background:var(--panel2);color:var(--text)}
 .card .tbtn.primary:hover{background:rgba(61,156,255,.9)}
 .card input,.card select,.card textarea{background:rgba(255,255,255,.06)}
 .card input:focus,.card select:focus,.card textarea:focus{background:rgba(255,255,255,.1)}
-/* MP4-backdrop liquid glass — same material recipe as .card above (gradient sheen over a
-   frosted, blurred-through base + inset top highlight), reused rather than invented, but only
-   switched on for the topbar/side chrome while Settings > Backdrop is 'video' (body.bd-video,
-   toggled by applyBackdrop()). backdrop-filter is a real per-frame GPU compositing cost paid for
-   as long as the element is on screen — unlike .card, which only exists while a modal is open,
-   the topbar/side are permanent chrome, so this must never be on for default/color/picture,
-   where their background is a flat opaque fill and a blur behind it would be invisible anyway.
-   Same blur(22px) radius .card already settled on for "sampled continuously off a live-streaming
-   chart" — proven safe at that cost, no reason to re-derive a number here. */
+/* MP4-backdrop tint — PERFORMANCE INCIDENT (2026-09-05): this used to also carry
+   backdrop-filter:blur(22px) saturate(180%), reasoned (wrongly) as "the same cost .card already
+   pays". The difference that reasoning missed: .card only exists while a modal is open, but
+   .topbar/.side are PERMANENT chrome — the blur was being resampled off an actively-decoding 4K
+   video, continuously, for as long as video-backdrop mode was on, on top of an identical blur on
+   .chartcol right next to it. Reported live as "extremely laggy... stuttering when typing, video
+   playback laggy" within minutes of this shipping (typing lag pinpoints .topbar specifically —
+   that's where #symInput lives). Removed outright rather than merely shrunk: backdrop-filter's
+   cost is inherent to sampling+blurring the layer beneath it every frame, not just the radius
+   picked, so no radius here is actually free. A flat tint reads as intentional dark chrome over
+   the video without the compositor cost; opacity raised slightly versus the blurred version to
+   compensate for legibility now that the video behind it isn't being softened first. */
 body.bd-video .topbar,body.bd-video .side{
-  background:linear-gradient(165deg,rgba(255,255,255,.10),rgba(255,255,255,.02) 45%,rgba(11,11,14,.58)),
-    rgba(11,11,14,.40);
-  -webkit-backdrop-filter:blur(22px) saturate(180%);
-  backdrop-filter:blur(22px) saturate(180%);
+  background:linear-gradient(165deg,rgba(255,255,255,.08),rgba(255,255,255,.02) 45%,rgba(11,11,14,.82)),
+    rgba(11,11,14,.72);
 }
-/* .chartcol already goes translucent in video mode (--chartcol-bg, set by applyBackdrop() — see
-   that variable's own comment) so the video shows through the chart's own transparent canvas.
-   That existing tint is left exactly as-is (it's already tuned for candle legibility); this only
-   adds the actual blur+saturate on top of it, and at a lower radius than the chrome above since
-   this surface sits directly behind the price data the user is reading, not empty chrome. */
-body.bd-video .chartcol{
-  -webkit-backdrop-filter:blur(13px) saturate(160%);
-  backdrop-filter:blur(13px) saturate(160%);
-}
-/* ── liquid glass, part 2: surfaces NESTED inside an already-blurred ancestor ──
-   Audited every opaque `background:var(--chartbg)`/flat-panel fill that lives inside .topbar/
-   .side/.chartcol (the three surfaces blurred above): the axis strips, the ticker/search pill,
-   the Levels/GEX table, and the Scanner cards were all still fully opaque, so they read as solid
-   islands cut out of the glass instead of belonging to it — the exact "only part of the UI is
-   glass" symptom. NONE of these get their own backdrop-filter: they already paint on top of a
-   parent that is already blurred (verified — .axisback's DOM parents (.subpane/.pchart/.panewrap/
-   .panerow) carry no background of their own, so .chartcol's blurred composite reaches all the
-   way down to them; .sym/table.lv/.scancard sit directly inside .topbar/.side). Making them
-   translucent is enough to show the SAME blur already paid for once — a second backdrop-filter
-   here would just blur an already-blurred layer again for no visual gain at real GPU cost, which
-   is the "duplicate/overlapping glass layers" this was explicitly asked to avoid. */
+/* ── liquid glass, part 2: surfaces nested inside .topbar/.side/.chartcol ──
+   Audited every opaque `background:var(--chartbg)`/flat-panel fill that lives inside those three
+   regions: the axis strips, the ticker/search pill, the Levels/GEX table, and the Scanner cards
+   were all still fully opaque, so they read as solid islands cut out of the surrounding tint
+   instead of belonging to it. Made translucent so the tint (and the video behind it — see the
+   PERFORMANCE INCIDENT note above the .topbar/.side rule: their backdrop-filter was removed, so
+   this is now a plain unblurred tint, not "glass") shows through consistently instead of stopping
+   dead at these panels' edges. None of these get their own backdrop-filter — that would add a
+   real GPU cost back in for these small, frequently-repainted panels specifically. */
 body.bd-video .axisback{background:rgba(15,16,21,.55)}
 body.bd-video .sym{background:rgba(255,255,255,.05)}
 body.bd-video table.lv{background:rgba(17,18,22,.46)}
