@@ -475,6 +475,9 @@ table.lv td.p{font-weight:600;text-align:right;white-space:nowrap}
 .scangrid.wide{grid-template-columns:1fr}
 .scanstat .k{font-family:var(--lab);font-size:10px;letter-spacing:.03em;text-transform:uppercase;
   color:var(--faint);margin-bottom:1px}
+/* Only the headers that carry hover help (see SCAN_TIPS) get the help cursor — the plain ones
+   stay plain, so the cursor itself says which labels have an explanation behind them. */
+.scanstat .k[title]{cursor:help}
 .scanstat .v{font-family:var(--lab);font-size:12.5px;color:var(--dim);line-height:1.35}
 .scanmeta{font-family:var(--lab);font-size:10px;color:var(--faint);margin-top:8px;
   padding-top:6px}
@@ -605,9 +608,12 @@ input:disabled,select:disabled{opacity:.45;cursor:not-allowed}
    lighting up rather than a panel sitting on the candles. Without a background the dark
    halo in the text-shadow is what keeps it legible over a bright candle (see the static
    text-shadow declaration and the perf comment just below .conflab). */
+/* pointer-events/cursor match .lvltag: a Saty rung's name is clickable and opens the same
+   colour/width/style/text-size picker a Level Label opens (see openSatyStyler). Everything else
+   here — font, size, weight, padding, shadow — is unchanged. */
 .satylab{position:absolute;transform:translateY(-50%);z-index:6;
   font-family:var(--lab);font-size:9.5px;font-weight:600;letter-spacing:.02em;
-  white-space:nowrap;pointer-events:none;padding:0 5px;
+  white-space:nowrap;pointer-events:auto;cursor:pointer;padding:0 5px;
   background:transparent;text-shadow:0 1px 1px rgba(0,0,0,.85)}
 .conflab{position:absolute;transform:translateY(-50%);z-index:7;
   font-family:var(--lab);font-size:10px;font-weight:700;letter-spacing:.02em;
@@ -7777,7 +7783,8 @@ function drawSatyOn(p){
       lineStyle:lwcStyle(lstyle),
       axisLabelColor:'rgba(0,0,0,0)',axisLabelTextColor:col,
       axisLabelVisible:false,title:''}));
-    p.satyLabels.push({price:+px.toFixed(2),text:nm,color:col,tc:tcol,w:lw,style:lstyle,size:tsize});
+    // key rides along so the on-chart name knows which rung it edits when clicked (openSatyStyler)
+    p.satyLabels.push({key:r.key,price:+px.toFixed(2),text:nm,color:col,tc:tcol,w:lw,style:lstyle,size:tsize});
   });
 }
 // Saty's level names, in the overlay layer so they join the de-overlap pass.
@@ -7798,10 +7805,44 @@ function positionSatyLabels(p){
     d.style.fontSize=(l.size||10)+'px';
     d.style.top=y+'px';d.dataset.y=y;
     d.style.right=(axisW+22)+'px';
+    // Click the name to restyle THIS rung — the same picker (and the same save path) the Saty
+    // modal's own row swatch and every Level Label already use. The handler is bound to this
+    // specific node, which carries its own key, so two rungs sitting a few cents apart still
+    // each edit themselves: deoverlapLabels has already given each name its own slot.
+    d.dataset.satykey=l.key;
+    d.onclick=e=>{e.stopPropagation();openSatyStyler(d,l.key);};
     // The visible line is drawn in drawLevelSegments — AFTER deoverlapLabels has placed the labels —
     // so its break follows this label to its final position (no orphan gap, no strike-through).
     d.__line={y,color:l.color,w:l.w,style:l.style};
     host.appendChild(d);
+  });
+}
+/* Saty's counterpart to openLevelStyler: one styler flow and one save path for a rung's look,
+   whichever UI the user clicked to get here (the on-chart name above, or the Saty modal's own
+   Style-tab row swatch). Reuses openStyler in its tabbed mode — Style edits the LINE colour, Text
+   edits the label-name colour — with showLine on, so line width and Solid/Dashed/Dotted are edited
+   right here the way a Level Label's picker does it. Writes through the existing per-rung override
+   store (satyC().sty[key] = {on,color,tc,w,st,size}) and lets satyRedraw() persist (saveCfg) and
+   repaint every visible pane, so the change lands instantly with no reload and survives a
+   timeframe switch. */
+function openSatyStyler(anchorEl,key){
+  const C=satyC();
+  const r=satyRows().find(x=>x.key===key);if(!r)return;
+  const cur=C.sty[key]||{};
+  const line=satyRowColor(r,C);
+  openStyler(anchorEl,{
+    color:line,
+    tc:cur.tc||line,                                   // tc defaults to the line colour, as satyBuildStyle does
+    width:Math.max(1,+(cur.w||C.levelSize)||1),
+    style:cur.st||(r.kind==='mid'?'dotted':'solid'),   // same per-kind default drawSatyOn uses
+    textSize:cur.size
+  },true,s=>{
+    const c=satyC();
+    c.sty[key]=Object.assign({},c.sty[key],{color:s.color,tc:s.tc,w:s.width,st:s.style,size:s.textSize});
+    // Keep the Saty modal's Style tab in step if it happens to be open behind this edit.
+    const M=$('#satyModal');
+    if(M&&M.style.display==='flex')satyBuildStyle();
+    satyRedraw();
   });
 }
 // The Pine table, as a chart-corner readout: period, how much of the average range this
@@ -8887,12 +8928,30 @@ function scanMoveScore(d){
   const rvol=(d.rvol!=null&&isFinite(d.rvol)&&d.rvol>0)?d.rvol:0;
   return movePct*Math.sqrt(rvol);
 }
+// One-line, jargon-free explanations for the scanner headers a newcomer can't infer from the name.
+// Keyed by the EXACT label string passed to stat() below, so adding a header here is all it takes
+// to give it hover help — and every other header deliberately stays plain.
+const SCAN_TIPS={
+  'Gap %':'How much the stock is up or down from its previous close.',
+  'RVOL':'How much trading volume is happening compared with normal.',
+  'Put/Call vol':'Compares put volume with call volume. Higher values mean more put trading.',
+  'ATM IV':'Expected volatility for options near the current stock price.',
+  'Expected move (to expiry)':'How far the stock may move based on current option pricing.'
+};
 function scanRender(){
   const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const fmtAge=t=>{if(t==null)return'never';const s=Math.floor((Date.now()-t)/1000);
     return s<60?s+'s ago':Math.floor(s/60)+'m ago';};
   const n=(v,dp)=>v==null||!isFinite(v)?'—':(+v).toFixed(dp==null?2:dp);
-  const stat=(label,val)=>`<div class="scanstat"><div class="k">${esc(label)}</div><div class="v">${val}</div></div>`;
+  // Plain-English hover help on the handful of headers whose names assume options/vol vocabulary.
+  // Native title= rather than tipAttach/wireIhelp on purpose: those bind per-element listeners, and
+  // this panel re-renders its whole card list on every quote tick (~5s), so they'd have to be
+  // re-bound ~35 times a render for no gain. title= is also already this panel's own convention
+  // (see the .scannews headline below). Keyed by the exact label, so only these five get one.
+  const stat=(label,val)=>{
+    const tip=SCAN_TIPS[label];
+    return `<div class="scanstat"><div class="k"${tip?` title="${esc(tip)}"`:''}>${esc(label)}</div><div class="v">${val}</div></div>`;
+  };
   // Re-sorted on every render (every quote tick, at minimum every 5s) so a card climbs or sinks
   // the moment its own move/volume picture changes — never a one-time, load-time-only order.
   const ranked=SCANNER_SYMS.slice().sort((a,b)=>scanMoveScore(scanData[b])-scanMoveScore(scanData[a]));
