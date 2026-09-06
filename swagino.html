@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SWAGINO</title>
+<!-- The app icon ships as favicon.ico (32×32, copied in the Dockerfile) but was never referenced
+     and lived under a hashed filename, so the browser's default /favicon.ico request 404'd and the
+     tab showed no icon. It now sits at the conventional /favicon.ico path and is declared here. -->
+<link rel="icon" type="image/x-icon" href="/favicon.ico">
+<link rel="apple-touch-icon" href="/favicon.ico">
 <!-- Warm the TLS/DNS to the ticker-logo CDN before the first logo is ever requested, so the
      image fetch on the opening symbol (and every ticker entry) skips the connection setup cost. -->
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
