@@ -662,6 +662,11 @@ input:disabled,select:disabled{opacity:.45;cursor:not-allowed}
 .card{background:var(--panel);border-radius:10px;padding:26px;width:540px;max-width:94vw;max-height:92vh;overflow-y:auto}
 .card h1{font-size:20px;margin-bottom:2px}
 .card h1 em{color:var(--warn);font-style:normal}
+/* Indicator settings panels are draggable by their title (the <h1> is the handle — see the
+   makePanelsDraggable() IIFE). cursor:move signals it; user-select:none stops the title text
+   highlighting mid-drag; touch-action:none lets a touch drag move the panel instead of scrolling
+   the card. Resting appearance is otherwise unchanged. Same pointer-capture model #pDrag uses. */
+.card h1.draghandle{cursor:move;user-select:none;-webkit-user-select:none;touch-action:none}
 .card p{font-size:12px;color:var(--dim);line-height:1.6;margin:8px 0}
 .card .row label{min-width:130px}
 .keywrap{position:relative;flex:1}
@@ -10760,6 +10765,71 @@ bindLineSwatch($('#rbSwSlowConv'),
     satyRedraw();closeSatyModal();};
   const O=$('#satyOk');if(O)O.onclick=closeSatyModal;
   const M=$('#satyModal');if(M)M.onclick=e=>{if(e.target===M)closeSatyModal();};
+})();
+
+/* ── Draggable indicator settings panels — reuses #pDrag's exact pointer-capture drag model ──
+   Each indicator modal's <h1> title is the drag handle. On the first grab the .card is DETACHED
+   from the scrim's flex-centring to position:absolute at its current on-screen spot (no visible
+   jump — absolute at the same coords), and from then on it is moved by writing left/top, exactly
+   like #picker's #pDrag. Absolute left/top (not a transform offset from centre) is deliberate:
+   the panel's position is then independent of its own content height, so revealing/hiding rows
+   (e.g. toggling Divergence) or switching indicators can't drift it — the position stays put, as
+   required. It's compositor-cheap: the card is out of flow, so a move repaints only the card,
+   never reflows the chart, and there's one left/top write per pointermove — no rAF loop, no
+   canvas redraw. Pointer capture on the handle keeps move/up firing if the cursor outruns the
+   panel, so no document-level listeners are needed (same reasoning #pDrag documents). The stored
+   position lives on the element (these cards are static DOM, never recreated), so it persists
+   across open/close and timeframe/indicator switches for free; re-clamped to the viewport on show
+   and on resize so a panel can never be dragged or stranded off-screen. Only the <h1> starts a
+   drag; every control below it stays fully interactive. Each modal is independent. */
+(function makePanelsDraggable(){
+  const MODALS=['rsiModal','volModal','vwapModal','kcModal','stModal','satyModal','rbModal'];
+  const MARGIN=6;                                  // keep at least this many px on-screen
+  const pos=new Map();                             // modalId -> {left,top} once dragged (else absent)
+  function clampLT(w,h,left,top){
+    left=Math.min(Math.max(MARGIN,left),Math.max(MARGIN,innerWidth-w-MARGIN));
+    top =Math.min(Math.max(MARGIN,top ),Math.max(MARGIN,innerHeight-h-MARGIN));
+    return{left:Math.round(left),top:Math.round(top)};
+  }
+  function place(card,p){card.style.position='absolute';card.style.margin='0';card.style.left=p.left+'px';card.style.top=p.top+'px';}
+  MODALS.forEach(id=>{
+    const modal=document.getElementById(id);if(!modal)return;
+    const card=modal.querySelector('.card');if(!card)return;
+    const h=card.querySelector('h1');if(!h)return;
+    h.classList.add('draghandle');h.title='Drag to move';
+    let live=false,sx=0,sy=0,sl=0,st=0,sw=0,sh=0;
+    h.addEventListener('pointerdown',e=>{
+      if(e.button!==0)return;                        // primary mouse button / pen / touch only
+      e.preventDefault();
+      const r=card.getBoundingClientRect();
+      if(!pos.has(id)){pos.set(id,{left:Math.round(r.left),top:Math.round(r.top)});place(card,pos.get(id));}
+      const p=pos.get(id);sl=p.left;st=p.top;sx=e.clientX;sy=e.clientY;sw=r.width;sh=r.height;live=true;
+      try{h.setPointerCapture(e.pointerId);}catch(_){}
+    });
+    h.addEventListener('pointermove',e=>{
+      if(!live)return;
+      const p=clampLT(sw,sh,sl+(e.clientX-sx),st+(e.clientY-sy));   // cached dims: no per-move layout read
+      pos.set(id,p);card.style.left=p.left+'px';card.style.top=p.top+'px';
+    });
+    const stop=e=>{if(!live)return;live=false;try{h.releasePointerCapture(e.pointerId);}catch(_){}};
+    h.addEventListener('pointerup',stop);
+    h.addEventListener('pointercancel',stop);
+    // On (re)show, if the panel was positioned, re-clamp it to the current viewport so a window
+    // shrunk while it was closed can't strand it. A no-op position-wise whenever it still fits, so
+    // an ordinary open/close never shifts it. Fires only on the modal's own display flip.
+    new MutationObserver(()=>{
+      if(modal.style.display==='none'||!pos.has(id))return;
+      const r=card.getBoundingClientRect();const p=clampLT(r.width,r.height,pos.get(id).left,pos.get(id).top);
+      pos.set(id,p);place(card,p);
+    }).observe(modal,{attributes:true,attributeFilter:['style']});
+  });
+  // Re-clamp any currently-visible positioned panel on window resize (throttled to one frame).
+  let q=0;
+  addEventListener('resize',()=>{if(q)return;q=requestAnimationFrame(()=>{q=0;
+    MODALS.forEach(id=>{if(!pos.has(id))return;const m=document.getElementById(id);if(!m||m.style.display==='none')return;
+      const card=m.querySelector('.card');if(!card)return;const r=card.getBoundingClientRect();
+      const p=clampLT(r.width,r.height,pos.get(id).left,pos.get(id).top);pos.set(id,p);place(card,p);});
+  });});
 })();
 
 /* Long explanatory paragraphs are moved out of the panels and behind a small info icon,
