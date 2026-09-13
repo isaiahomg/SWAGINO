@@ -31,7 +31,7 @@
      were dropped earlier for the same reason - one less network dependency for body text). -->
 <!-- Euclid Circular B — vendored locally in fonts/ (a licensed desktop family the user supplied
      directly, not fetched from any font CDN), used ONLY for the chart's own floating data labels
-     (--lab below: swing/pattern/break/level/Saty/confluence/EMA-VWAP tags and axis price badges)
+     (--lab below: swing/pattern/break/level/Saty/EMA-VWAP tags and axis price badges)
      per explicit instruction to keep that one part on it while everything else reverts. -->
 <style>
 @font-face{font-family:'Euclid Circular B';src:url('fonts/EuclidCircularB-Light.ttf') format('truetype');font-weight:300;font-style:normal;font-display:swap}
@@ -464,9 +464,6 @@ input[type=checkbox]{accent-color:var(--pivot)}
 .pane h3{font-size:11px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase;margin:14px 0 6px}
 .pane h3:first-child{margin-top:0}
 .sechead{display:flex;align-items:center;justify-content:center;gap:8px;margin:18px 0 8px;font-size:11px;letter-spacing:.16em;color:var(--warn);text-transform:uppercase}
-/* the tab label already says "Levels" — this row now only carries the confluence info icon,
-   so it sits at the corner instead of a centered heading with nothing left to head */
-.sechead-r{justify-content:flex-end;margin:6px 0 4px}
 #gexStatus,#gexStatus2{font-family:var(--mono);font-size:10.5px;color:var(--dim);line-height:1.6;margin:6px 0}
 #gexStatus b,#gexStatus2 b{color:var(--text)}
 .hint{font-size:11px;color:var(--faint);line-height:1.5;margin:4px 0 8px}
@@ -518,27 +515,6 @@ table.lv td.p{font-weight:600;text-align:right;white-space:nowrap}
 .scantoggle:hover{text-decoration:underline}
 .scandetail{margin-top:8px;padding-top:8px}
 .badge{font-size:9px;border:none;background:rgba(255,255,255,.08);border-radius:4px;padding:1px 5px;color:var(--dim);margin-left:4px}
-/* CONFLUENCE badge — golden glow. Shown only on the level SWAGINO's GEX board currently ranks
-   as the strongest dealer-gamma magnet (computeConfluence()), so the glow disappears the moment
-   that's no longer true on the next recompute. No strength tier (there used to be one for "3+
-   families agree" — that concept doesn't exist any more, this is always exactly one level). */
-.badge.conf{color:#f0d98a;background:rgba(214,179,90,.07);
-  animation:confBreathe 4s ease-in-out infinite}
-/* A slow, even breath rather than a glow pulse — the opacity eases in and out on
-   a sine-like curve, so it reads as calm movement instead of a flicker. */
-/* box-shadow/text-shadow are not compositor-only properties - animating them forces a main-
-   thread repaint of every badge on every single animation frame, forever, for as long as any
-   confluence badge is on screen. filter:drop-shadow() renders the same soft outer glow but IS
-   compositor-only (like opacity/transform), so the GPU handles the whole breath with no repaint. */
-@keyframes confBreathe{
-  0%,100%{opacity:.68;
-          filter:drop-shadow(0 0 3px rgba(214,179,90,.16)) drop-shadow(0 0 3px rgba(214,179,90,.28))}
-  50%    {opacity:1;
-          filter:drop-shadow(0 0 9px rgba(214,179,90,.42)) drop-shadow(0 0 6px rgba(214,179,90,.6))}}
-@keyframes confPop{0%{transform:scale(.7);opacity:0}
-  55%{transform:scale(1.22);opacity:1;filter:brightness(1.9)}100%{transform:scale(1);opacity:1}}
-/* one-shot pop the first time a level becomes confluent */
-.badge.conf.fresh{animation:confPop .55s cubic-bezier(.2,.9,.3,1.3),confBreathe 4s ease-in-out .55s infinite}
 /* collapsible sections inside the Settings modal */
 .setsec{width:100%;text-align:left;margin:12px 0 4px;color:var(--warn);letter-spacing:.14em;
   text-transform:uppercase;font-size:10.5px}
@@ -619,15 +595,6 @@ input:disabled,select:disabled{opacity:.45;cursor:not-allowed}
 .gxheat .gxr.spot .gxk{background:#5c5a1f;color:#fff8c9;font-weight:700}
 .gxheat .gxr.spot .gxc{border-bottom-color:#3a3a24}
 .gxheat .gxna{color:#ffffff}
-/* Confluence level label ON THE CHART. The price line itself is canvas-drawn and cannot be
-   given a CSS glow, so the label is rendered as an overlay in the tips layer at the level's
-   y-coordinate and the line's own title is suppressed to avoid printing it twice.
-   Sits just inside the right price axis, matching every other on-chart label.
-
-   No plate behind it: the glow is the TEXT's, not a box's, so it reads as the label itself
-   lighting up rather than a panel sitting on the candles. Without a background the dark
-   halo in the text-shadow is what keeps it legible over a bright candle (see the static
-   text-shadow declaration and the perf comment just below .conflab). */
 /* pointer-events/cursor match .lvltag: a Saty rung's name is clickable and opens the same
    colour/width/style/text-size picker a Level Label opens (see openSatyStyler). Everything else
    here — font, size, weight, padding, shadow — is unchanged. */
@@ -635,21 +602,6 @@ input:disabled,select:disabled{opacity:.45;cursor:not-allowed}
   font-family:var(--lab);font-size:9.5px;font-weight:600;letter-spacing:.02em;
   white-space:nowrap;pointer-events:auto;cursor:pointer;padding:0 5px;
   background:transparent;text-shadow:0 1px 1px rgba(0,0,0,.85)}
-.conflab{position:absolute;transform:translateY(-50%);z-index:7;
-  font-family:var(--lab);font-size:10px;font-weight:700;letter-spacing:.02em;
-  white-space:nowrap;pointer-events:auto;cursor:pointer;color:#f0d98a;
-  background:transparent;padding:0 5px;
-  text-shadow:0 1px 1px rgba(0,0,0,.85);
-  animation:confTextBreathe 4s ease-in-out infinite}
-/* The dark 1px outline above is static (never changes, so it costs nothing after the first
-   paint). The breathing glow itself used to be an animated text-shadow layered on top of that
-   outline - text-shadow is not a compositor-only property, so it repainted the label on every
-   frame, forever, for as long as it was on screen. filter:drop-shadow() gives the same glow
-   and IS compositor-only, so the GPU handles the pulse with no repaint (same fix as .badge.conf's
-   confBreathe above). */
-@keyframes confTextBreathe{
-  0%,100%{opacity:.74;filter:drop-shadow(0 0 3px rgba(214,179,90,.35)) drop-shadow(0 0 5px rgba(214,179,90,.2))}
-  50%    {opacity:1;filter:drop-shadow(0 0 9px rgba(240,217,138,.85)) drop-shadow(0 0 5px rgba(214,179,90,.55))}}
 .gexsum{font-family:var(--mono);font-size:11px;line-height:1.7}
 .gexsum b.pos{color:var(--gexp)} .gexsum b.neg{color:var(--gexn)} .gexsum b.flip{color:var(--warn)}
 /* plain-English read of the board, shown in the status box once one has been computed */
@@ -844,7 +796,7 @@ input:disabled,select:disabled{opacity:.45;cursor:not-allowed}
    bar so the heart has headroom, but it no longer sits on its own private margin */
 .tbpix{display:flex;align-items:flex-end;align-self:flex-end;gap:12px;flex:0 0 auto;margin-bottom:2px}
 .tbframe{position:relative;display:inline-flex;flex:0 0 auto}
-/* foreground, tip pinned to the corner, and the same slow breath the confluence label uses */
+/* foreground, tip pinned to the corner, with its own slow breathing pulse */
 /* The 777, an 8-bit sprite, in a geostationary orbit around the heart: a tilted ellipse
    walked counter-clockwise, dropping behind the heart on the far half. The path is baked
    into keyframes rather than composed from nested rotations, so the sprite never inherits
@@ -1666,7 +1618,6 @@ table.lv td{padding:6px 10px}
       </div>
       <div class="pane on" id="pane-levels">
         <table class="lv" id="lvlTable"></table>
-        <div class="sechead sechead-r"><span class="ihelp" id="lvConfluenceHelp" aria-label="More info"><svg viewBox="0 0 10 10" width="9" height="9" fill="none" aria-hidden="true"><circle cx="5" cy="2.2" r="1" fill="currentColor"/><rect x="4.25" y="4.2" width="1.5" height="4.5" rx="0.75" fill="currentColor"/></svg></span></div>
       </div>
       <div class="pane" id="pane-gex">
         <div id="gexStatus">not computed yet</div>
@@ -4953,23 +4904,20 @@ function renderPane(p){
   p.times=data.map(d=>d.time);
   p.sessBands=(cfg.sess==='eth'&&p.tf!=='D')?computeSessBands(p.times):[];
   const PP=paneParams(p);
-  /* Swing structure is resolved HERE, before anything reads it. Three consumers depend on
-     it — the confluence badge below, the divergence detector in the RSI block, and the
-     Structure overlay further down — and they must all see the same pivots on the same
-     render. It was previously computed in the RSI block, which is BELOW the badge, so the
-     badge scored each bar against the PREVIOUS render's structure and dropped the group
-     entirely on the first paint. It is also computed unconditionally: gating it on the
-     Structure eye made the chart and the trigger feed score the same bar differently
-     depending on whether an indicator happened to be visible.
+  /* Swing structure is resolved HERE, before anything reads it. Two consumers depend on
+     it — the divergence detector in the RSI block, and the Structure overlay further down —
+     and they must both see the same pivots on the same render. It is computed
+     unconditionally: gating it on the Structure eye made the chart and the trigger feed
+     score the same bar differently depending on whether an indicator happened to be visible.
      MEASURED (not the stale "about a millisecond" this comment used to claim): at 8000
      5m bars, the findSwings+causalMinMove+structVolFloor chain alone costs ~53ms — a
      third of a full renderPane() — and unlike a one-off cost this runs on EVERY render,
      including toggles that have nothing to do with structure (a color swatch, RSI, VWAP).
      Cached below rather than skipped, because the three functions are proven PURE —
      verified by reading every line of all three (no reference to cfg or any other global,
-     only their own explicit parameters) and every consumer of their output (the badge
-     below, detectDivergences, trendFrom, breakEvents/breakOutcome/lastBreaks, detectPattern
-     and its diamondPattern/fitSlope/poleFor helpers) — none of them ever mutate a swing
+     only their own explicit parameters) and every consumer of their output (detectDivergences,
+     trendFrom, breakEvents/breakOutcome/lastBreaks, detectPattern and its
+     diamondPattern/fitSlope/poleFor helpers) — none of them ever mutate a swing
      object, only ever read .i/.type/.price/.label off it. `data` itself is never mutated
      in place anywhere in renderPane's pipeline either — verified the same way, and
      empirically: a live renderPane() call left `data` byte-identical before and after.
@@ -5378,16 +5326,6 @@ function positionLvlTags(p){
     // The visible line is drawn in drawLevelSegments — AFTER deoverlapLabels has placed the labels —
     // so its break follows each label to its final position (no orphan gap, no strike-through).
   });
-  // Purely-confluent levels (t.conf, no t.name) carry no .lvltag of their own — their name is the
-  // glowing .conflab positionConfLabels already drew; just hang this level's line params on it so
-  // drawLevelSegments breaks the line for it at its final position. Cheap (a handful at most) and
-  // idempotent, so re-running it every cycle isn't the flicker source — left as a plain re-derive.
-  p.lvlTags.filter(t=>!t.name&&t.conf).forEach(t=>{
-    let y=null;try{y=pxRound(p.candles.priceToCoordinate(+t.price));}catch(e){}
-    const cf=host.querySelector('.conflab[data-key="'+(+t.price).toFixed(2)+'"]');
-    if(cf){cf.__line={y,color:t.color,w:t.w,style:t.style};
-      if(t.key){cf.dataset.stylekey=t.key;cf.onclick=e=>{e.stopPropagation();openLevelStyler(cf,t.key);};}}
-  });
 }
 // Draw a level line as two HTML segments that break for its label. Shared by all level families.
 function lvSeg(host,y,gaps,plotW,L){
@@ -5426,7 +5364,7 @@ function drawLevelSegments(p){
   const plotW=Math.max(20,el.clientWidth-axisW);
   const hr=host.getBoundingClientRect();
   const items=[];
-  host.querySelectorAll('.lvltag,.satylab,.conflab').forEach(lbl=>{
+  host.querySelectorAll('.lvltag,.satylab').forEach(lbl=>{
     const L=lbl.__line;if(!L||lbl.style.display==='none')return;
     const r=lbl.getBoundingClientRect();                 // READ (batched — no writes between them)
     items.push({L,x0:r.left-hr.left,x1:r.right-hr.left});
@@ -5779,58 +5717,6 @@ function positionSessionBands(p){
     host.insertBefore(d,host.firstChild);          // paints behind every other overlay
   });
 }
-// Glowing on-chart labels for confluent levels, re-placed every pan/zoom frame alongside
-// the other overlays so they stay pinned to their price.
-// srcLevels: same convention as drawLevelsOn — omitted means the shared global `levels`; Pane 2
-// while unlinked passes its own levels2 so its confluence glow is drawn from its own board.
-function positionConfLabels(p,srcLevels){
-  const host=$('#tips'+p.idx);if(!host)return;
-  const L=srcLevels||levels;
-  if(!srcLevels&&p.sym&&p.sym!==cfg.sym){host.querySelectorAll('.conflab').forEach(e=>e.remove());return;}
-  // These labels breathe on a 4s loop, and this function runs on the 1s tick. Tearing the
-  // nodes down and rebuilding them restarts the CSS animation, so the glow never got past
-  // the first second of its cycle and read as a stutter instead of a breath. Nodes are now
-  // reused whenever the SET of confluent levels is unchanged — only their y moves.
-  const show=catShown();
-  const h=$('#pc'+p.idx).clientHeight;
-  // pin to the right, just inside the price axis — same side as every other chart label
-  let axisW=0;
-  try{axisW=Math.round(p.chart.priceScale('right').width()||0);}catch(e){}
-  // same merge as the price lines: confluent levels on one price get one label, or the
-  // cluster prints two glowing names on top of each other at the same y
-  const byPx=new Map();
-  L.filter(l=>l.conf&&show[l.cat]&&lvlStyleOf(l).on).forEach(l=>{
-    const k=l.price.toFixed(2);
-    let g=byPx.get(k);
-    if(!g){g={key:k,price:l.price,names:[]};byPx.set(k,g);}
-    if(g.names.indexOf(l.label)<0)g.names.push(l.label);
-  });
-  const want=[...byPx.values()];
-  // No strength tier any more (see computeConfluence()) - CONFLUENCE is a single GEX top-magnet
-  // pick, never a multi-family count, so there is nothing left to escalate the glow against.
-  const sig=want.map(g=>g.key+':'+g.names.join(',')).join('|');
-  if(p._confSig!==sig){
-    p._confSig=sig;
-    host.querySelectorAll('.conflab').forEach(e=>e.remove());
-    want.forEach(g=>{
-      const d=document.createElement('div');
-      d.className='conflab';
-      d.dataset.key=g.key;
-      d.textContent=g.names.join(', ');
-      host.appendChild(d);
-    });
-  }
-  // reposition only — never re-insert, or the breath restarts from zero
-  host.querySelectorAll('.conflab').forEach(d=>{
-    const l=want.find(x=>x.key===d.dataset.key);
-    if(!l){d.style.display='none';return;}
-    let y=null;try{y=pxRound(p.candles.priceToCoordinate(l.price));}catch(e){}
-    if(y==null||y<8||y>h-4){d.style.display='none';return;}
-    d.style.display='';
-    d.style.top=y+'px';d.dataset.y=y;
-    d.style.right=(axisW+8)+'px';
-  });
-}
 // The six settings surfaces (SWAGINO Settings, RSI, Volume, Market Structure, Saty ATR, Saty
 // Pivot Ribbon) all use the .card modal, which fully covers the live chart while open. So
 // trackOverlays' 60fps probe below is pure waste then: it still calls into the charting library
@@ -5994,7 +5880,6 @@ function positionTips(p){
   syncAxisLabels(p);
   if(!p||!p.chart)return;
   positionSessionBands(p);
-  positionConfLabels(p);
   positionStruct(p);
   positionSatyLabels(p);
   positionSatyInfo(p);
@@ -6012,7 +5897,7 @@ function positionTips(p){
 }
 /* Two labels at two different prices can still land on top of each other — the EMA 9 and
    EMA 20 tags whenever the fast and slow lines converge, a swing label sitting on a
-   confluence name, and so on. Each label knows the y it WANTS (data-y, written by whoever
+   level tag, and so on. Each label knows the y it WANTS (data-y, written by whoever
    positioned it), so this pass always resolves from the anchor and never from last frame's
    nudge: it is idempotent, which is what lets it run on every frame of a drag without the
    labels creeping away from their lines.
@@ -6030,7 +5915,7 @@ function deoverlapLabels(host){
   /* .tip is deliberately NOT in this list. An EMA tag only means anything sitting beside
      its own line, and de-overlapping slid it away whenever two averages converged - which
      is exactly when you most need to see which is which. They are allowed to overlap. */
-  host.querySelectorAll('.conflab,.swlab,.satylab,.brklab,.lvltag').forEach(e=>{
+  host.querySelectorAll('.swlab,.satylab,.brklab,.lvltag').forEach(e=>{
     if(e.style.display==='none'||e.dataset.y==null)return;
     els.push(e);
   });
@@ -6952,14 +6837,15 @@ function updateCountdown(p){
 function lvlStyleOf(l){const s=lvlSty[l.key]||{};
   // l.dc = per-level default colour, l.ds = per-level default line style. The ATR ladder needs dc
   // (Saty colour-codes the trigger, ATR targets and intermediate fibs inside one family); GEX needs
-  // ds so magnets/air pockets draw solid and the gamma flip draws dashed regardless of confluence.
-  // Both fall back to the family default when a level sets neither.
+  // ds so magnets/air pockets draw solid and the gamma flip draws dashed. Both fall back to the
+  // family default when a level sets neither; a level with no family default either falls back to
+  // dashed.
   // tc = label text colour, independent of the price-line colour; unset labels default to white
   // (--axistext) so every label reads clearly regardless of category, and only diverges once the
   // user picks a colour of their own on the Text tab.
   const color=s.color||l.dc||CATCOLOR[l.cat];
   return{color,tc:s.tc||'var(--axistext)',width:s.width||(l.w>=2?2:1),
-    style:s.style||l.ds||(l.conf?'solid':'dashed'),size:s.size||10,on:s.on!==false};}
+    style:s.style||l.ds||'dashed',size:s.size||10,on:s.on!==false};}
 // srcLevels: which levels[] array this pane's lines/tags come from. Omitted (the default, every
 // existing call site) means the shared global `levels` (cfg.sym's board) — Pane 2, while
 // unlinked, passes its OWN levels2 explicitly instead, so its chart draws its own board rather
@@ -6981,22 +6867,18 @@ function drawLevelsOn(p,srcLevels){
      (two decimals, which is what the levels are stored rounded to), so the moment either
      one moves a cent they are two levels again on the next recompute — nothing is sticky. */
   const groups=new Map();
-  // Non-confluent 'gex' is drawn entirely by its own renderGexLevels (see parseGexRows) — it
-  // needs to update its own line without this shared pipeline's unconditional wipe-and-rebuild
-  // running on every gamma tick, which is what flickered every other level along with it once GEX
-  // started calling this at up to 1/sec instead of the whole app's normal (much lower) cadence.
-  // A CONFLUENT gex level is the one exception: it stays on this shared path (same as before GEX
-  // had its own renderer) because confluence — a coincidental price match with another family —
-  // is rare and slow-changing, not a live gamma number, so there's no real-time cost to it, and
-  // this path already correctly merges it into ONE label with the other family instead of two.
-  // renderGexLevels skips any key it finds marked confluent here, so it's never drawn twice.
-  L.filter(l=>show[l.cat]&&(l.cat!=='gex'||l.conf)).forEach(l=>{
+  // GEX is drawn entirely by its own renderGexLevels (see parseGexRows) — it needs to update its
+  // own line without this shared pipeline's unconditional wipe-and-rebuild running on every gamma
+  // tick, which is what flickered every other level along with it once GEX started calling this
+  // at up to 1/sec instead of the whole app's normal (much lower) cadence. GEX is just another
+  // displayed level like any other family — it never rides this shared path.
+  L.filter(l=>show[l.cat]&&l.cat!=='gex').forEach(l=>{
     const st=lvlStyleOf(l);if(!st.on)return;
-    let axisOn=true,name=l.conf?'':l.label;
+    let axisOn=true,name=l.label;
     const k=l.price.toFixed(2);
     const s0=lvlSty[l.key],custom=!!(s0&&(s0.style||s0.width||s0.color||s0.tc));  // user-styled?
     let g=groups.get(k);
-    if(!g){g={price:l.price,names:[],conf:[],st,w:l.w||1,axisOn:false,custom,key:l.key};groups.set(k,g);}
+    if(!g){g={price:l.price,names:[],st,w:l.w||1,axisOn:false,custom,key:l.key};groups.set(k,g);}
     else{
       // the heaviest level in the cluster owns the line's colour, width and style — a session
       // extreme should not be drawn in a round-number's grey because it was added to the ladder
@@ -7009,14 +6891,12 @@ function drawLevelsOn(p,srcLevels){
       if((l.w||1)>g.w)g.w=l.w||1;
     }
     if(name&&g.names.indexOf(name)<0)g.names.push(name);
-    // remember what the glowing overlay will print here, so the line can leave room for it
-    if(l.conf&&l.label&&g.conf.indexOf(l.label)<0)g.conf.push(l.label);
     if(axisOn)g.axisOn=true;
   });
   p.lvlTags=[];
   groups.forEach(g=>{
     const nm=g.names.join(', ');
-    p.lvlTags.push({price:g.price,color:g.st.color,tc:g.st.tc||g.st.color,axisOn:g.axisOn,name:nm,conf:g.conf.join(', '),
+    p.lvlTags.push({price:g.price,color:g.st.color,tc:g.st.tc||g.st.color,axisOn:g.axisOn,name:nm,
                     w:g.st.width||1,style:g.st.style||'solid',size:g.st.size||10,key:g.key});
     p.priceLines.push(p.candles.createPriceLine({
       price:g.price,color:'rgba(0,0,0,0)',lineWidth:g.st.width,
@@ -7026,8 +6906,6 @@ function drawLevelsOn(p,srcLevels){
       // made to match the level's colour here
       axisLabelColor:'rgba(0,0,0,0)',axisLabelTextColor:g.st.color,
       axisLabelVisible:false,
-      // a confluence name is drawn as a glowing overlay, so the line needs blanks to stop
-      // for; a plain level already has its own name in the title and needs nothing extra
       title:''}));
   });
 }
@@ -7036,7 +6914,7 @@ function drawLevels(){visPanes().forEach(p=>{
   // drawLevelsOn(panes[1],levels2) directly) — the shared sweep below must not also touch it
   // with cfg.sym's `levels`, or the two would race to clear/redraw the same price lines.
   if(p.idx===1&&cfg.link===false)return;
-  drawLevelsOn(p);positionLvlTags(p);positionConfLabels(p);
+  drawLevelsOn(p);positionLvlTags(p);
   deoverlapLabels($('#tips'+p.idx));drawLevelSegments(p);});drawAlertLines();
   // GEX is excluded from drawLevelsOn's own pass (see there) and normally kept current by
   // parseGexRows calling this directly whenever GEX's OWN data changes. Also reconciling it here
@@ -7045,45 +6923,17 @@ function drawLevels(){visPanes().forEach(p=>{
   // redundant call here still only ever writes text/color (never removes/recreates a DOM node)
   // for a price that hasn't moved, so this can't reintroduce the flicker it exists to fix.
   renderGexLevels(LS.gex?LS.gex.levels:[]);}
-/* ---------- levels engine ---------- */
-/* ---------- confluence ----------
-   CONFLUENCE answers a different question than it used to: not "do independent level families
-   happen to land at the same price" (that was overlap, and overlap is not evidence price is
-   headed anywhere — two unrelated calculations agreeing is a coincidence, not a signal), but
-   "which existing level does SWAGINO's own data say price is currently most likely to move
-   toward next."
-
-   Audited against every level-producing system in this file (Session/Previous-day/Institutional/
-   GEX, plus Structure's swings and BOS/CHoCH, Saty's ATR ladder, RSI, VWAP, trend) for which of
-   them actually assert a FORWARD-LOOKING claim about a SPECIFIC price, as opposed to describing
-   historical structure (a swing, a break, a volume node — real, but backward-looking) or general
-   market condition (trend direction, RSI, VWAP side — real, but not about any one level). Exactly
-   one system clears that bar: GEX's own magnet/air-pocket classification already says outright,
-   in its own summary panel and its own plain-English tooltip elsewhere in this file, that a
-   magnet strike is "a price the market tends to gravitate toward" and that price "tends to stall
-   and get pulled back" there (see computeChainGex()'s summary text and the Scanner-side GEX
-   explainer). Nothing else in the codebase makes a claim like that about a specific price.
-
-   So: CONFLUENCE = whichever level in `levels` carries key 'MaxG' — GEX's OWN existing "Top
-   magnet" designation (the single largest dealer-gamma strike across the whole board, already
-   ranked and already labeled "Top" vs the lesser CW1-3 magnets, computeChainGex()/parseGexRows()
-   above). Not a new ranking: reusing the primary pick the GEX engine already makes for its own
-   board display. If GEX hasn't produced a board this cycle (market closed, or its own guardrails
-   rejected it), there is no MaxG entry and no level is CONFLUENCE — that absence is correct, not
-   a gap: forcing a "best available" pick from evidence that doesn't actually support one would be
-   exactly the unsupported-assumption problem this rework exists to remove. */
-// srcLevels defaults to the shared global `levels` (cfg.sym's board, every existing call site) —
-// Pane 2's own computeLevels2() passes its own levels2 instead, so its MaxG pick is entirely its
-// own board's, never cfg.sym's.
-function computeConfluence(srcLevels){
-  const L=srcLevels||levels;
-  L.forEach(l=>{l.conf=false;l.confN=0;l.confWith='';});
-  const mag=L.find(l=>l.key==='MaxG');
-  if(mag){
-    mag.conf=true;mag.confN=1;
-    mag.confWith="SWAGINO's GEX board currently ranks this the single strongest dealer-gamma magnet on the chain.";
-  }
-}
+/* ---------- levels engine ----------
+   There is deliberately no CONFLUENCE concept here. Audited (twice, across two sessions) for any
+   raw-OHLCV-derived, level-specific, forward-looking signal anywhere in this file — the only
+   candidate that ever asserted "price tends to move toward this specific price" was GEX's own
+   magnet/air-pocket classification, and GEX is explicitly excluded from contributing any
+   Confluence-like evidence by design: it is just another displayed chart level, on equal footing
+   with every other family, no more or less "confluent" than a Prev H or an Institutional zone.
+   Nothing else in the codebase (Saty's ATR ladder, Market Structure/BOS-CHoCH, sessions, trend/
+   RSI/VWAP) makes or supports a level-specific destination claim without inventing a new,
+   unvalidated heuristic — so none is implemented. If a genuinely raw-data-derived destination
+   signal is ever added to SWAGINO, this is where it would slot in. */
 // Which level families are drawn. Backed by cfg rather than by the checkboxes themselves,
 // because those checkboxes are now rendered as part of the Levels list and briefly do not
 // exist while it repaints.
@@ -7583,13 +7433,6 @@ function deleteAlert(id){
    about fitting this app rather than changing the maths:
      - Levels are drawn as this chart's price lines, so the axis plate is transparent and
        the reading carries the colour, exactly like every other price label here.
-     - They take no part in confluence — CONFLUENCE is GEX's own top-magnet pick specifically
-       because that's the one place in this file that asserts a specific price is where the
-       market tends to gravitate (see computeConfluence()'s own comment). Saty's ladder makes
-       no such claim about any of its rungs — it's a Fibonacci-percentage grid measuring the
-       day's range against ATR, described in purely structural terms everywhere else in this
-       file, not a price-destination system — so it was never a candidate for this regardless
-       of how many rungs a price happens to sit near.
    ====================================================================================== */
 
 // TradingView's input list for this indicator, verbatim, with its defaults. Everything the
@@ -7606,9 +7449,9 @@ const SATY_DEFAULTS={
   /* Saty anchors its ladder on the previous close, and the level ladder already publishes
      that exact price as "Prev C / gap" — the same number by definition, since a gap is
      measured FROM the previous close. Two lines on one price is clutter, so this row ships
-     off. The ladder's copy is the one kept because it also feeds confluence, the trigger
-     ladder and the level table; re-enable this one in the Style tab if you want the anchor
-     drawn as part of the ATR set. */
+     off. The ladder's copy is the one kept because it also feeds the trigger ladder and the
+     level table; re-enable this one in the Style tab if you want the anchor drawn as part of
+     the ATR set. */
   sty:{pc:{on:false}},                     // per-level {on,color,w,st} overrides, Style tab
   tfs:{'5':true,'10':true,'60':true,'240':true,'D':true,'W':true}   // Visibility tab
 };
@@ -8126,8 +7969,8 @@ function computeInstitutionalLevels(push,dailyRowsSrc,bars5Src,spotSrc){
     return{p:idxPrice((run[0]+run[run.length-1])/2),v:maxV};
   };
   const ceil=pickPeak(true),floor=pickPeak(false);
-  // Explicit solid style (ds): lvlStyleOf()'s default otherwise falls back to dashed for any
-  // non-confluent level, but these are meant to read as solid from the start regardless of
+  // Explicit solid style (ds): lvlStyleOf()'s default otherwise falls back to dashed for a level
+  // with no family default, but these are meant to read as solid from the start regardless of
   // whether they happen to land on another family's price.
   if(ceil)push(ceil.p,'Ceiling','inst',1,'InstCeil',null,'solid');
   if(floor)push(floor.p,'Floor','inst',1,'InstFloor',null,'solid');
@@ -8154,12 +7997,11 @@ function computeLevels(){
   if(rth.length){push(Math.max(...rth.map(b=>b.h)),'High of Day','session',1,'HOD');push(Math.min(...rth.map(b=>b.l)),'Low of Day','session',1,'LOD');}
   const g=LS.gex;if(g&&g.levels)g.levels.forEach(x=>push(x.price,x.label,'gex',x.w||1,x.key||x.label,x.color,x.style));
   computeInstitutionalLevels(push);
-  computeConfluence();
   drawLevels();renderLevelTable();
   levelsAt=Date.now();lvlStampTick();
 }
 // Pane 2's own Levels board — built the same way as computeLevels() above (same push-based
-// category builders, same Institutional histogram, same MaxG-only confluence), but entirely from
+// category builders, same Institutional histogram), but entirely from
 // Pane 2's OWN unlinked symbol's data (altState[1].data.daily/bars5) and its OWN GEX board
 // (gex2Board, see computeChainGex2()) instead of cfg.sym's. Only ever called while Pane 2 is
 // unlinked (see applyPaneSym()/refreshAlt()) — computeLevels() above is never touched by this.
@@ -8188,7 +8030,6 @@ function computeLevels2(){
   if(rth.length){push(Math.max(...rth.map(b=>b.h)),'High of Day','session',1,'HOD');push(Math.min(...rth.map(b=>b.l)),'Low of Day','session',1,'LOD');}
   const g=gex2Board;if(g&&g.levels)g.levels.forEach(x=>push(x.price,x.label,'gex',x.w||1,x.key||x.label,x.color,x.style));
   computeInstitutionalLevels(push,dailyRows2,bars5_2,spot2);
-  computeConfluence(levels2);
   redrawPane2Levels();
   renderLevelTable2();
   levels2At=Date.now();
@@ -8198,10 +8039,9 @@ let levels2At=0;
 // skips Pane 2 while it is unlinked (see there) so the two never race over the same price lines.
 function redrawPane2Levels(){
   const p=panes[1];if(!p)return;
-  drawLevelsOn(p,levels2);positionLvlTags(p);positionConfLabels(p,levels2);
+  drawLevelsOn(p,levels2);positionLvlTags(p);
   deoverlapLabels($('#tips1'));drawLevelSegments(p);
 }
-let prevConfKeys=new Set();
 // Live "computed HH:MM · Ns ago" stamp, ticked once a second so it is obvious at a glance
 // whether the ladder is current or the feed has stalled.
 let levelsAt=0;
@@ -8216,7 +8056,6 @@ function lvlStampTick(){
 }
 function renderLevelTable(){
   const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-  const nowConf=new Set();
   const shown=catShown();
   // One list instead of two panels: each family is its own group, and the group's header IS
   // the master switch that used to live in a separate "Category master switches" section.
@@ -8228,22 +8067,12 @@ function renderLevelTable(){
       +`${CAT_LABEL[cat]||cat}</span></td></tr>`;
     const body=mine.map(l=>{
       const st=lvlStyleOf(l);
-      let badge='';
-      if(l.conf){
-        nowConf.add(l.key);
-        // "fresh" only on the render where a level first becomes confluent, so the pop
-        // fires once instead of on every recompute. No strength tier any more — a single
-        // GEX top-magnet pick has nothing to escalate against (see computeConfluence()).
-        const cls='badge conf'+(prevConfKeys.has(l.key)?'':' fresh');
-        badge=`<span class="${cls}" title="${esc(l.confWith)}">CONFLUENCE</span>`;
-      }
       return`<tr class="lvrow${shown[cat]?'':' catoff'}">
-      <td><span class="sw lvsw" data-key="${l.key}" style="background:${st.color}"></span><span class="lvlabel${st.on?' on':''}" data-key="${l.key}" role="button" tabindex="0">${esc(l.label)}</span>${badge}</td>
+      <td><span class="sw lvsw" data-key="${l.key}" style="background:${st.color}"></span><span class="lvlabel${st.on?' on':''}" data-key="${l.key}" role="button" tabindex="0">${esc(l.label)}</span></td>
       <td class="p">${l.price.toFixed(2)}</td></tr>`;}).join('');
     return hdr+body;
   }).join('');
   $('#lvlTable').innerHTML=html||'<tr><td>no data yet</td></tr>';
-  prevConfKeys=nowConf;
   $$('#lvlTable .catlabel').forEach(el=>{
     const toggle=()=>setCat(el.dataset.cat,!el.classList.contains('on'));
     el.onclick=toggle;
@@ -8267,13 +8096,9 @@ function renderLevelTable(){
   });
 }
 // Pane 2's own Levels table twin — same markup/behaviour as renderLevelTable() above, reading
-// levels2/#lvlTable2 and its OWN prevConfKeys2 "fresh" tracker instead (a level KEY like 'MaxG'
-// can be confluent on both boards at once for two different symbols; sharing one tracker would
-// wrongly suppress one board's fresh-pop animation because the other board already saw that key).
-let prevConfKeys2=new Set();
+// levels2/#lvlTable2 instead.
 function renderLevelTable2(){
   const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-  const nowConf=new Set();
   const shown=catShown();
   const html=CAT_ORDER.map(cat=>{
     const mine=levels2.filter(l=>l.cat===cat).sort((a,b)=>b.price-a.price);
@@ -8283,19 +8108,12 @@ function renderLevelTable2(){
       +`${CAT_LABEL[cat]||cat}</span></td></tr>`;
     const body=mine.map(l=>{
       const st=lvlStyleOf(l);
-      let badge='';
-      if(l.conf){
-        nowConf.add(l.key);
-        const cls='badge conf'+(prevConfKeys2.has(l.key)?'':' fresh');
-        badge=`<span class="${cls}" title="${esc(l.confWith)}">CONFLUENCE</span>`;
-      }
       return`<tr class="lvrow${shown[cat]?'':' catoff'}">
-      <td><span class="sw lvsw" data-key="${l.key}" style="background:${st.color}"></span><span class="lvlabel${st.on?' on':''}" data-key="${l.key}" role="button" tabindex="0">${esc(l.label)}</span>${badge}</td>
+      <td><span class="sw lvsw" data-key="${l.key}" style="background:${st.color}"></span><span class="lvlabel${st.on?' on':''}" data-key="${l.key}" role="button" tabindex="0">${esc(l.label)}</span></td>
       <td class="p">${l.price.toFixed(2)}</td></tr>`;}).join('');
     return hdr+body;
   }).join('');
   $('#lvlTable2').innerHTML=html||'<tr><td>no data yet</td></tr>';
-  prevConfKeys2=nowConf;
   $$('#lvlTable2 .catlabel').forEach(el=>{
     const toggle=()=>setCat(el.dataset.cat,!el.classList.contains('on'));
     el.onclick=toggle;
@@ -8464,7 +8282,7 @@ function parseGexRows(out,sourceNote,alt,spotOverride){
   // ticks at all (see computeChainGex2()), so its sourceNote is always a fresh chain bootstrap —
   // it always recomputes levels2 right after.
   if(alt){
-    renderGexLevels(lv,[panes[1]].filter(Boolean),levels2,true);
+    renderGexLevels(lv,[panes[1]].filter(Boolean),true);
     computeLevels2();
   }else{
     renderGexLevels(lv);
@@ -8485,25 +8303,15 @@ function parseGexRows(out,sourceNote,alt,spotOverride){
 // visible pane currently showing cfg.sym", the same set drawLevelsOn's own default guard already
 // restricts itself to; Pane 2's own GEX (see computeChainGex2()) passes [panes[1]] explicitly so
 // its tags land ONLY on its own chart, never on Pane 1's or a linked Pane 2's.
-// srcLevels: which levels[] array to check for "already drawn as part of a combined confluence
-// label" — defaults to the shared `levels`; Pane 2's own call passes levels2.
-function renderGexLevels(lv,targetPanes,srcLevels,alt){
+function renderGexLevels(lv,targetPanes,alt){
   // Same two on/off switches every other category respects: the whole GEX category toggle
   // (catShown) and any individual level the user has switched off by itself (lvlStyleOf's own
   // .on, e.g. hiding just the flip while keeping magnets). Routed through lvlStyleOf itself, not
   // reimplemented, so a user's custom color/width/style for a GEX level (set via the same Levels
-  // table swatch every other category uses) is honored exactly as it already is elsewhere.
-  const shown=catShown().gex?lv.filter(x=>lvlStyleOf({key:x.key,dc:x.color,ds:x.style,cat:'gex',w:x.w,conf:false}).on):[];
-  // A level computeConfluence() has ALREADY marked confluent (in srcLevels — the freshest
-  // snapshot of that is whatever the last full computeLevels()/computeLevels2() pass produced,
-  // which is recent enough since confluence is a coincidental price match with another family,
-  // not a live gamma number) is left entirely to drawLevelsOn/positionConfLabels, which already
-  // merges it into ONE combined label instead of two. Drawing it here too is exactly what
-  // duplicated it.
-  const L=srcLevels||levels;
-  const globalGex=new Map(L.filter(l=>l.cat==='gex').map(l=>[l.key,l]));
-  const nonConf=shown.filter(x=>{const g=globalGex.get(x.key);return!(g&&g.conf);});
-  const wantedKeys=new Set(nonConf.map(x=>x.key));
+  // table swatch every other category uses) is honored exactly as it already is elsewhere. GEX
+  // is just another displayed level — every qualifying one is drawn, unconditionally.
+  const shown=catShown().gex?lv.filter(x=>lvlStyleOf({key:x.key,dc:x.color,ds:x.style,cat:'gex',w:x.w}).on):[];
+  const wantedKeys=new Set(shown.map(x=>x.key));
   const panesToUse=targetPanes||visPanes().filter(p=>!(p.sym&&p.sym!==cfg.sym));
   panesToUse.forEach(p=>{
     const host=$('#tips'+p.idx);if(!host||!p.candles)return;
@@ -8513,8 +8321,8 @@ function renderGexLevels(lv,targetPanes,srcLevels,alt){
     let axisW=0;try{axisW=Math.round(p.chart.priceScale('right').width()||0);}catch(e){}
     if(!(axisW>10))axisW=56;
     const plotW=Math.max(20,el.clientWidth-axisW);
-    nonConf.forEach(x=>{
-      const st=lvlStyleOf({key:x.key,dc:x.color,ds:x.style,cat:'gex',w:x.w,conf:false});
+    shown.forEach(x=>{
+      const st=lvlStyleOf({key:x.key,dc:x.color,ds:x.style,cat:'gex',w:x.w});
       const priceKey=(+x.price).toFixed(2);
       let tagEl=host.querySelector('.lvltag[data-gexkey="'+x.key+'"]');
       // priceToCoordinate depends on the current viewport too, so this is recomputed on every
@@ -8557,9 +8365,8 @@ function renderGexLevels(lv,targetPanes,srcLevels,alt){
 // Draws one GEX level's line as two segments that stop short of its own label on either side,
 // instead of one full-width bar running straight through the text sitting on top of it (which
 // read as a strikethrough). Same idea as the shared lvSeg()'s gap-stepping, scoped to just this
-// one label — a non-confluent GEX level (the only kind renderGexLevels ever draws its own line
-// for; see the confluence carve-out above) essentially never shares its row with another visible
-// label, so there's nothing else to step around.
+// one label — a GEX level essentially never shares its row with another visible label, so
+// there's nothing else to step around.
 function gexRedrawSeg(host,key,tagEl,plotW,st){
   host.querySelectorAll('.lvseg[data-gexkey="'+key+'"]').forEach(e=>e.remove());
   const y=tagEl.style.top;
@@ -10005,8 +9812,8 @@ function hidePane2Levels(){
 function teardownPane2Levels(){
   levels2=[];gex2Heat=null;gex2Board=null;gex2LastT=0;gex2Src='';gex2NextT=0;gex2Busy=false;
   const p=panes[1];
-  if(p){drawLevelsOn(p,[]);positionLvlTags(p);positionConfLabels(p,[]);deoverlapLabels($('#tips1'));drawLevelSegments(p);}
-  renderGexLevels([],[panes[1]].filter(Boolean),[],true);
+  if(p){drawLevelsOn(p,[]);positionLvlTags(p);deoverlapLabels($('#tips1'));drawLevelSegments(p);}
+  renderGexLevels([],[panes[1]].filter(Boolean),true);
   $('#lvlTable2').innerHTML='';$('#gexSummary2').innerHTML='';renderGexHeat(true);gexStatus(true);
   hidePane2Levels();
 }
@@ -11606,8 +11413,8 @@ bindLineSwatch($('#rbSwSlowConv'),
    The tooltip is one shared element and takes innerHTML, so the bolding survives. */
 // Shared hover-tooltip mechanism (small "i" badge -> #tipbox), used by buildHelpIcons()'s
 // auto-converted settings hints below AND by any hand-placed .ihelp icon elsewhere in the app
-// (e.g. the Levels CONFLUENCE icon) that needs the exact same visual language and interaction —
-// one shared box, no native title= hover delay, rather than each spot inventing its own tooltip.
+// that needs the exact same visual language and interaction — one shared box, no native title=
+// hover delay, rather than each spot inventing its own tooltip.
 // Drawn as a dot+stem, geometrically centered in its own 10x10 viewBox — see the comment at mk()
 // for why this replaced a plain text "i" character.
 const IHELP_SVG='<svg viewBox="0 0 10 10" width="9" height="9" fill="none" aria-hidden="true">'
@@ -11690,9 +11497,6 @@ function buildHelpIcons(){
 buildPicker();wireStyle();wireHandles();buildHelpIcons();
 // Closes any open tap-toggled info tooltip (see wireIhelp) when the tap lands elsewhere.
 document.addEventListener('click',e=>{if(!e.target.closest('.ihelp')&&!e.target.closest('#tipbox'))ihelpHide();});
-// The icon itself now sits right under the table (moved there in the HTML, not just its
-// popup) so the plain icon-relative default positioning is all this needs.
-try{wireIhelp($('#lvConfluenceHelp'),'<b class="tiptitle">CONFLUENCE</b>the level SWAGINO\'s GEX board currently ranks as the strongest dealer-gamma magnet — where price is expected to gravitate toward next. Shown only while the GEX board has a top magnet; not related to whether other level families happen to sit nearby.');}catch(e){}
 const g0=inGexWindow()?LS.gex:null;
 if(!g0){LS.gex=null;}
 if(g0){gexLastT=g0.t||0;gexSrc='last session';
