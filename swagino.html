@@ -54,20 +54,13 @@
      globally, which is what kept the old monospace useful for price columns. */
   /* Firefox has no font of its own — its UI (menus, tabs, chrome) renders in the OS's native
      UI font, which on Windows is Segoe UI (confirmed: Firefox docs/support threads, not assumed). */
-  /* Neither SF Mono nor Trebuchet MS is ever embedded here — SF Mono's Apple license only covers
-     apps running ON Apple platforms, and Trebuchet MS is a Microsoft system font, not
-     redistributable at all; both are only ever NAMED, exactly the same pattern. "SF Mono"/
-     "SFMono-Regular" as literal names (not the ui-monospace generic keyword, which some
-     non-Apple browsers now resolve to their OWN native monospace font - e.g. Consolas on
-     Windows Chromium - before this list ever reaches "Trebuchet MS") only match on a Mac/iOS
-     device, where the OS already has that font system-wide; everywhere else those two names
-     simply don't match anything installed, so the browser moves on to "Trebuchet MS" - which
-     Windows ships by default. No loaded webfont behind it any more (JetBrains Mono was removed
-     entirely, by request) - a platform with neither SF Mono nor Trebuchet MS installed just gets
-     the browser's own generic sans-serif instead. */
-  --mono:"SF Mono","SFMono-Regular","Trebuchet MS",sans-serif;
-  --disp:"SF Mono","SFMono-Regular","Trebuchet MS",sans-serif;
-  --heat:"SF Mono","SFMono-Regular","Trebuchet MS",sans-serif;
+  /* This CSS default is only what paints for the ~0ms before the platform-detection script at
+     the top of <body> overwrites it (see there for why plain font-fallback order turned out NOT
+     to be reliable for "SF Mono on Apple only" - measured, not assumed). Trebuchet MS here
+     because non-Apple is the common case; Apple devices get overwritten to SF Mono immediately. */
+  --mono:"Trebuchet MS",sans-serif;
+  --disp:"Trebuchet MS",sans-serif;
+  --heat:"Trebuchet MS",sans-serif;
   /* The one deliberate exception to the revert above: the chart's own floating data-label
      overlays (see the classes listed in the @font-face comment) stay on the embedded family. */
   --lab:'Euclid Circular B',ui-sans-serif,system-ui,sans-serif;
@@ -946,8 +939,8 @@ body.tab-hidden .tbheart,body.tab-hidden .tbjet,body.tab-hidden .bspin{animation
 /* ═══════════ Apple design refresh (flat surfaces — no blur/translucency/glass) ═══════════ */
 :root{
   /* Kept identical to the base :root's --disp/--mono above - see the reasoning there. */
-  --disp:"SF Mono","SFMono-Regular","Trebuchet MS",sans-serif;
-  --mono:"SF Mono","SFMono-Regular","Trebuchet MS",sans-serif;
+  --disp:"Trebuchet MS",sans-serif;
+  --mono:"Trebuchet MS",sans-serif;
   --text:#f5f5f7; --dim:#e6e8ec; --faint:#a0a3ab;
   --line:#26282e; --line2:#3a3d45; --panel:#0d0e11; --panel2:#141519;
   --accent:#0a84ff;
@@ -1517,6 +1510,27 @@ table.lv td{padding:6px 10px}
 </head>
 <body>
 <script>
+/* Dominant-font controller. A plain CSS font-family FALLBACK LIST turned out not to be reliable
+   for "SF Mono on Apple, Trebuchet MS everywhere else": on a real Windows machine, naming "SF
+   Mono" first was measured (canvas text-metric fingerprint: width of a test string in "SF Mono"
+   matched neither Trebuchet MS, Consolas, Segoe UI, Arial, nor an unmatched-font's fallback
+   width) to silently resolve to some OTHER real installed font before the list ever reached
+   Trebuchet MS — Windows' own font name-substitution, not a bug in the CSS. Explicit platform
+   detection sidesteps that entirely: Windows never gets handed "SF Mono" as an option at all, so
+   there is nothing for it to accidentally match. iPadOS reporting itself as "MacIntel" is treated
+   as Apple on purpose — it should get SF Mono too, same as Mac and iPhone. */
+(function(){
+  var ua=navigator.userAgent||'',plat=navigator.platform||'';
+  var isApple=/Mac|iPhone|iPad|iPod/.test(plat)||/Macintosh|iPhone|iPad|iPod/.test(ua);
+  var dominantFont=isApple?'"SF Mono","SFMono-Regular",sans-serif':'"Trebuchet MS",sans-serif';
+  document.documentElement.style.setProperty('--mono',dominantFont);
+  document.documentElement.style.setProperty('--disp',dominantFont);
+  document.documentElement.style.setProperty('--heat',dominantFont);
+  // The chart library takes its font as a plain JS string, not CSS - reusing this exact value
+  // (rather than a second hardcoded copy) is what keeps the axis labels from ever drifting out
+  // of sync with the rest of the UI's font again.
+  window.SWAGINO_DOMINANT_FONT=dominantFont;
+})();
 /* Backdrop controller — the SWAGINO-settings "Background" is a solid colour (the only backdrop
    mode; picture/MP4 were removed). A brand-new user with no saved colour falls back to the plain
    #0b0b0e / CSS #060607 fill. */
@@ -2786,7 +2800,7 @@ const CHART_THEMES=[
 /* ---------- panes ---------- */
 function chartOpts(extra){
   return Object.assign({
-  layout:{background:{color:'rgba(0,0,0,0)'},textColor:cfg.axisTextColor,fontFamily:"'SF Mono','SFMono-Regular','Trebuchet MS',sans-serif",fontSize:11,attributionLogo:false},
+  layout:{background:{color:'rgba(0,0,0,0)'},textColor:cfg.axisTextColor,fontFamily:window.SWAGINO_DOMINANT_FONT||'"Trebuchet MS",sans-serif',fontSize:11,attributionLogo:false},
   localization:{timeFormatter:fmtCross},
   grid:{vertLines:{visible:false},horzLines:{visible:false}},
   rightPriceScale:{borderColor:'transparent',autoScale:true},
