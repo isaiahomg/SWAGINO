@@ -2093,6 +2093,11 @@ const LS={
   get cfg(){try{return JSON.parse(localStorage.getItem('lc_cfg'))||{}}catch(e){return{}}},set cfg(v){localStorage.setItem('lc_cfg',JSON.stringify(v))},
   get gex(){try{return JSON.parse(localStorage.getItem('lc_gex'))||null}catch(e){return null}},set gex(v){localStorage.setItem('lc_gex',JSON.stringify(v))},
   get lvlSty(){try{return JSON.parse(localStorage.getItem('lc_lvlsty'))||{}}catch(e){return{}}},set lvlSty(v){localStorage.setItem('lc_lvlsty',JSON.stringify(v))},
+  // Pane 2's own per-key show/hide memory (see lvlOn2) — deliberately separate from lc_lvlsty:
+  // color/width/style stay shared by key across both boards (a custom look for "Top magnet"
+  // should look the same wherever it appears), but visibility is NOT — hiding a level on one
+  // pane must never hide the same-keyed level on the other pane's own, independent ticker.
+  get lvlOn2(){try{return JSON.parse(localStorage.getItem('lc_lvlon2'))||{}}catch(e){return{}}},set lvlOn2(v){localStorage.setItem('lc_lvlon2',JSON.stringify(v))},
 };
 // Data-pipeline instrumentation for bug reports. Originally a hidden local-testing-only tool
 // (URL flag / localStorage key to even reveal the button); now a real Settings > Diagnostics
@@ -2233,6 +2238,7 @@ cfg.crosshair=Object.assign({color:'#9598A1',style:'dashed'},cfg.crosshair||{});
 const IND_DEF={rsi:{on:true,c:'#7E57C2',w:1,st:'solid'}};
 cfg.ind=cfg.ind||{};Object.keys(IND_DEF).forEach(k=>cfg.ind[k]=Object.assign({},IND_DEF[k],cfg.ind[k]||{}));
 let lvlSty=LS.lvlSty;
+let lvlOn2=LS.lvlOn2;   // Pane 2's own show/hide-per-key memory — see LS.lvlOn2's own comment
 cfg.structCfg=Object.assign({strength:5,maxSwings:60,tolPct:0.25,
   labels:true,patterns:true,bos:true,
   upC:'#2dd4a7',dnC:'#f0564f',patC:'#f5d763',patW:2,patSt:'dashed',
@@ -6845,7 +6851,10 @@ function updateCountdown(p){
   el.innerHTML='<div class="v" '+vcol+'>'+p.lastClose.toFixed(2)+'</div><div class="t" '+vcol+'>'+fmtCd(rem)+'</div>';
   el.style.display='block';el.style.top=y+'px';
 }
-function lvlStyleOf(l){const s=lvlSty[l.key]||{};
+// alt=true reads Pane 2's own show/hide memory (lvlOn2) instead of the shared lvlSty[key].on —
+// color/width/style/size stay shared by key across both boards (see LS.lvlOn2's own comment for
+// why visibility specifically cannot), so only the `on` flag branches on alt.
+function lvlStyleOf(l,alt){const s=lvlSty[l.key]||{};
   // l.dc = per-level default colour, l.ds = per-level default line style. The ATR ladder needs dc
   // (Saty colour-codes the trigger, ATR targets and intermediate fibs inside one family); GEX needs
   // ds so magnets/air pockets draw solid and the gamma flip draws dashed. Both fall back to the
@@ -6855,8 +6864,9 @@ function lvlStyleOf(l){const s=lvlSty[l.key]||{};
   // (--axistext) so every label reads clearly regardless of category, and only diverges once the
   // user picks a colour of their own on the Text tab.
   const color=s.color||l.dc||CATCOLOR[l.cat];
+  const on=alt?lvlOn2[l.key]!==false:s.on!==false;
   return{color,tc:s.tc||'var(--axistext)',width:s.width||(l.w>=2?2:1),
-    style:s.style||l.ds||'dashed',size:s.size||10,on:s.on!==false};}
+    style:s.style||l.ds||'dashed',size:s.size||10,on};}
 // srcLevels: which levels[] array this pane's lines/tags come from. Omitted (the default, every
 // existing call site) means the shared global `levels` (cfg.sym's board) — Pane 2, while
 // unlinked, passes its OWN levels2 explicitly instead, so its chart draws its own board rather
@@ -6884,7 +6894,7 @@ function drawLevelsOn(p,srcLevels){
   // at up to 1/sec instead of the whole app's normal (much lower) cadence. GEX is just another
   // displayed level like any other family — it never rides this shared path.
   L.filter(l=>show[l.cat]&&l.cat!=='gex').forEach(l=>{
-    const st=lvlStyleOf(l);if(!st.on)return;
+    const st=lvlStyleOf(l,!!srcLevels);if(!st.on)return;
     let axisOn=true,name=l.label;
     const k=l.price.toFixed(2);
     const s0=lvlSty[l.key],custom=!!(s0&&(s0.style||s0.width||s0.color||s0.tc));  // user-styled?
@@ -8091,12 +8101,12 @@ function renderLevelTable(){
   });
   $$('#lvlTable .lvlabel').forEach(el=>{
     const toggle=()=>{
+      // This is visibility, not styling — Pane 2 has its OWN show/hide memory (lvlOn2, see
+      // its own comment) precisely so toggling a level off here never hides the same-keyed
+      // level on Pane 2's own, independent ticker.
       const k=el.dataset.key;lvlSty[k]=lvlSty[k]||{};
       lvlSty[k].on=!el.classList.contains('on');LS.lvlSty=lvlSty;
       el.classList.toggle('on');drawLevels();
-      // lvlSty is shared by key name across both boards (see openLevelStyler) — a key like
-      // 'MaxG' can appear on Pane 2's board too, so its own chart needs the same redraw.
-      if(cfg.paneN>=2&&cfg.link===false)redrawPane2Levels();
     };
     el.onclick=toggle;
     el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle();}};
@@ -8118,7 +8128,7 @@ function renderLevelTable2(){
       +`<span class="catlabel${shown[cat]?' on':''}" data-cat="${cat}" role="button" tabindex="0">`
       +`${CAT_LABEL[cat]||cat}</span></td></tr>`;
     const body=mine.map(l=>{
-      const st=lvlStyleOf(l);
+      const st=lvlStyleOf(l,true);
       return`<tr class="lvrow${shown[cat]?'':' catoff'}">
       <td><span class="sw lvsw" data-key="${l.key}" style="background:${st.color}"></span><span class="lvlabel${st.on?' on':''}" data-key="${l.key}" role="button" tabindex="0">${esc(l.label)}</span></td>
       <td class="p">${l.price.toFixed(2)}</td></tr>`;}).join('');
@@ -8132,10 +8142,11 @@ function renderLevelTable2(){
   });
   $$('#lvlTable2 .lvlabel').forEach(el=>{
     const toggle=()=>{
-      const k=el.dataset.key;lvlSty[k]=lvlSty[k]||{};
-      lvlSty[k].on=!el.classList.contains('on');LS.lvlSty=lvlSty;
+      // lvlOn2 is Pane 2's OWN show/hide memory — never lvlSty[key].on, which Pane 1's table
+      // reads/writes and which is shared-by-key for styling only (see LS.lvlOn2's comment).
+      const k=el.dataset.key;
+      lvlOn2[k]=!el.classList.contains('on');LS.lvlOn2=lvlOn2;
       el.classList.toggle('on');redrawPane2Levels();
-      drawLevels();   // lvlSty is shared by key name — Pane 1 needs the same redraw too
     };
     el.onclick=toggle;
     el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle();}};
@@ -8154,7 +8165,7 @@ function renderLevelTable2(){
 function openLevelStyler(anchorEl,key,alt){
   const src=alt?levels2:levels;
   const l=src.find(x=>x.key===key);if(!l)return;
-  const st=lvlStyleOf(l);
+  const st=lvlStyleOf(l,alt);
   openStyler(anchorEl,{color:st.color,tc:st.tc,width:st.width,style:st.style,textSize:st.size},true,s=>{
     lvlSty[key]=Object.assign(lvlSty[key]||{},{color:s.color,tc:s.tc,width:s.width,style:s.style,size:s.textSize});
     LS.lvlSty=lvlSty;
@@ -8321,7 +8332,7 @@ function renderGexLevels(lv,targetPanes,alt){
   // reimplemented, so a user's custom color/width/style for a GEX level (set via the same Levels
   // table swatch every other category uses) is honored exactly as it already is elsewhere. GEX
   // is just another displayed level — every qualifying one is drawn, unconditionally.
-  const shown=catShown().gex?lv.filter(x=>lvlStyleOf({key:x.key,dc:x.color,ds:x.style,cat:'gex',w:x.w}).on):[];
+  const shown=catShown().gex?lv.filter(x=>lvlStyleOf({key:x.key,dc:x.color,ds:x.style,cat:'gex',w:x.w},alt).on):[];
   const wantedKeys=new Set(shown.map(x=>x.key));
   const panesToUse=targetPanes||visPanes().filter(p=>!(p.sym&&p.sym!==cfg.sym));
   panesToUse.forEach(p=>{
@@ -8333,7 +8344,7 @@ function renderGexLevels(lv,targetPanes,alt){
     if(!(axisW>10))axisW=56;
     const plotW=Math.max(20,el.clientWidth-axisW);
     shown.forEach(x=>{
-      const st=lvlStyleOf({key:x.key,dc:x.color,ds:x.style,cat:'gex',w:x.w});
+      const st=lvlStyleOf({key:x.key,dc:x.color,ds:x.style,cat:'gex',w:x.w},alt);
       const priceKey=(+x.price).toFixed(2);
       let tagEl=host.querySelector('.lvltag[data-gexkey="'+x.key+'"]');
       // priceToCoordinate depends on the current viewport too, so this is recomputed on every
@@ -10540,11 +10551,15 @@ function measureTopbarBottom(){
 }
 measureTopbarBottom();
 addEventListener('resize',measureTopbarBottom);
-// Pulls a proposed {x,y} back onto screen (never off any edge, never above the topbar) without
-// touching w/h — used after every drag/resize computation, in initSidePopout below.
-function clampSideXY(x,y,w,ht){
-  const vw=innerWidth,vh=innerHeight,top=_topbarBottom;
-  if(x<0)x=0;else if(x+w>vw)x=Math.max(0,vw-w);
+// Pulls a proposed {x,y} back inside its allowed box (never off any edge, never above the
+// topbar) without touching w/h — used after every drag/resize computation, in initSidePopout
+// below. hBounds, when given, overrides the LEFT/RIGHT edges (Pane 2's own popout is confined to
+// Pane 2's own column — see boundsSel below — so it can never be dragged over onto Pane 1's);
+// omitted (every call for the main popout) falls back to the full viewport, unchanged.
+function clampSideXY(x,y,w,ht,hBounds){
+  const left=hBounds?hBounds.left:0,right=hBounds?hBounds.right:innerWidth;
+  const vh=innerHeight,top=_topbarBottom;
+  if(x<left)x=left;else if(x+w>right)x=Math.max(left,right-w);
   if(y<top)y=top;else if(y+ht>vh)y=Math.max(top,vh-ht);
   return{x,y};
 }
@@ -10567,6 +10582,18 @@ function initSidePopout(o){
   // that follows pointerup either way still fires, so this is what tells the onclick handler
   // below "that was a drag just now, not a click" and to skip the toggle once.
   let btnDragged=false;
+  // Pane 2's popout is confined to Pane 2's own column (o.boundsSel='#pw1') so it can never be
+  // dragged or resized over onto Pane 1's — measured fresh (not cached across the session, since
+  // the column's width/position only exist while the 2-chart layout is actually active) but only
+  // once per gesture (see each pointerdown below), never per drag-frame. Returns null — "use the
+  // full viewport" in clampSideXY — for the main popout (no boundsSel) or if the target isn't
+  // currently visible.
+  function hBounds(){
+    if(!o.boundsSel)return null;
+    const el=$(o.boundsSel);if(!el)return null;
+    const r=el.getBoundingClientRect();
+    return r.width>0?{left:r.left,right:r.right}:null;
+  }
   function applyPos(){
     if(sideIsMobile()){
       // The mobile media query owns position/size via !important; clearing these inline styles
@@ -10576,21 +10603,27 @@ function initSidePopout(o){
       btn.style.transform='';
       return;
     }
-    const vw=innerWidth,vh=innerHeight;
+    const vw=innerWidth,vh=innerHeight,bx=hBounds();
+    const rightEdge=bx?bx.right:vw;
+    // A popout confined to a column (bx set) can never be wider than that column itself — no
+    // position could then satisfy both edges at once — so its own width ceiling replaces the
+    // full-viewport one here, same idea as the topbar/viewport ceiling on height.
+    const maxW=bx?Math.max(SIDE_MINW,(bx.right-bx.left)-24):Math.max(SIDE_MINW,vw-40);
     if(cfg[o.cfgX]==null){
-      cfg[o.cfgW]=Math.min(cfg[o.cfgW],Math.max(SIDE_MINW,vw-40));
+      cfg[o.cfgW]=Math.min(cfg[o.cfgW],maxW);
       cfg[o.cfgH]=Math.min(cfg[o.cfgH],Math.max(SIDE_MINH,vh-_topbarBottom-40));
-      const def=clampSideXY(vw-20-cfg[o.cfgW],_topbarBottom+8,cfg[o.cfgW],cfg[o.cfgH]);
+      const def=clampSideXY(rightEdge-20-cfg[o.cfgW],_topbarBottom+8,cfg[o.cfgW],cfg[o.cfgH],bx);
       cfg[o.cfgX]=def.x;cfg[o.cfgY]=def.y;
       saveCfg();
     }else{
       // A size/position saved from a wider/taller window (or a since-resized one) is re-clamped
       // to whatever viewport actually exists NOW, every call - not just computed once - so the
       // panel (and btn, which tracks its corner) can never end up wider than the window, or
-      // parked off-screen (or riding up over the topbar), with no way back.
-      const clampedW=Math.min(cfg[o.cfgW],Math.max(SIDE_MINW,vw-40));
+      // parked off-screen (or riding up over the topbar, or — Pane 2's popout — over onto Pane
+      // 1's own column), with no way back.
+      const clampedW=Math.min(cfg[o.cfgW],maxW);
       const clampedH=Math.min(cfg[o.cfgH],Math.max(SIDE_MINH,vh-_topbarBottom-40));
-      const pos=clampSideXY(cfg[o.cfgX],cfg[o.cfgY],clampedW,clampedH);
+      const pos=clampSideXY(cfg[o.cfgX],cfg[o.cfgY],clampedW,clampedH,bx);
       if(clampedW!==cfg[o.cfgW]||clampedH!==cfg[o.cfgH]||pos.x!==cfg[o.cfgX]||pos.y!==cfg[o.cfgY]){
         cfg[o.cfgW]=clampedW;cfg[o.cfgH]=clampedH;cfg[o.cfgX]=pos.x;cfg[o.cfgY]=pos.y;saveCfg();
       }
@@ -10636,12 +10669,13 @@ function initSidePopout(o){
     if(e.button!==0||sideIsMobile()||e.target.closest('button'))return;
     e.preventDefault();
     const sx=e.clientX,sy=e.clientY,sX=cfg[o.cfgX],sY=cfg[o.cfgY];
+    const gb=hBounds();   // measured once for the whole gesture, not per pointermove frame
     dragCount++;
     document.body.style.userSelect='none';
     applyPos();
     try{head.setPointerCapture(e.pointerId);}catch(_){}
     const mv=e2=>{
-      const pos=clampSideXY(sX+(e2.clientX-sx),sY+(e2.clientY-sy),cfg[o.cfgW],cfg[o.cfgH]);
+      const pos=clampSideXY(sX+(e2.clientX-sx),sY+(e2.clientY-sy),cfg[o.cfgW],cfg[o.cfgH],gb);
       cfg[o.cfgX]=Math.round(pos.x);cfg[o.cfgY]=Math.round(pos.y);
       applyPos();
     };
@@ -10660,10 +10694,11 @@ function initSidePopout(o){
   // movement past the threshold) still toggles hide/show as normal.
   (function(){
     const THRESH=4;
-    let live=false,dragged=false,sx=0,sy=0,sX=0,sY=0;
+    let live=false,dragged=false,sx=0,sy=0,sX=0,sY=0,gb=null;
     btn.addEventListener('pointerdown',e=>{
       if(e.button!==0||sideIsMobile())return;
       sx=e.clientX;sy=e.clientY;sX=cfg[o.cfgX];sY=cfg[o.cfgY];live=true;dragged=false;
+      gb=hBounds();   // measured once for the whole gesture, not per pointermove frame
       try{btn.setPointerCapture(e.pointerId);}catch(_){}
     });
     btn.addEventListener('pointermove',e=>{
@@ -10674,7 +10709,7 @@ function initSidePopout(o){
         dragged=true;btnDragged=true;dragCount++;
         document.body.style.userSelect='none';
       }
-      const pos=clampSideXY(sX+dx,sY+dy,cfg[o.cfgW],cfg[o.cfgH]);
+      const pos=clampSideXY(sX+dx,sY+dy,cfg[o.cfgW],cfg[o.cfgH],gb);
       cfg[o.cfgX]=Math.round(pos.x);cfg[o.cfgY]=Math.round(pos.y);
       applyPos();
     });
@@ -10697,11 +10732,15 @@ function initSidePopout(o){
   // popouts on screen at once never fight over each other's corners.
   side.querySelectorAll('.sideRsz').forEach(h=>{
     const corner=h.dataset.corner;
-    let live=false,sx=0,sy=0,sX=0,sY=0,sW=0,sH=0;
+    let live=false,sx=0,sy=0,sX=0,sY=0,sW=0,sH=0,gb=null,maxW=SIDE_MAXW;
     h.addEventListener('pointerdown',e=>{
       if(e.button!==0||sideIsMobile())return;
       e.preventDefault();
       sx=e.clientX;sy=e.clientY;sX=cfg[o.cfgX];sY=cfg[o.cfgY];sW=cfg[o.cfgW];sH=cfg[o.cfgH];
+      gb=hBounds();   // measured once for the whole gesture, not per pointermove frame
+      // A popout confined to a column (gb set) can never grow wider than that column — same
+      // reasoning as applyPos()'s own maxW.
+      maxW=gb?Math.max(SIDE_MINW,Math.min(SIDE_MAXW,(gb.right-gb.left)-24)):SIDE_MAXW;
       live=true;dragCount++;
       document.body.style.userSelect='none';document.body.style.cursor=getComputedStyle(h).cursor;
       try{h.setPointerCapture(e.pointerId);}catch(_){}
@@ -10715,13 +10754,14 @@ function initSidePopout(o){
       else if(corner==='bl'){x=sX+dx;w=sW-dx;ht=sH+dy;}
       else if(corner==='br'){w=sW+dx;ht=sH+dy;}
       if(w<SIDE_MINW){if(corner==='tl'||corner==='bl')x-=(SIDE_MINW-w);w=SIDE_MINW;}
-      if(w>SIDE_MAXW){if(corner==='tl'||corner==='bl')x+=(w-SIDE_MAXW);w=SIDE_MAXW;}
+      if(w>maxW){if(corner==='tl'||corner==='bl')x+=(w-maxW);w=maxW;}
       if(ht<SIDE_MINH){if(corner==='tl'||corner==='tr')y-=(SIDE_MINH-ht);ht=SIDE_MINH;}
       if(ht>SIDE_MAXH){if(corner==='tl'||corner==='tr')y+=(ht-SIDE_MAXH);ht=SIDE_MAXH;}
-      // Pull the box back on-screen (and out from under the topbar) without touching its size —
-      // a corner drag that overshoots the edge would otherwise be able to push the panel's
-      // origin off-screen even though its width/height are already within bounds.
-      const pos=clampSideXY(x,y,w,ht);
+      // Pull the box back on-screen (and out from under the topbar, and — Pane 2's popout —
+      // back into Pane 2's own column) without touching its size — a corner drag that overshoots
+      // the edge would otherwise be able to push the panel's origin outside those bounds even
+      // though its width/height are already within their own limits.
+      const pos=clampSideXY(x,y,w,ht,gb);
       cfg[o.cfgX]=Math.round(pos.x);cfg[o.cfgY]=Math.round(pos.y);cfg[o.cfgW]=Math.round(w);cfg[o.cfgH]=Math.round(ht);
       applyPos();
     });
@@ -10776,6 +10816,10 @@ const sidePop1=initSidePopout({sideSel:'#side',btnSel:'#sbBtn',headSel:'#sideHea
 const sidePop2=initSidePopout({sideSel:'#side2',btnSel:'#sbBtn2',headSel:'#sideHead2',iconSel:'#sbIcon2',
   cfgX:'side2X',cfgY:'side2Y',cfgW:'side2W',cfgH:'side2H',cfgHidden:'sb2',
   showTitle:'Show Pane 2 side panel',hideTitle:'Hide Pane 2 side panel',mobileToggle:false,
+  // Confines this popout to Pane 2's own chart column (#pw1) — it can never be dragged or
+  // resized over onto Pane 1's, unlike the main popout above (no boundsSel — free to roam the
+  // whole window, unchanged from before Pane 2's popout existed).
+  boundsSel:'#pw1',
   onResize:()=>{if(gex2Heat)renderGexHeat(true);}});
 // Back-compat wrappers: applySidePos()/setSidebar() are still called bare, with no args, from a
 // few places written before this was generalized to a factory (boot's own initial layout call,
