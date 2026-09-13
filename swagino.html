@@ -169,7 +169,7 @@ input[type=checkbox]{accent-color:var(--pivot)}
 .main{display:grid;grid-template-columns:1fr;min-height:0}
 /* #sbBtn is now the one toggle for both directions - #sbIcon mirrors horizontally when the
    panel is hidden, so the same button reads as "bring it back" instead of "hide" again. */
-#sbIcon.flip{transform:scaleX(-1)}
+#sbIcon.flip,#sbIcon2.flip{transform:scaleX(-1)}
 .chartcol{display:flex;flex-direction:column;min-width:0;background:var(--ink)}
 /* Solid --chartbg (opaque, matches topbar/side/etc exactly) — the Backdrop is a single flat
    colour, so a translucent tint over it would only mix that colour toward near-black and
@@ -467,8 +467,8 @@ input[type=checkbox]{accent-color:var(--pivot)}
 /* the tab label already says "Levels" — this row now only carries the confluence info icon,
    so it sits at the corner instead of a centered heading with nothing left to head */
 .sechead-r{justify-content:flex-end;margin:6px 0 4px}
-#gexStatus{font-family:var(--mono);font-size:10.5px;color:var(--dim);line-height:1.6;margin:6px 0}
-#gexStatus b{color:var(--text)}
+#gexStatus,#gexStatus2{font-family:var(--mono);font-size:10.5px;color:var(--dim);line-height:1.6;margin:6px 0}
+#gexStatus b,#gexStatus2 b{color:var(--text)}
 .hint{font-size:11px;color:var(--faint);line-height:1.5;margin:4px 0 8px}
 .row{display:flex;gap:8px;align-items:center;margin:6px 0;flex-wrap:wrap}
 .row label{font-size:11px;color:var(--dim);min-width:110px}
@@ -922,6 +922,10 @@ body.tab-hidden .tbheart,body.tab-hidden .tbjet,body.tab-hidden .bspin{animation
 @media (max-width:700px){
   .main{grid-template-columns:1fr;position:relative}
   .side{display:none}
+  /* Pane 2's popout is a desktop/advanced-layout feature (it only exists while a 2-chart,
+     unlinked layout is active, itself impractical at phone width) — always off at this
+     breakpoint, never promoted to the full-screen .mobopen treatment the main popout gets. */
+  #side2,#sbBtn2{display:none!important}
   .main.mobopen .side{display:flex!important;position:absolute!important;inset:0!important;
     left:auto!important;top:auto!important;width:100%!important;height:100%!important;
     transform:none!important;opacity:1!important;pointer-events:auto!important;
@@ -987,7 +991,7 @@ input[type=checkbox]{accent-color:var(--accent)}
    reads as part of the panel's own chrome rather than a separate control glued on top of it.
    display:flex centering is load-bearing, not decorative: a bare &lt;button&gt; has its own default
    line-height/padding that left the icon measurably off-center inside the 22x22 box before this. */
-#sbBtn.sbFloat{position:fixed;left:0;top:0;z-index:56;width:22px;height:22px;
+#sbBtn.sbFloat,#sbBtn2.sbFloat{position:fixed;left:0;top:0;z-index:56;width:22px;height:22px;
   display:flex!important;align-items:center;justify-content:center;
   padding:0!important;margin:0;border-radius:7px!important;
   background:none!important;border:none!important;box-shadow:none!important;
@@ -997,8 +1001,8 @@ input[type=checkbox]{accent-color:var(--accent)}
      the one topbar icon that stopped following the user's Axis Text Color setting while its
      Layout/Alerts/Settings siblings kept tracking it. Restated here explicitly. */
   color:var(--axistext)}
-#sbBtn.sbFloat:hover{background:rgba(255,255,255,.10)!important}
-#sbBtn.sbFloat svg{width:16px!important;height:16px!important}
+#sbBtn.sbFloat:hover,#sbBtn2.sbFloat:hover{background:rgba(255,255,255,.10)!important}
+#sbBtn.sbFloat svg,#sbBtn2.sbFloat svg{width:16px!important;height:16px!important}
 /* ── buttons ── */
 .tbtn{
   background:var(--panel2); color:var(--text); border:none;
@@ -1627,6 +1631,9 @@ table.lv td{padding:6px 10px}
     <button class="tbtn setupIconBtn" id="alertBellBtn" title="Alerts"><svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2.5c-2.2 0-4 1.8-4 4v2.3c0 .5-.2 1-.5 1.4L4 12.5A1 1 0 0 0 4.8 14h10.4a1 1 0 0 0 .8-1.5l-1.5-2.3c-.3-.4-.5-.9-.5-1.4V6.5c0-2.2-1.8-4-4-4Z"/><path d="M8.2 16.5a1.8 1.8 0 0 0 3.6 0"/></svg><span id="alertBellBadge" class="albadge" style="display:none">0</span></button>
     <button class="tbtn setupIconBtn" id="setupBtn" title="Settings"><svg viewBox="0 0 90 90" width="20" height="20" fill="currentColor"><path d="M 79.199 45 c 0 -2.017 -0.185 -3.99 -0.52 -5.912 l 10.238 -8.021 l -9.893 -17.135 l -12.065 4.856 c -3.016 -2.53 -6.473 -4.552 -10.242 -5.926 L 54.893 0 H 35.107 l -1.825 12.862 c -3.769 1.375 -7.225 3.397 -10.242 5.926 l -12.065 -4.856 L 1.083 31.067 l 10.238 8.021 c -0.335 1.921 -0.52 3.894 -0.52 5.912 s 0.185 3.99 0.52 5.912 L 1.083 58.933 l 9.893 17.135 l 12.065 -4.856 c 3.016 2.53 6.473 4.552 10.242 5.926 L 35.107 90 h 19.785 l 1.825 -12.862 c 3.769 -1.375 7.225 -3.397 10.242 -5.926 l 12.065 4.856 l 9.893 -17.135 l -10.238 -8.021 C 79.014 48.99 79.199 47.017 79.199 45 z M 45 66.659 c -11.962 0 -21.659 -9.697 -21.659 -21.659 S 33.038 23.341 45 23.341 S 66.659 33.038 66.659 45 S 56.962 66.659 45 66.659 z"/></svg></button>
     <button class="sbFloat" id="sbBtn" title="Hide side panel"><svg id="sbIcon" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="3.5 3 8 8 3.5 13"/><polyline points="7.5 3 12 8 7.5 13"/></svg></button>
+    <!-- Pane 2's own show/hide handle for its own popout — only ever visible while Pane 2 is
+         unlinked and on screen (see setPaneN()/applyPaneSym()). -->
+    <button class="sbFloat" id="sbBtn2" title="Hide Pane 2 side panel" style="display:none"><svg id="sbIcon2" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="3.5 3 8 8 3.5 13"/><polyline points="7.5 3 12 8 7.5 13"/></svg></button>
   </div>
   <div class="main">
     <div class="chartcol">
@@ -1647,7 +1654,7 @@ table.lv td{padding:6px 10px}
       </div>
            </div>
     </div>
-    <div class="side">
+    <div class="side" id="side">
       <div class="sideHead" id="sideHead">
       <div class="tabs">
         <span class="tabpill" aria-hidden="true"></span>
@@ -1670,6 +1677,33 @@ table.lv td{padding:6px 10px}
       <div class="pane" id="pane-scanner">
         <div id="scanStatus" class="hint" style="margin:8px 10px 2px">not loaded yet</div>
         <div id="scanCards"></div>
+      </div>
+      <div class="sideRsz sideRsz-tl" data-corner="tl"></div>
+      <div class="sideRsz sideRsz-tr" data-corner="tr"></div>
+      <div class="sideRsz sideRsz-bl" data-corner="bl"></div>
+      <div class="sideRsz sideRsz-br" data-corner="br"></div>
+    </div>
+    <!-- Pane 2's own Levels/GEX popout — only ever shown while Pane 2 is unlinked from Pane 1
+         (its own ticker). Reuses the exact same .side/.sbFloat/.sideRsz/.tabs/.pane CSS as the
+         main popout above (same classes, so every visual rule applies with zero duplication) —
+         only the ids differ, so JS can address this instance on its own. No Scanner/Log tabs:
+         those are app-wide, not per-symbol, so Pane 2 (which is always a specific ticker) has
+         nothing of its own to show there. -->
+    <div class="side" id="side2" style="display:none">
+      <div class="sideHead" id="sideHead2">
+      <div class="tabs">
+        <span class="tabpill" aria-hidden="true"></span>
+        <button class="on" data-pane="levels2"><svg class="tabic" viewBox="0 0 512 512" width="16" height="16"><path d="M4.65 0.08C6.36 0.08 8.06 0.08 9.77 0.08C10.75 1.74 13.08 2.38 13.84 4.57C14.93 7.66 14.2 11.96 14.2 15.2C14.2 22.52 14.2 29.85 14.2 37.17C14.2 61.95 14.2 86.74 14.2 111.52C14.2 205.35 14.2 299.17 14.2 393C14.2 417.94 14.2 442.88 14.2 467.81C14.2 474.67 14.2 481.53 14.2 488.39C14.2 491.13 13.47 495.12 14.73 497.56C18.34 498.42 22.7 497.81 26.42 497.81C34.83 497.81 43.25 497.81 51.67 497.81C77.85 497.81 104.04 497.81 130.22 497.81C213.45 497.81 296.68 497.81 379.91 497.81C409.83 497.81 439.76 497.81 469.68 497.81C478.26 497.81 486.83 497.81 495.4 497.81C499.03 497.81 503.98 496.95 507.43 498.16C509.62 498.92 510.26 501.23 511.92 502.23C511.92 503.93 511.92 505.63 511.92 507.34C510.39 508.86 508.87 510.39 507.34 511.92C339.78 511.92 172.22 511.92 4.66 511.92C3.13 510.4 1.61 508.87 0.08 507.34C0.08 339.78 0.08 172.22 0.08 4.65C1.6 3.13 3.13 1.6 4.65 0.08ZM443.5 48.05C412 81.22 378.38 112.41 346.42 145.14C338.8 152.94 331.01 160.58 323.28 168.27C320.6 170.94 317.31 175.53 312.94 174.57C307.35 173.34 298.91 162.48 294.63 158.23C281.1 144.8 267.62 131.31 254.17 117.81C250.51 114.13 240.41 102.26 236.37 100.76C231.54 104.49 227.41 109.59 223.08 113.9C214.03 122.93 204.98 131.96 195.97 141.02C168.36 168.75 140.62 196.34 112.97 224.02C102.72 234.28 92.8 245.1 82.07 254.85C78.63 257.98 72.74 257.99 70.39 253.43C67.54 247.91 72.66 243.92 76.14 240.49C85.48 231.29 94.62 221.88 103.96 212.68C136.86 180.27 168.89 146.97 201.94 114.72C209.98 106.87 217.84 98.82 225.79 90.88C228.79 87.89 232.15 82.88 236.83 82.98C240.13 83.06 242.28 85.62 244.41 87.81C248.63 92.14 252.95 96.41 257.26 100.66C270.54 113.72 283.55 127.06 296.81 140.16C300.26 143.57 310.53 155.35 313.98 156.89C353.78 117.14 393.59 77.39 433.39 37.64C430.13 36.41 425.5 37.19 421.99 37.19C414.2 37.19 406.4 37.19 398.61 37.19C392.96 37.18 387.7 33.83 390.01 27.38C392.09 21.54 399.89 22.97 404.69 22.97C416.54 22.97 428.38 22.97 440.23 22.97C444.73 22.97 451.34 21.7 455.3 24.2C459.97 27.15 458.44 34.85 458.44 39.51C458.44 52.45 458.44 65.38 458.44 78.32C458.44 83.36 459.26 90.15 453.07 91.86C446.9 93.56 444.09 87.48 444.08 82.53C444.08 74.42 444.08 66.32 444.08 58.21C444.08 55.33 444.98 50.49 443.5 48.05ZM458.9 198.02C465.37 200.56 480.29 194.92 484.68 201.48C486.97 204.89 486.02 210.01 486.02 213.92C486.02 223.58 486.02 233.24 486.02 242.91C486.02 276.89 486.02 310.86 486.02 344.84C486.02 353.72 486.02 362.61 486.02 371.49C486.02 375.27 486.93 380.21 484.74 383.52C480.38 390.15 465.48 384.68 458.93 387.04C457.61 391.41 458.54 397.28 458.54 401.88C458.54 412.33 458.54 422.77 458.54 433.21C458.54 438.95 459.36 448.34 450.98 448.01C443.04 447.69 444.12 438.23 444.12 432.75C444.12 422.3 444.12 411.86 444.12 401.42C444.12 397.08 445.2 390.99 443.77 386.92C436.97 385.51 420.87 389.96 417.39 382.41C415.84 379.06 416.82 373.7 416.82 370.09C416.82 360.89 416.82 351.7 416.82 342.5C416.82 309.77 416.82 277.04 416.82 244.31C416.82 234.18 416.82 224.05 416.82 213.92C416.82 210.13 415.79 204.64 418.14 201.4C422.66 195.21 437.23 200.15 443.86 198.02C445.07 193.06 444.1 186.78 444.1 181.65C444.1 170.43 444.1 159.21 444.1 147.99C444.1 142.11 442.78 131.82 451.45 131.9C459.94 131.98 458.48 142.22 458.48 147.99C458.48 159.21 458.48 170.43 458.48 181.65C458.48 186.73 457.45 193.2 458.9 198.02ZM365.41 289.57C371.68 290.2 386.93 287.3 390.89 292.51C393.06 295.37 392.26 299.85 392.26 303.23C392.26 311.33 392.26 319.44 392.26 327.54C392.26 356.84 392.26 386.14 392.26 415.44C392.26 422.93 392.26 430.41 392.26 437.89C392.26 441.05 392.89 444.96 390.85 447.64C387 452.71 371.55 450.01 365.41 450.52C363.7 454.96 364.96 468.02 364.95 473.42C364.93 477.86 363 482.29 357.93 482.44C353.12 482.58 350.72 478.68 350.61 474.36C350.41 466.76 351.44 458.76 350.45 451.23C344.27 447.51 329.1 454.68 324.35 447.4C322.24 444.17 323.02 439.69 323.02 436.02C323.02 427.76 323.02 419.5 323.02 411.24C323.02 383.03 323.02 354.82 323.02 326.6C323.02 318.97 323.02 311.33 323.02 303.69C323.02 300.21 322.37 296.19 324.17 293.06C328.56 285.44 344.13 292.83 350.29 289.2C351.78 284.27 350.6 269.89 350.6 263.95C350.6 245.4 350.6 226.85 350.6 208.31C350.6 201.74 347.49 182.98 357.93 183.37C368.02 183.75 364.95 202.04 364.95 208.77C364.95 227.48 364.95 246.18 364.95 264.88C364.95 270.66 363.61 284.82 365.41 289.57ZM471.77 215.77C458.18 215.77 444.59 215.77 431.01 215.77C431.01 268.91 431.01 322.04 431.01 375.17C444.59 375.17 458.18 375.17 471.77 375.17C471.77 322.04 471.77 268.91 471.77 215.77ZM177.91 267.77C184.54 269.29 199.87 265.06 203.84 271.48C205.74 274.55 205.03 278.72 205.03 282.18C205.03 290.13 205.03 298.08 205.03 306.03C205.03 335.8 205.03 365.57 205.03 395.34C205.03 403.91 205.03 412.48 205.03 421.06C205.03 424.74 205.85 429.36 203.69 432.59C199.32 439.14 184.45 433.68 177.91 436.05C176.03 442.55 181.6 460.45 170.43 460.6C158.95 460.75 164.66 442.48 162.85 436.02C156.15 434.26 141.56 438.75 137.11 432.64C134.97 429.69 135.82 424.97 135.82 421.52C135.82 412.64 135.82 403.76 135.82 394.87C135.82 365.73 135.82 336.58 135.82 307.43C135.82 299.33 135.82 291.22 135.82 283.12C135.82 279.91 134.99 275.22 136.44 272.26C140.1 264.78 156.07 269.31 162.95 267.79C163.68 264.54 163.19 260.74 163.19 257.4C163.19 249.92 163.19 242.44 163.19 234.96C163.19 229.93 164.06 223.95 170.43 223.95C176.81 223.95 177.65 229.92 177.65 234.96C177.65 242.44 177.65 249.92 177.65 257.4C177.65 260.71 177.11 264.59 177.91 267.77ZM271.43 306.43C277.98 308.26 291.64 303.93 296.52 308.77C300.15 312.37 298.8 319.16 298.8 323.8C298.8 336.58 298.8 349.36 298.8 362.14C298.8 366.75 300.24 374.06 296.51 377.63C291.5 382.44 278.05 378.47 271.43 380.03C270 386.46 271.14 394.34 271.14 400.95C271.14 415.29 271.14 429.63 271.14 443.97C271.14 450.09 273.73 464.12 263.95 463.97C254.39 463.83 256.96 450.08 256.96 443.97C256.96 429.16 256.96 414.35 256.96 399.55C256.96 394.33 258.24 384.53 256.59 379.91C250.27 379.06 236.06 382.08 231.54 377.49C228.07 373.96 229.4 367.11 229.4 362.61C229.4 349.67 229.4 336.74 229.4 323.8C229.4 319.19 227.93 311.75 231.97 308.42C236.98 304.29 250.19 307.86 256.68 306.5C258.29 300.04 256.96 287.86 256.96 280.78C256.96 276.25 258.38 271.16 263.95 271.07C269.37 270.98 271.13 275.81 271.14 280.31C271.16 288.29 269.85 298.78 271.43 306.43ZM84.4 314.91C90.51 315.25 106.03 312.8 109.89 317.72C111.91 320.3 111.38 324 111.38 327.07C111.38 333.93 111.38 340.79 111.38 347.65C111.38 374.61 111.38 401.57 111.38 428.54C111.38 436.02 111.38 443.5 111.38 450.98C111.38 454.17 111.97 458.08 109.86 460.74C105.73 465.96 90.75 463 84.4 463.68C82.55 469.96 87.81 485.15 76.92 485.3C65.88 485.45 71.2 470.3 69.44 464.02C62.89 461.38 47.8 467.18 43.44 460.39C41.43 457.24 42.09 453.14 42.09 449.58C42.09 442.1 42.09 434.62 42.09 427.13C42.09 401.11 42.09 375.08 42.09 349.05C42.09 342.19 42.09 335.33 42.09 328.47C42.09 325.18 41.48 321.33 43.22 318.37C47.1 311.75 62.82 316.39 69.44 314.68C71.05 307.97 69.73 293.48 69.73 285.93C69.73 281.21 71.1 275.98 76.92 276.05C82.79 276.12 84 281.75 84 286.39C84 293.46 82.68 308.87 84.4 314.91ZM190.86 285.32C177.26 285.32 163.65 285.32 150.05 285.32C150.05 331.6 150.05 377.88 150.05 424.16C163.65 424.16 177.26 424.16 190.86 424.16C190.86 377.88 190.86 331.6 190.86 285.32ZM378.03 306.91C364.45 306.91 350.87 306.91 337.29 306.91C337.29 350.77 337.29 394.63 337.29 438.5C340.41 440.02 345.57 439.08 349.05 439.08C358.02 439.08 369.35 440.41 378.03 438.82C378.03 394.85 378.03 350.88 378.03 306.91ZM284.34 320.99C270.83 320.99 257.32 320.99 243.81 320.99C243.81 335.75 243.81 350.51 243.81 365.27C257.32 365.27 270.83 365.27 284.34 365.27C284.34 350.51 284.34 335.75 284.34 320.99ZM97.07 329.17C83.53 329.17 69.98 329.17 56.43 329.17C56.43 369.16 56.43 409.15 56.43 449.15C69.98 449.15 83.53 449.15 97.07 449.15C97.07 409.15 97.07 369.16 97.07 329.17Z" fill="#1c1c1c" fill-rule="evenodd" stroke="#1c1c1c" stroke-width="0.25" stroke-linejoin="round"/><path d="M471.77 215.77C471.77 268.91 471.77 322.04 471.77 375.17C458.18 375.17 444.59 375.17 431.01 375.17C431.01 322.04 431.01 268.91 431.01 215.77C444.59 215.77 458.18 215.77 471.77 215.77ZM284.34 320.99C284.34 335.75 284.34 350.51 284.34 365.27C270.83 365.27 257.32 365.27 243.81 365.27C243.81 350.51 243.81 335.75 243.81 320.99C257.32 320.99 270.83 320.99 284.34 320.99ZM97.07 329.17C97.07 369.16 97.07 409.15 97.07 449.15C83.53 449.15 69.98 449.15 56.43 449.15C56.43 409.15 56.43 369.16 56.43 329.17C69.98 329.17 83.53 329.17 97.07 329.17Z" fill="#36b595" fill-rule="evenodd" stroke="#36b595" stroke-width="0.25" stroke-linejoin="round"/><path d="M190.86 285.32C190.86 331.6 190.86 377.88 190.86 424.16C177.26 424.16 163.65 424.16 150.05 424.16C150.05 377.88 150.05 331.6 150.05 285.32C163.65 285.32 177.26 285.32 190.86 285.32ZM378.03 306.91C378.03 350.88 378.03 394.85 378.03 438.82C369.35 440.41 358.02 439.08 349.05 439.08C345.57 439.08 340.41 440.02 337.29 438.5C337.29 394.63 337.29 350.77 337.29 306.91C350.87 306.91 364.45 306.91 378.03 306.91Z" fill="#e34b43" fill-rule="evenodd" stroke="#e34b43" stroke-width="0.25" stroke-linejoin="round"/></svg>Levels</button>
+        <button data-pane="gex2"><svg class="tabic" viewBox="0 0 64 64" width="16" height="16"><circle cx="32" cy="32" r="30" fill="#2d2d2d" stroke="#B8860B" stroke-width="2"/><rect x="32" y="16.5" width="13" height="3" fill="#009959" opacity="0.9" rx="1"/><rect x="32" y="22.5" width="6" height="3" fill="#009959" opacity="0.9" rx="1"/><rect x="32" y="28.5" width="18" height="3" fill="#009959" opacity="0.9" rx="1"/><rect x="32" y="34.5" width="10" height="3" fill="#009959" opacity="0.9" rx="1"/><rect x="32" y="40.5" width="8" height="3" fill="#009959" opacity="0.9" rx="1"/><rect x="32" y="46.5" width="4" height="3" fill="#009959" opacity="0.9" rx="1"/><rect x="19" y="16.5" width="13" height="3" fill="#cc0000" opacity="0.9" rx="1"/><rect x="23" y="22.5" width="9" height="3" fill="#cc0000" opacity="0.9" rx="1"/><rect x="24" y="28.5" width="8" height="3" fill="#cc0000" opacity="0.9" rx="1"/><rect x="17" y="34.5" width="15" height="3" fill="#cc0000" opacity="0.9" rx="1"/><rect x="21" y="40.5" width="11" height="3" fill="#cc0000" opacity="0.9" rx="1"/><rect x="27" y="46.5" width="5" height="3" fill="#cc0000" opacity="0.9" rx="1"/><circle cx="48" cy="16" r="2" fill="#B8860B"><animate attributeName="opacity" values="1;0.3;1" dur="1s" repeatCount="indefinite"/></circle></svg>GEX</button>
+      </div>
+      </div>
+      <div class="pane on" id="pane-levels2">
+        <table class="lv" id="lvlTable2"></table>
+      </div>
+      <div class="pane" id="pane-gex2">
+        <div id="gexStatus2">not computed yet</div>
+        <div class="gxheatwrap" id="gexHeatWrap2"><div class="gxheat" id="gexHeat2"></div></div>
+        <div class="gexsum" id="gexSummary2"></div>
       </div>
       <div class="sideRsz sideRsz-tl" data-corner="tl"></div>
       <div class="sideRsz sideRsz-tr" data-corner="tr"></div>
@@ -2212,6 +2246,9 @@ let cfg=Object.assign({proxy:true,quoteS:2,barS:10,
   // (or this is the first run), at which point applySidePos() fills in a real default computed
   // from the actual viewport (never a hardcoded screen size) and these take over from then on.
   sideX:null,sideY:null,sideW:380,sideH:520,
+  // Pane 2's own floating Levels/GEX popout — only ever shown while Pane 2 is unlinked (its own
+  // ticker) — same null-until-first-position convention as sideX/Y above.
+  side2X:null,side2Y:null,side2W:380,side2H:520,
   sym:'QQQ',sess:'eth',split:false,paneN:1,tf0:'5',tf1:'60',rsiH0:76,rsiH1:76,volH0:70,volH1:70,stream:true,satyCfg:null,link:true,sym1:'',tfPresets:true,struct0:false,struct1:false,saty0:false,saty1:false,ribbon0:false,ribbon1:false,
   chartType0:'candles',chartType1:'candles',  // per-pane main series type, same cfg[key+i] pattern as struct0/saty0/ribbon0
   axisTextColor:'#ffffff',  // price/volume/RSI axis tick-label colour (all three share one lightweight-charts layout.textColor)
@@ -5744,9 +5781,12 @@ function positionSessionBands(p){
 }
 // Glowing on-chart labels for confluent levels, re-placed every pan/zoom frame alongside
 // the other overlays so they stay pinned to their price.
-function positionConfLabels(p){
+// srcLevels: same convention as drawLevelsOn — omitted means the shared global `levels`; Pane 2
+// while unlinked passes its own levels2 so its confluence glow is drawn from its own board.
+function positionConfLabels(p,srcLevels){
   const host=$('#tips'+p.idx);if(!host)return;
-  if(p.sym&&p.sym!==cfg.sym){host.querySelectorAll('.conflab').forEach(e=>e.remove());return;}
+  const L=srcLevels||levels;
+  if(!srcLevels&&p.sym&&p.sym!==cfg.sym){host.querySelectorAll('.conflab').forEach(e=>e.remove());return;}
   // These labels breathe on a 4s loop, and this function runs on the 1s tick. Tearing the
   // nodes down and rebuilding them restarts the CSS animation, so the glow never got past
   // the first second of its cycle and read as a stutter instead of a breath. Nodes are now
@@ -5759,7 +5799,7 @@ function positionConfLabels(p){
   // same merge as the price lines: confluent levels on one price get one label, or the
   // cluster prints two glowing names on top of each other at the same y
   const byPx=new Map();
-  levels.filter(l=>l.conf&&show[l.cat]&&lvlStyleOf(l).on).forEach(l=>{
+  L.filter(l=>l.conf&&show[l.cat]&&lvlStyleOf(l).on).forEach(l=>{
     const k=l.price.toFixed(2);
     let g=byPx.get(k);
     if(!g){g={key:k,price:l.price,names:[]};byPx.set(k,g);}
@@ -6920,9 +6960,16 @@ function lvlStyleOf(l){const s=lvlSty[l.key]||{};
   const color=s.color||l.dc||CATCOLOR[l.cat];
   return{color,tc:s.tc||'var(--axistext)',width:s.width||(l.w>=2?2:1),
     style:s.style||l.ds||(l.conf?'solid':'dashed'),size:s.size||10,on:s.on!==false};}
-function drawLevelsOn(p){
+// srcLevels: which levels[] array this pane's lines/tags come from. Omitted (the default, every
+// existing call site) means the shared global `levels` (cfg.sym's board) — Pane 2, while
+// unlinked, passes its OWN levels2 explicitly instead, so its chart draws its own board rather
+// than whatever cfg.sym's board currently is. The p.sym!==cfg.sym guard below only fires for the
+// DEFAULT case: an explicit srcLevels means the caller has already decided this pane and this
+// levels array belong together, so there is nothing to guard against.
+function drawLevelsOn(p,srcLevels){
   if(!p||!p.candles)return;
-  if(p.sym&&p.sym!==cfg.sym){
+  const L=srcLevels||levels;
+  if(!srcLevels&&p.sym&&p.sym!==cfg.sym){
     p.priceLines.forEach(pl=>{try{p.candles.removePriceLine(pl);}catch(e){}});p.priceLines=[];
     if(p.tradeLines){p.tradeLines.forEach(pl=>{try{p.candles.removePriceLine(pl);}catch(e){}});p.tradeLines=[];}
     return;}
@@ -6943,7 +6990,7 @@ function drawLevelsOn(p){
   // is rare and slow-changing, not a live gamma number, so there's no real-time cost to it, and
   // this path already correctly merges it into ONE label with the other family instead of two.
   // renderGexLevels skips any key it finds marked confluent here, so it's never drawn twice.
-  levels.filter(l=>show[l.cat]&&(l.cat!=='gex'||l.conf)).forEach(l=>{
+  L.filter(l=>show[l.cat]&&(l.cat!=='gex'||l.conf)).forEach(l=>{
     const st=lvlStyleOf(l);if(!st.on)return;
     let axisOn=true,name=l.conf?'':l.label;
     const k=l.price.toFixed(2);
@@ -6984,7 +7031,12 @@ function drawLevelsOn(p){
       title:''}));
   });
 }
-function drawLevels(){visPanes().forEach(p=>{drawLevelsOn(p);positionLvlTags(p);positionConfLabels(p);
+function drawLevels(){visPanes().forEach(p=>{
+  // Pane 2 while unlinked owns its own board entirely (see computeLevels2(), which calls
+  // drawLevelsOn(panes[1],levels2) directly) — the shared sweep below must not also touch it
+  // with cfg.sym's `levels`, or the two would race to clear/redraw the same price lines.
+  if(p.idx===1&&cfg.link===false)return;
+  drawLevelsOn(p);positionLvlTags(p);positionConfLabels(p);
   deoverlapLabels($('#tips'+p.idx));drawLevelSegments(p);});drawAlertLines();
   // GEX is excluded from drawLevelsOn's own pass (see there) and normally kept current by
   // parseGexRows calling this directly whenever GEX's OWN data changes. Also reconciling it here
@@ -7020,9 +7072,13 @@ function drawLevels(){visPanes().forEach(p=>{drawLevelsOn(p);positionLvlTags(p);
    rejected it), there is no MaxG entry and no level is CONFLUENCE — that absence is correct, not
    a gap: forcing a "best available" pick from evidence that doesn't actually support one would be
    exactly the unsupported-assumption problem this rework exists to remove. */
-function computeConfluence(){
-  levels.forEach(l=>{l.conf=false;l.confN=0;l.confWith='';});
-  const mag=levels.find(l=>l.key==='MaxG');
+// srcLevels defaults to the shared global `levels` (cfg.sym's board, every existing call site) —
+// Pane 2's own computeLevels2() passes its own levels2 instead, so its MaxG pick is entirely its
+// own board's, never cfg.sym's.
+function computeConfluence(srcLevels){
+  const L=srcLevels||levels;
+  L.forEach(l=>{l.conf=false;l.confN=0;l.confWith='';});
+  const mag=L.find(l=>l.key==='MaxG');
   if(mag){
     mag.conf=true;mag.confN=1;
     mag.confWith="SWAGINO's GEX board currently ranks this the single strongest dealer-gamma magnet on the chain.";
@@ -7043,6 +7099,9 @@ function catShown(){
 function setCat(k,on){
   cfg.catOn=Object.assign({},catShown(),{[k]:!!on});
   saveCfg();drawLevels();renderLevelTable();
+  // Category visibility (catShown()) is shared app-wide, not per-board — Pane 2's own board (if
+  // active) needs the same instant redraw drawLevels()/renderLevelTable() above just gave Pane 1.
+  if(cfg.paneN>=2&&cfg.link===false){redrawPane2Levels();renderLevelTable2();}
 }
 
 /* ================================ Price Alerts ==========================================
@@ -7988,14 +8047,20 @@ function positionSatyInfo(p){
 // today) against having enough bars for the histogram to mean anything.
 const INST_LOOKBACK_DAYS=25;
 const INST_MIN_RTH_BARS=40;
-function computeInstitutionalLevels(push){
-  // isFinite(lastPx) alone is NOT a safe null-check: isFinite(null)===true (null coerces to 0
-  // for the comparison), so with lastPx freshly reset to null this guard would otherwise let
-  // every positive-priced bin register as "above" a phantom $0 reference — a Ceiling built from
-  // the WHOLE lookback with no real Floor, not the "nothing yet" this guard is meant to produce.
-  if(lastPx==null||!isFinite(lastPx))return;
+// dailyRowsSrc/bars5Src/spotSrc default to the shared globals (cfg.sym's own data/price) — every
+// existing call site. Pane 2's own computeLevels2() passes its OWN altState[1].data.daily/bars5
+// and its own last-known price instead, so its Ceiling/Floor histogram is built entirely from its
+// own symbol's history, never cfg.sym's.
+function computeInstitutionalLevels(push,dailyRowsSrc,bars5Src,spotSrc){
+  const rowsSrc=dailyRowsSrc||dailyRows,barsSrc=bars5Src||bars5;
+  const spot=spotSrc==null?lastPx:spotSrc;
+  // isFinite(spot) alone is NOT a safe null-check: isFinite(null)===true (null coerces to 0 for
+  // the comparison), so with spot freshly reset to null this guard would otherwise let every
+  // positive-priced bin register as "above" a phantom $0 reference — a Ceiling built from the
+  // WHOLE lookback with no real Floor, not the "nothing yet" this guard is meant to produce.
+  if(spot==null||!isFinite(spot))return;
   const todayYmd=nowET().ymd;
-  const rows=dailyRows.filter(r=>r.date<todayYmd).slice(-INST_LOOKBACK_DAYS);
+  const rows=rowsSrc.filter(r=>r.date<todayYmd).slice(-INST_LOOKBACK_DAYS);
   if(rows.length<5)return;   // too little history for the histogram to mean anything yet
   let lo=Infinity,hi=-Infinity;
   rows.forEach(r=>{if(r.low<lo)lo=r.low;if(r.high>hi)hi=r.high;});
@@ -8024,7 +8089,7 @@ function computeInstitutionalLevels(push){
     }
   };
   rows.forEach(r=>{
-    const dayBars=bars5.filter(b=>b.etYmd===r.date&&b.etMin>=570&&b.etMin<960);
+    const dayBars=barsSrc.filter(b=>b.etYmd===r.date&&b.etMin>=570&&b.etMin<960);
     const dayBarVol=dayBars.reduce((s,b)=>s+(b.v||0),0);
     if(dayBars.length>=INST_MIN_RTH_BARS&&dayBarVol>0){
       // Shape from 5-min bars, rescaled to the day's true (dailyRows) total — see comment above.
@@ -8052,7 +8117,7 @@ function computeInstitutionalLevels(push){
   // flip at one point into stability across the bin's whole width.
   const binLo=bi=>lo+bi*binSize,binHi=bi=>lo+(bi+1)*binSize;
   const pickPeak=(above)=>{
-    const side=[...bins.entries()].filter(([bi])=>above?binLo(bi)>=lastPx:binHi(bi)<=lastPx);
+    const side=[...bins.entries()].filter(([bi])=>above?binLo(bi)>=spot:binHi(bi)<=spot);
     if(!side.length)return null;
     const maxV=Math.max(...side.map(([,v])=>v));
     const tied=side.filter(([,v])=>v===maxV).map(([bi])=>bi).sort((a,b)=>a-b);
@@ -8092,6 +8157,49 @@ function computeLevels(){
   computeConfluence();
   drawLevels();renderLevelTable();
   levelsAt=Date.now();lvlStampTick();
+}
+// Pane 2's own Levels board — built the same way as computeLevels() above (same push-based
+// category builders, same Institutional histogram, same MaxG-only confluence), but entirely from
+// Pane 2's OWN unlinked symbol's data (altState[1].data.daily/bars5) and its OWN GEX board
+// (gex2Board, see computeChainGex2()) instead of cfg.sym's. Only ever called while Pane 2 is
+// unlinked (see applyPaneSym()/refreshAlt()) — computeLevels() above is never touched by this.
+let levels2=[];
+function computeLevels2(){
+  if(cfg.paneN<2||cfg.link!==false)return;   // Pane 2 not actually shown+unlinked right now
+  const st=altState[1];
+  if(!st||!st.sym)return;   // not actually unlinked — nothing of Pane 2's own to compute
+  const dailyRows2=st.data.daily||[],bars5_2=st.data.bars5||[];
+  const spot2=bars5_2.length?bars5_2[bars5_2.length-1].c:(dailyRows2.length?dailyRows2[dailyRows2.length-1].close:null);
+  levels2=[];
+  const push=(price,label,cat,w=1,key,dc,ds)=>{if(isFinite(price))levels2.push({price:+price.toFixed(2),label,cat,w,key:key||label,dc,ds});};
+  const todayYmd=nowET().ymd;
+  const past=dailyRows2.filter(r=>{
+    if(r.date>=todayYmd)return false;
+    const dow=new Date(r.date+'T12:00:00Z').getUTCDay();
+    return dow!==0&&dow!==6;
+  });
+  if(past.length){
+    const pd=past[past.length-1];
+    push(pd.high,'Prev H','prev',2,'PrevH');push(pd.low,'Prev L','prev',2,'PrevL');
+  }
+  const tb=bars5_2.filter(b=>b.etYmd===todayYmd);
+  const pre=tb.filter(b=>b.etMin>=240&&b.etMin<570),rth=tb.filter(b=>b.etMin>=570&&b.etMin<960);
+  if(pre.length){push(Math.max(...pre.map(b=>b.h)),'PM high','session',2,'PMH');push(Math.min(...pre.map(b=>b.l)),'PM low','session',2,'PML');}
+  if(rth.length){push(Math.max(...rth.map(b=>b.h)),'High of Day','session',1,'HOD');push(Math.min(...rth.map(b=>b.l)),'Low of Day','session',1,'LOD');}
+  const g=gex2Board;if(g&&g.levels)g.levels.forEach(x=>push(x.price,x.label,'gex',x.w||1,x.key||x.label,x.color,x.style));
+  computeInstitutionalLevels(push,dailyRows2,bars5_2,spot2);
+  computeConfluence(levels2);
+  redrawPane2Levels();
+  renderLevelTable2();
+  levels2At=Date.now();
+}
+let levels2At=0;
+// Draws levels2 onto Pane 2's own chart only — the shared drawLevels() orchestrator deliberately
+// skips Pane 2 while it is unlinked (see there) so the two never race over the same price lines.
+function redrawPane2Levels(){
+  const p=panes[1];if(!p)return;
+  drawLevelsOn(p,levels2);positionLvlTags(p);positionConfLabels(p,levels2);
+  deoverlapLabels($('#tips1'));drawLevelSegments(p);
 }
 let prevConfKeys=new Set();
 // Live "computed HH:MM · Ns ago" stamp, ticked once a second so it is obvious at a glance
@@ -8146,6 +8254,9 @@ function renderLevelTable(){
       const k=el.dataset.key;lvlSty[k]=lvlSty[k]||{};
       lvlSty[k].on=!el.classList.contains('on');LS.lvlSty=lvlSty;
       el.classList.toggle('on');drawLevels();
+      // lvlSty is shared by key name across both boards (see openLevelStyler) — a key like
+      // 'MaxG' can appear on Pane 2's board too, so its own chart needs the same redraw.
+      if(cfg.paneN>=2&&cfg.link===false)redrawPane2Levels();
     };
     el.onclick=toggle;
     el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle();}};
@@ -8155,11 +8266,65 @@ function renderLevelTable(){
     swEl.onclick=e=>{e.stopPropagation();openLevelStyler(swEl,k);};
   });
 }
+// Pane 2's own Levels table twin — same markup/behaviour as renderLevelTable() above, reading
+// levels2/#lvlTable2 and its OWN prevConfKeys2 "fresh" tracker instead (a level KEY like 'MaxG'
+// can be confluent on both boards at once for two different symbols; sharing one tracker would
+// wrongly suppress one board's fresh-pop animation because the other board already saw that key).
+let prevConfKeys2=new Set();
+function renderLevelTable2(){
+  const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const nowConf=new Set();
+  const shown=catShown();
+  const html=CAT_ORDER.map(cat=>{
+    const mine=levels2.filter(l=>l.cat===cat).sort((a,b)=>b.price-a.price);
+    if(!mine.length)return '';
+    const hdr=`<tr class="lvgrp"><td colspan="2">`
+      +`<span class="catlabel${shown[cat]?' on':''}" data-cat="${cat}" role="button" tabindex="0">`
+      +`${CAT_LABEL[cat]||cat}</span></td></tr>`;
+    const body=mine.map(l=>{
+      const st=lvlStyleOf(l);
+      let badge='';
+      if(l.conf){
+        nowConf.add(l.key);
+        const cls='badge conf'+(prevConfKeys2.has(l.key)?'':' fresh');
+        badge=`<span class="${cls}" title="${esc(l.confWith)}">CONFLUENCE</span>`;
+      }
+      return`<tr class="lvrow${shown[cat]?'':' catoff'}">
+      <td><span class="sw lvsw" data-key="${l.key}" style="background:${st.color}"></span><span class="lvlabel${st.on?' on':''}" data-key="${l.key}" role="button" tabindex="0">${esc(l.label)}</span>${badge}</td>
+      <td class="p">${l.price.toFixed(2)}</td></tr>`;}).join('');
+    return hdr+body;
+  }).join('');
+  $('#lvlTable2').innerHTML=html||'<tr><td>no data yet</td></tr>';
+  prevConfKeys2=nowConf;
+  $$('#lvlTable2 .catlabel').forEach(el=>{
+    const toggle=()=>setCat(el.dataset.cat,!el.classList.contains('on'));
+    el.onclick=toggle;
+    el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle();}};
+  });
+  $$('#lvlTable2 .lvlabel').forEach(el=>{
+    const toggle=()=>{
+      const k=el.dataset.key;lvlSty[k]=lvlSty[k]||{};
+      lvlSty[k].on=!el.classList.contains('on');LS.lvlSty=lvlSty;
+      el.classList.toggle('on');redrawPane2Levels();
+      drawLevels();   // lvlSty is shared by key name — Pane 1 needs the same redraw too
+    };
+    el.onclick=toggle;
+    el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle();}};
+  });
+  $$('#lvlTable2 .lvsw').forEach(swEl=>{
+    const k=swEl.dataset.key;
+    swEl.onclick=e=>{e.stopPropagation();openLevelStyler(swEl,k,true);};
+  });
+}
 // Shared by the sidebar swatch above AND every on-chart level tag's own click handler
 // (positionLvlTags/renderGexLevels) — one styler flow, one save path, regardless of which UI
-// element the user actually clicked to get here.
-function openLevelStyler(anchorEl,key){
-  const l=levels.find(x=>x.key===key);if(!l)return;
+// element the user actually clicked to get here. alt=true routes to Pane 2's own board (levels2/
+// #lvlTable2/its own chart redraw) instead of the main one — lvlSty itself (the actual per-key
+// color/width/style the user picks) is intentionally shared by key name across both boards, so a
+// custom style for e.g. "Top magnet" looks the same wherever it appears.
+function openLevelStyler(anchorEl,key,alt){
+  const src=alt?levels2:levels;
+  const l=src.find(x=>x.key===key);if(!l)return;
   const st=lvlStyleOf(l);
   openStyler(anchorEl,{color:st.color,tc:st.tc,width:st.width,style:st.style,textSize:st.size},true,s=>{
     lvlSty[key]=Object.assign(lvlSty[key]||{},{color:s.color,tc:s.tc,width:s.width,style:s.style,size:s.textSize});
@@ -8169,9 +8334,13 @@ function openLevelStyler(anchorEl,key){
     // table, which silently detaches any earlier swatch node from the document — a drag spanning
     // that poll kept "updating" a node nobody could see, reading as the swatch never changing
     // color at all.
-    const liveSw=document.querySelector('#lvlTable .lvsw[data-key="'+key+'"]');
+    const liveSw=document.querySelector((alt?'#lvlTable2':'#lvlTable')+' .lvsw[data-key="'+key+'"]');
     if(liveSw)liveSw.style.background=s.color;
-    drawLevels();
+    // lvlSty is shared by key name across both boards — redraw whichever one this edit came
+    // from immediately, and the other too if it's active (the same key may appear on both).
+    if(alt)redrawPane2Levels();else drawLevels();
+    if(!alt&&cfg.paneN>=2&&cfg.link===false)redrawPane2Levels();
+    if(alt)drawLevels();
   });
 }
 
@@ -8209,10 +8378,15 @@ function gexFlip(out,spot){
   let aboveSum=0;for(const r of out)if(r.strike>=price)aboveSum+=r.val;   // net gamma above THIS flip
   return {price,abovePos:aboveSum>=0};
 }
-function parseGexRows(out,sourceNote){
-  if(!out.length){toast('GEX','No strike rows found','short');return false;}
+// alt=true: this is Pane 2's own board (see computeChainGex2()) — commits into gex2Board/
+// gex2LastT/gex2Src/#gexStatus2/#gexSummary2 instead of the shared LS.gex/gexLastT/gexSrc/
+// #gexStatus/#gexSummary, draws its on-chart tags only onto panes[1], and recomputes levels2
+// (not the shared levels) once done. spotOverride is required when alt (Pane 2 has no live
+// streamed lastPx to fall back on — see computeChainGex2()).
+function parseGexRows(out,sourceNote,alt,spotOverride){
+  if(!out.length){toast('GEX',(alt?'Pane 2 — ':'')+'No strike rows found','short');return false;}
   out.sort((a,b)=>a.strike-b.strike);
-  const spot=lastPx||out[Math.floor(out.length/2)].strike;
+  const spot=alt?(spotOverride||out[Math.floor(out.length/2)].strike):(lastPx||out[Math.floor(out.length/2)].strike);
   const pos=out.filter(x=>x.val>0),neg=out.filter(x=>x.val<0);
   const maxG=pos.length?pos.reduce((a,b)=>b.val>a.val?b:a):out.reduce((a,b)=>Math.abs(b.val)>Math.abs(a.val)?b:a);
   const minG=neg.length?neg.reduce((a,b)=>b.val<a.val?b:a):null;
@@ -8249,10 +8423,17 @@ function parseGexRows(out,sourceNote){
   if(flip)lv.push({price:flip.price,label:'Gamma Flip',w:2,key:'Flip',color:FLIPC,style:'dashed'});
   above.forEach((x,i)=>{if(x.strike!==maxG.strike)lv.push({price:x.strike,label:'Magnet '+fmt(x.val),w:1,key:'CW'+(i+1),color:MAG,style:'solid'});});
   below.forEach((x,i)=>{if(!minG||x.strike!==minG.strike)lv.push({price:x.strike,label:'Air pocket '+fmt(x.val),w:1,key:'PW'+(i+1),color:AIR,style:'solid'});});
-  LS.gex={t:Date.now(),levels:lv,heat:gexHeat,meta:{maxG:{strike:maxG.strike,val:maxG.val},minG:minG?{strike:minG.strike,val:minG.val}:null,flip:flip?flip.price:null,flipAbovePos:flip?flip.abovePos:null,
-    above:above.map(x=>({strike:x.strike,val:x.val})),below:below.map(x=>({strike:x.strike,val:x.val}))}};
-  gexLastT=Date.now();gexSrc=sourceNote||'';
-  gexStatus();
+  const meta={maxG:{strike:maxG.strike,val:maxG.val},minG:minG?{strike:minG.strike,val:minG.val}:null,flip:flip?flip.price:null,flipAbovePos:flip?flip.abovePos:null,
+    above:above.map(x=>({strike:x.strike,val:x.val})),below:below.map(x=>({strike:x.strike,val:x.val}))};
+  if(alt){
+    gex2Board={t:Date.now(),levels:lv,heat:gex2Heat,meta};
+    gex2LastT=Date.now();gex2Src=sourceNote||'';
+    gexStatus(true);
+  }else{
+    LS.gex={t:Date.now(),levels:lv,heat:gexHeat,meta};
+    gexLastT=Date.now();gexSrc=sourceNote||'';
+    gexStatus();
+  }
   const magLine=(x,i)=>`${i===0?'Strongest':'Magnet'}: <b style="color:${MAG}">${x.strike}</b> (${fmt(x.val)})`;
   const airLine=(x,i)=>`${i===0?'Strongest':'Air Pocket'}: <b style="color:${AIR}">${x.strike}</b> (${fmt(x.val)})`;
   // GAMMA FLIP regime line stays DYNAMIC off gexFlip's abovePos, reworded for the section layout
@@ -8261,14 +8442,14 @@ function parseGexRows(out,sourceNote){
   // clipped, barely-grammatical form ("above it moves stall, below it moves amplify") that read
   // worse than the fuller explanation sitting right above it in the same panel.
   const flipHdr=flip?(flip.abovePos?'above it price tends to grind and mean-revert, below it moves get amplified':'below it price tends to grind and mean-revert, above it moves get amplified'):'net gamma keeps one sign across the board';
-  $('#gexSummary').innerHTML=
+  $(alt?'#gexSummary2':'#gexSummary').innerHTML=
     `<b style="color:${MAG}">MAGNETS</b> - price tends to stall and get pulled back here<br>`+
     (above.length?above.map(magLine).join('<br>'):'—')+`<br><br>`+
     `<b style="color:${AIR}">AIR POCKETS</b> - price action speeds up through here<br>`+
     (below.length?below.map(airLine).join('<br>'):'—')+`<br><br>`+
     `<b style="color:${FLIPC}">GAMMA FLIP</b> - ${flipHdr}<br>`+
     (flip?`<b style="color:${FLIPC}">${flip.price.toFixed(1)}</b>`:`<span style="color:${FLIPC}">none on this board</span>`);
-  log(`GEX board parsed — strongest magnet ${maxG.strike}, flip ${flip?flip.price.toFixed(1):'none on this board'}`,'warn');
+  log(`${alt?'Pane 2 GEX':'GEX'} board parsed — strongest magnet ${maxG.strike}, flip ${flip?flip.price.toFixed(1):'none on this board'}`,'warn');
   // FLICKER FIX: streaming ticks re-run this on every gamma change (up to 1/sec). renderGexLevels
   // (below) is GEX's OWN dedicated on-chart renderer, keyed per level (MaxG/MinG/Flip/CW*/PW*) —
   // it patches a key's label text in place when its price hasn't moved and only touches that ONE
@@ -8279,9 +8460,16 @@ function parseGexRows(out,sourceNote){
   // visibly flickered once GEX itself started calling it up to once a second. The sidebar level
   // table and every other level family still need computeLevels() occasionally to pick up this
   // board's latest numbers; that still happens on every non-streaming source (the chain bootstrap
-  // and its 2-minute backstop) — just not on every single live tick.
-  renderGexLevels(lv);
-  if(sourceNote!=='live stream')computeLevels();
+  // and its 2-minute backstop) — just not on every single live tick. Pane 2 never streams live
+  // ticks at all (see computeChainGex2()), so its sourceNote is always a fresh chain bootstrap —
+  // it always recomputes levels2 right after.
+  if(alt){
+    renderGexLevels(lv,[panes[1]].filter(Boolean),levels2,true);
+    computeLevels2();
+  }else{
+    renderGexLevels(lv);
+    if(sourceNote!=='live stream')computeLevels();
+  }
   return true;
 }
 // GEX's own dedicated on-chart renderer (see the FLICKER FIX comment in parseGexRows above for
@@ -8293,22 +8481,31 @@ function parseGexRows(out,sourceNote){
 // price change used to fall through to remove-then-recreate, which is exactly what read as the
 // line "disappearing and reappearing" when a strike shifted — a freshly created node has no
 // visual continuity with the one it replaced. No other key's DOM is ever touched by any of this.
-function renderGexLevels(lv){
+// targetPanes: which panes to draw onto — omitted (every pre-existing call site) means "every
+// visible pane currently showing cfg.sym", the same set drawLevelsOn's own default guard already
+// restricts itself to; Pane 2's own GEX (see computeChainGex2()) passes [panes[1]] explicitly so
+// its tags land ONLY on its own chart, never on Pane 1's or a linked Pane 2's.
+// srcLevels: which levels[] array to check for "already drawn as part of a combined confluence
+// label" — defaults to the shared `levels`; Pane 2's own call passes levels2.
+function renderGexLevels(lv,targetPanes,srcLevels,alt){
   // Same two on/off switches every other category respects: the whole GEX category toggle
   // (catShown) and any individual level the user has switched off by itself (lvlStyleOf's own
   // .on, e.g. hiding just the flip while keeping magnets). Routed through lvlStyleOf itself, not
   // reimplemented, so a user's custom color/width/style for a GEX level (set via the same Levels
   // table swatch every other category uses) is honored exactly as it already is elsewhere.
   const shown=catShown().gex?lv.filter(x=>lvlStyleOf({key:x.key,dc:x.color,ds:x.style,cat:'gex',w:x.w,conf:false}).on):[];
-  // A level computeConfluence() has ALREADY marked confluent (in the shared `levels` array — the
-  // freshest snapshot of that is whatever the last full computeLevels() pass produced, which is
-  // recent enough since confluence is a coincidental price match with another family, not a live
-  // gamma number) is left entirely to drawLevelsOn/positionConfLabels, which already merges it
-  // into ONE combined label instead of two. Drawing it here too is exactly what duplicated it.
-  const globalGex=new Map(levels.filter(l=>l.cat==='gex').map(l=>[l.key,l]));
+  // A level computeConfluence() has ALREADY marked confluent (in srcLevels — the freshest
+  // snapshot of that is whatever the last full computeLevels()/computeLevels2() pass produced,
+  // which is recent enough since confluence is a coincidental price match with another family,
+  // not a live gamma number) is left entirely to drawLevelsOn/positionConfLabels, which already
+  // merges it into ONE combined label instead of two. Drawing it here too is exactly what
+  // duplicated it.
+  const L=srcLevels||levels;
+  const globalGex=new Map(L.filter(l=>l.cat==='gex').map(l=>[l.key,l]));
   const nonConf=shown.filter(x=>{const g=globalGex.get(x.key);return!(g&&g.conf);});
   const wantedKeys=new Set(nonConf.map(x=>x.key));
-  visPanes().forEach(p=>{
+  const panesToUse=targetPanes||visPanes().filter(p=>!(p.sym&&p.sym!==cfg.sym));
+  panesToUse.forEach(p=>{
     const host=$('#tips'+p.idx);if(!host||!p.candles)return;
     const el=$('#pc'+p.idx);if(!el)return;
     host.querySelectorAll('[data-gexkey]').forEach(e=>{if(!wantedKeys.has(e.dataset.gexkey))e.remove();});
@@ -8338,7 +8535,7 @@ function renderGexLevels(lv){
         tagEl.textContent=x.label;
         // Click-to-style, bound once here — this node persists across future price/magnitude
         // updates without ever being recreated, so it never needs rebinding.
-        tagEl.onclick=e=>{e.stopPropagation();openLevelStyler(tagEl,x.key);};
+        tagEl.onclick=e=>{e.stopPropagation();openLevelStyler(tagEl,x.key,alt);};
         host.appendChild(tagEl);
         gexRedrawSeg(host,x.key,tagEl,plotW,st);
         return;
@@ -8380,6 +8577,16 @@ function gexRedrawSeg(host,key,tagEl,plotW,st){
   mk(x1+5,Math.max(0,plotW-(x1+5)));
 }
 let gexTimer=null,gexBusy=false,gexLastT=0,gexNextT=0,gexSrc='',_gexSwapT0=0;
+// Pane 2's own GEX board state (see computeChainGex2()) — deliberately NOT the same
+// streaming/contracts machinery as the main board above: Pane 2 (while unlinked) is already
+// architecturally REST-poll-only for its own price data (see refreshAlt() — no WebSocket
+// subscription for an alt-pane symbol at all), so there is no live tick stream to hang per-
+// contract deltas off in the first place. Its board is a plain periodic snapshot, same idea as
+// the Watchlist Scanner's own per-symbol GEX summary (computeChainGex can't be reused directly
+// for a different symbol without clobbering this exact state — see the Scanner section's own
+// comment on that). gex2Board is Pane 2's LS.gex equivalent — kept in memory only, never
+// persisted, since nothing needs it to survive a reload.
+let gex2Busy=false,gex2LastT=0,gex2NextT=0,gex2Src='',gex2Board=null;
 // STREAMING GEX: gexContracts maps each OCC symbol currently on the board (both the ±4% level
 // window and the wider ±20% heatmap window) to its own {strike,isPut,oi,ex,bid,ask,lastVal,
 // inStrikeWindow} — populated wholesale by a successful computeChainGex() bootstrap, then kept
@@ -8394,6 +8601,7 @@ let gexContracts=new Map(),gexByStrike={},gexByExp={},gexWsSymbols=[],gexStreamS
 const GEX_SPOT_OFF_PCT=0.25;              // warn if streamed spot is >0.25% off the fresh quote
 /* ---------- GEX heatmap (strike x expiration grid, GEXstream layout) ---------- */
 let gexHeat=null;   // {exps:[ymd], byExp:{ymd:{strike:gex}}, spot, t}
+let gex2Heat=null;  // Pane 2's own — same shape, built by computeChainGex2()
 function fmtGx(v){
   if(v==null||!isFinite(v))return '–';
   const a=Math.abs(v);
@@ -8414,10 +8622,11 @@ function gxExpLabel(ymd){
   const p=String(ymd).split('-');
   return p.length===3?p[1]+'/'+p[2]:String(ymd);
 }
-function renderGexHeat(){
-  const host=$('#gexHeat'),wrap=$('#gexHeatWrap');
+// alt=true: Pane 2's own heat grid (gex2Heat/#gexHeat2/#gexHeatWrap2) instead of the shared one.
+function renderGexHeat(alt){
+  const host=$(alt?'#gexHeat2':'#gexHeat'),wrap=$(alt?'#gexHeatWrap2':'#gexHeatWrap');
   if(!host||!wrap)return;
-  const H=gexHeat;
+  const H=alt?gex2Heat:gexHeat;
   if(!H||!H.exps||!H.exps.length){host.className='gxheat';host.innerHTML='';return;}
   const exps=H.exps;
   // rows = the N strikes nearest spot, drawn high -> low like the reference UI
@@ -8464,7 +8673,7 @@ function renderGexHeat(){
 }
 const GX_STRIKE_W=54,GX_COL_MIN=58,GX_COL_MAX=88,GX_STRIKE_EPS=0.005;   // EPS: drop strikes whose peak |gamma| is under 0.5% of the board max (negligible)
 // the panel can be resized (sidebar hide/show, window resize), so refit on resize
-addEventListener('resize',()=>{if(gexHeat)renderGexHeat();});
+addEventListener('resize',()=>{if(gexHeat)renderGexHeat();if(gex2Heat)renderGexHeat(true);});
 
 /* ==================== locally-computed Black-Scholes gamma ====================
    Replaces Tradier/ORATS' pre-calculated greeks.gamma, which refreshes on a coarse,
@@ -8750,6 +8959,96 @@ async function computeChainGex(){
   }finally{gexBusy=false;
     if(_gexSwapT0){log(`⏱ swap→GEX bootstrap settled (see line above for success/fail): ${(performance.now()-_gexSwapT0).toFixed(0)}ms`,'long');_gexSwapT0=0;}
     if(inGexWindow())gexNextT=Date.now()+GEX_REFRESH_MS;gexStatus();}
+}
+// Pane 2's own GEX bootstrap — same chain-fetch, same §2/§4/§6 guardrails, same pure
+// Black-Scholes/IV-solve math as computeChainGex() above (bsBounds/solveIV/bsGamma/gexContract/
+// yearsToExpiry — zero changes to any of them), but against Pane 2's own unlinked symbol and
+// committed into gex2ByStrike/gex2Heat/gex2Board instead of the shared state. Two deliberate
+// simplifications versus the main board, both because Pane 2 has no live trade/quote stream at
+// all (see refreshAlt() — architectural, not something this adds to): (1) spot is simply the
+// fresh quote's own last price — there is no streamed lastPx to cross-check it against, so no
+// §2c spot-off guardrail applies here; (2) no per-contract `contracts` map is kept and
+// gexResubscribe() is never called — nothing will ever need to route a live tick to this board,
+// since Pane 2 has none.
+async function computeChainGex2(){
+  if(gex2Busy)return;
+  if(cfg.paneN<2||cfg.link!==false)return;   // Pane 2 not actually shown+unlinked right now
+  const st=altState[1];
+  if(!st||!st.sym)return;   // not actually unlinked — nothing of Pane 2's own to compute
+  const sym2=st.sym;
+  if(!inGexWindow())return;   // no toast here — this runs on a background timer, not a user click
+  const rfrPct=+cfg.gexRfr;
+  if(!isFinite(rfrPct))return;   // same "not set" guard as the main board, just silent (background)
+  const r=rfrPct/100;
+  gex2Busy=true;gexStatus(true);
+  try{
+    const [qRes,eRes]=await Promise.allSettled([
+      tradier(`/v1/markets/quotes?symbols=${sym2}`),
+      tradier(`/v1/markets/options/expirations?symbol=${sym2}&includeAllRoots=true&strikes=false`)
+    ]);
+    let spot=null;
+    if(qRes.status==='fulfilled'){
+      const qj=qRes.value,qq=qj.quotes&&qj.quotes.quote,Q=Array.isArray(qq)?qq[0]:qq,qlast=Q&&+Q.last;
+      if(isFinite(qlast)&&qlast>0)spot=qlast;
+    }else log('Pane 2 GEX spot quote failed: '+qRes.reason.message,'warn');
+    if(!(spot>0)){log('Pane 2 GEX — no live quote yet, skipping this cycle','warn');return;}
+    if(eRes.status==='rejected')throw eRes.reason;
+    const je=eRes.value;
+    let exps=je.expirations&&je.expirations.date;exps=Array.isArray(exps)?exps:exps?[exps]:[];
+    const today=nowET().ymd;
+    const front=exps.filter(d=>d>=today).slice(0,1);
+    if(!front.length)throw new Error('no expirations returned — options entitlement?');
+    const byStrike={},byExp={};let gcount=0;
+    let exNoMid=0,exOi=0,exArb=0,exNoConverge=0,exGamma=0,ivAttempts=0;
+    const HEAT_PCT=0.20;
+    for(const ex of front){
+      const T=yearsToExpiry(ex);
+      if(!(T>0))throw new Error('expiration '+ex+' has no time remaining to its market close — cannot price');
+      const jc=await tradier(`/v1/markets/options/chains?symbol=${sym2}&expiration=${ex}`);
+      let os=jc.options&&jc.options.option;os=Array.isArray(os)?os:os?[os]:[];
+      byExp[ex]=byExp[ex]||{};
+      os.forEach(o=>{
+        const k=+o.strike;if(!isFinite(k))return;
+        const dist=Math.abs(k-spot)/spot;
+        if(dist>HEAT_PCT)return;
+        const oi=+o.open_interest;
+        if(!isFinite(oi)||!oi){exOi++;return;}
+        const bid=+o.bid,ask=+o.ask,isPut=o.option_type==='put';
+        if(!(bid>0)||!(ask>0)||bid>ask){exNoMid++;return;}
+        const mid=(bid+ask)/2;
+        const bnd=bsBounds(isPut,spot,k,T,r,GEX_DIV_YIELD);
+        if(!(mid>bnd.lo&&mid<bnd.hi)){exArb++;return;}
+        ivAttempts++;
+        const sigma=solveIV(isPut,spot,k,T,r,GEX_DIV_YIELD,mid);
+        if(sigma==null){exNoConverge++;return;}
+        const g=bsGamma(spot,k,T,r,GEX_DIV_YIELD,sigma);
+        if(!isFinite(g)){exGamma++;return;}
+        const gex=gexContract(g,oi,spot,isPut);
+        byExp[ex][k]=(byExp[ex][k]||0)+gex;
+        if(dist<=0.04){byStrike[k]=(byStrike[k]||0)+gex;gcount++;}
+      });
+    }
+    if(exNoMid||exOi||exArb||exNoConverge||exGamma)
+      log('Pane 2 GEX excluded '+exNoMid+' contracts with no tradeable bid/ask, '+exOi+' with no/zero OI, '
+        +exArb+' with mid outside no-arbitrage bounds, '+exNoConverge+' where the IV solver failed to converge'
+        +(exGamma?', '+exGamma+' with a non-finite computed gamma':'')+' (not zeroed)','warn');
+    if(ivAttempts>0&&exNoConverge/ivAttempts>GEX_IV_FAIL_PCT)
+      throw new Error('IV solver failed to converge on '+exNoConverge+'/'+ivAttempts+' contracts ('
+        +(exNoConverge/ivAttempts*100).toFixed(0)+'%) — board rejected as unreliable');
+    const rows=Object.keys(byStrike).map(k=>({strike:+k,val:byStrike[k]}));
+    if(!rows.length)throw new Error('chain returned no strikes with a solvable IV+OI in the ±4% window');
+    const totalAbs=rows.reduce((s,r)=>s+Math.abs(r.val),0);
+    if(!(totalAbs>0))throw new Error('gamma is zero across every strike in range — board rejected');
+    gex2Heat={exps:front.slice(),byExp,spot,t:Date.now()};
+    parseGexRows(rows,'chain · '+front.length+' exp · '+gcount+' contracts · r='+rfrPct.toFixed(2)+'%',true,spot);
+    renderGexHeat(true);
+    log('Pane 2 GEX computed — '+sym2+', '+ivAttempts+' IV solves attempted','warn');
+  }catch(e){
+    log('Pane 2 GEX failed: '+e.message,'short');
+  }finally{
+    gex2Busy=false;
+    if(inGexWindow())gex2NextT=Date.now()+GEX_REFRESH_MS;gexStatus(true);
+  }
 }
 
 /* ================================ Watchlist Scanner =========================================
@@ -9174,7 +9473,7 @@ scanRender();   // paint the "not loaded yet" placeholder rows immediately, befo
 const GEX_REFRESH_MS=120000;
 function inGexWindow(){const t=nowET();const mm=t.h*60+t.m;
   return isTradingDay(t.ymd)&&mm>=570&&mm<sessionCloseMin(t.ymd);}
-let gexWasOpen=null;
+let gexWasOpen=null,gex2WasOpen=null;
 function gexAutoTick(){
   const open=inGexWindow();
   // At the close the board is dropped, not merely left to go stale — otherwise yesterday's
@@ -9187,9 +9486,29 @@ function gexAutoTick(){
     log('Market closed — GEX board cleared. It rebuilds from a fresh chain at the open.','warn');
   }
   gexWasOpen=open;
-  if(!open){gexNextT=0;return;}
-  if(!gexNextT)gexNextT=Date.now()+GEX_REFRESH_MS;
-  if(Date.now()>=gexNextT&&!gexBusy){gexNextT=Date.now()+GEX_REFRESH_MS;computeChainGex();}
+  if(!open){gexNextT=0;}
+  else{
+    if(!gexNextT)gexNextT=Date.now()+GEX_REFRESH_MS;
+    if(Date.now()>=gexNextT&&!gexBusy){gexNextT=Date.now()+GEX_REFRESH_MS;computeChainGex();}
+  }
+  // Pane 2's own board — same open/close bookkeeping and due-time check, reusing this SAME 1s
+  // ticker rather than a second timer (see the comment on gex2Busy's declaration for why Pane 2
+  // has no live-tick path to begin with). Gated on Pane 2 actually being unlinked right now; when
+  // it isn't, gex2Board is already empty and this is a cheap no-op.
+  if(cfg.paneN>=2&&cfg.link===false&&altState[1]&&altState[1].sym){
+    if(gex2WasOpen===true&&!open){
+      gex2Heat=null;gex2Board=null;gex2LastT=0;gex2Src='';gex2NextT=0;
+      renderGexHeat(true);$('#gexSummary2').innerHTML='';
+      computeLevels2();gexStatus(true);
+      log('Market closed — Pane 2 GEX board cleared.','warn');
+    }
+    if(!open){gex2NextT=0;}
+    else{
+      if(!gex2NextT)gex2NextT=Date.now()+GEX_REFRESH_MS;
+      if(Date.now()>=gex2NextT&&!gex2Busy){gex2NextT=Date.now()+GEX_REFRESH_MS;computeChainGex2();}
+    }
+  }
+  gex2WasOpen=open;
 }
 function scheduleGexAuto(){
   clearInterval(gexTimer);gexTimer=null;
@@ -9201,31 +9520,39 @@ function scheduleGexAuto(){
   if(open&&!gexLastT&&!gexBusy)computeChainGex();
   gexStatus();
 }
-let gxHowOpen=false;
-// #gxHowTgl is rebuilt inside the status box every second, so it cannot be wired directly —
-// one delegated listener on the box survives the repaints, and the flag survives with it.
+let gxHowOpen=false,gxHowOpen2=false;
+// #gxHowTgl/#gxHowTgl2 are rebuilt inside their status box every second, so they cannot be wired
+// directly — one delegated listener on the document survives the repaints, and the flag survives
+// with it. Each popout gets its own id/flag pair so opening one's explainer never toggles the
+// other's.
 document.addEventListener('click',e=>{
-  const h=e.target&&e.target.closest&&e.target.closest('#gxHowTgl');
+  const h=e.target&&e.target.closest&&e.target.closest('#gxHowTgl,#gxHowTgl2');
   if(!h)return;
-  gxHowOpen=!gxHowOpen;
-  const b=$('#gxHowBody');
-  if(b)b.style.display=gxHowOpen?'block':'none';
-  h.classList.toggle('open',gxHowOpen);h.setAttribute('aria-expanded',gxHowOpen?'true':'false');
+  const alt=h.id==='gxHowTgl2';
+  if(alt)gxHowOpen2=!gxHowOpen2;else gxHowOpen=!gxHowOpen;
+  const open=alt?gxHowOpen2:gxHowOpen;
+  const b=$(alt?'#gxHowBody2':'#gxHowBody');
+  if(b)b.style.display=open?'block':'none';
+  h.classList.toggle('open',open);h.setAttribute('aria-expanded',open?'true':'false');
 });
-function gexStatus(){
-  const el=$('#gexStatus');if(!el)return;
-  if(gexBusy){el.innerHTML='<b>Computing\u2026</b> pulling chains and summing gamma \u00d7 OI across strikes';return;}
-  if(!gexLastT){el.innerHTML='<div style="text-align:center">'+(inGexWindow()
+// alt=true: Pane 2's own board \u2014 reads gex2Busy/gex2LastT/gex2Src and writes #gexStatus2 instead
+// of the shared gexBusy/gexLastT/gexSrc/#gexStatus.
+function gexStatus(alt){
+  const el=$(alt?'#gexStatus2':'#gexStatus');if(!el)return;
+  const busy=alt?gex2Busy:gexBusy,lastT=alt?gex2LastT:gexLastT,src=alt?gex2Src:gexSrc;
+  if(busy){el.innerHTML='<b>Computing\u2026</b> pulling chains and summing gamma \u00d7 OI across strikes';return;}
+  if(!lastT){el.innerHTML='<div style="text-align:center">'+(inGexWindow()
     ?'No board yet \u2014 pulling your Tradier chain on the next refresh.'
     :'Market closed \u2014 the board builds automatically from the 9:30 AM ET open.')+'</div>';return;}
   // The board's own refresh cadence (Computed HH:MM/age/Auto-refresh countdown) was dropped \u2014
   // it's polling plumbing, not something a reader needs to see on every tick. The one thing
   // worth keeping is WHERE the numbers came from (a live options feed vs a cached prior
   // session), shown as a single clean, centered label.
-  const srcLabel=gexSrc?gexSrc.charAt(0).toUpperCase()+gexSrc.slice(1):'';
+  const srcLabel=src?src.charAt(0).toUpperCase()+src.slice(1):'';
+  const open=alt?gxHowOpen2:gxHowOpen,tglId=alt?'gxHowTgl2':'gxHowTgl',bodyId=alt?'gxHowBody2':'gxHowBody';
   el.innerHTML=(srcLabel?`<div style="text-align:center"><b>${srcLabel}</b></div>`:'')
-    +`<button class="explainhdr gxhowh${gxHowOpen?' open':''}" id="gxHowTgl" aria-expanded="${gxHowOpen}"><span class="caret">&#9662;</span> How to read it</button>`
-    +`<div class="gxhow" id="gxHowBody" style="display:${gxHowOpen?'block':'none'}">these are not buy or sell signals \u2014 they are `
+    +`<button class="explainhdr gxhowh${open?' open':''}" id="${tglId}" aria-expanded="${open}"><span class="caret">&#9662;</span> How to read it</button>`
+    +`<div class="gxhow" id="${bodyId}" style="display:${open?'block':'none'}">these are not buy or sell signals \u2014 they are `
     +`where movement gets easier or harder. A <b class="pos">magnet</b> is a price the market `
     +`tends to stick to: rallies into it stall and dips into it get bought, so it is a poor `
     +`place to chase and a good place to take profit. An <b class="neg">air pocket</b> is the `
@@ -9603,6 +9930,9 @@ async function refreshAlt(paneIdx){
     st.data.bars5=mergeBars(st.data.bars5,await fetchTsRange('5min',new Date(Date.now()-864e5),now,st.sym));
     st.data.bars15=mergeBars(st.data.bars15,await fetchTsRange('15min',new Date(Date.now()-2*864e5),now,st.sym));
     if(panes[paneIdx]){renderPane(panes[paneIdx]);drawAlertLines();}
+    // Pane 2's own Levels ladder rides this SAME poll (no separate timer) — same idea as GEX
+    // riding gexAutoTick's existing 1s ticker instead of getting one of its own.
+    if(paneIdx===1)computeLevels2();
   }catch(e){log(`Pane ${paneIdx+1} refresh failed: `+e.message,'warn');}
 }
 // paneIdx: 1 = pane 2 (ids #lnkSym/#psym1, cfg.link/cfg.sym1, unchanged from before this was
@@ -9623,6 +9953,10 @@ async function applyPaneSym(paneIdx){
     if(panes[paneIdx]){panes[paneIdx].sym=cfg.sym;renderPane(panes[paneIdx]);}
     clearInterval(st.timer);st.timer=null;st.sym='';
     drawAlertLines();   // this pane's symbol just changed (back to cfg.sym) — its alert lines need to match
+    // Pane 2's OWN Levels/GEX popout only ever exists while Pane 2 is unlinked — relinking tears
+    // its state down completely (never left showing a stale board for a symbol Pane 2 no longer
+    // displays) and hides the popout itself.
+    if(paneIdx===1)teardownPane2Levels();
   }else{
     const sym=(box.value||'').trim().toUpperCase();
     if(!sym)return;
@@ -9635,9 +9969,46 @@ async function applyPaneSym(paneIdx){
       clearInterval(st.timer);
       st.timer=setInterval(()=>refreshAlt(paneIdx),Math.max(15,cfg.barS)*1000);
       drawAlertLines();   // new unlinked symbol for this pane — draw whatever alerts belong to it
+      // Pane 2 just got its own ticker — bring up its own Levels/GEX popout for it: an immediate
+      // Levels pass from the data just fetched above, plus a GEX bootstrap (fire-and-forget, same
+      // as connect() does for Pane 1 — not awaited so the UI doesn't stall on it) if the market is
+      // in its regular session; both keep themselves current from here via gexAutoTick()/
+      // refreshAlt()'s own timer, same as Pane 1's board does.
+      if(paneIdx===1){
+        showPane2Levels();
+        computeLevels2();
+        if(inGexWindow())computeChainGex2();
+      }
     }catch(e){log(`Pane ${paneIdx+1} load failed: `+e.message,'short');toast(`Pane ${paneIdx+1}`,e.message,'short');}
   }
   saveCfg();
+}
+// Pane 2's popout appears the moment it gets its own ticker, and disappears the moment it's
+// relinked or the layout drops back to 1 chart — see applyPaneSym()/setPaneN().
+function showPane2Levels(){
+  const side=$('#side2');if(side)side.style.display='';
+  // #sbBtn2 carries the same #sbBtn.sbFloat,#sbBtn2.sbFloat{display:flex!important} rule the
+  // main popout's own button does (so it gets that button's positioning/sizing for free) — a
+  // plain style.display can't win against that !important, so this has to set !important itself
+  // to actually take it away in hidePane2Levels() below.
+  const btn=$('#sbBtn2');if(btn)btn.style.removeProperty('display');
+  // Sync #sbIcon2's flip state to cfg.sb2 the same way boot does for the main popout's own
+  // #sbIcon/cfg.sb — this container was just display:none, so nothing kept it in sync meanwhile.
+  const icon=$('#sbIcon2');
+  if(icon){icon.classList.toggle('flip',cfg.sb2===0);if(btn)btn.title=cfg.sb2===0?'Show Pane 2 side panel':'Hide Pane 2 side panel';}
+  if(sidePop2)sidePop2.applyPos();
+}
+function hidePane2Levels(){
+  const side=$('#side2');if(side)side.style.display='none';
+  const btn=$('#sbBtn2');if(btn)btn.style.setProperty('display','none','important');
+}
+function teardownPane2Levels(){
+  levels2=[];gex2Heat=null;gex2Board=null;gex2LastT=0;gex2Src='';gex2NextT=0;gex2Busy=false;
+  const p=panes[1];
+  if(p){drawLevelsOn(p,[]);positionLvlTags(p);positionConfLabels(p,[]);deoverlapLabels($('#tips1'));drawLevelSegments(p);}
+  renderGexLevels([],[panes[1]].filter(Boolean),[],true);
+  $('#lvlTable2').innerHTML='';$('#gexSummary2').innerHTML='';renderGexHeat(true);gexStatus(true);
+  hidePane2Levels();
 }
 // LogoKit's image CDN did not actually load (confirmed both here and by the user's own real
 // browser — not a sandbox artifact). Switched to jsdelivr serving davidepalazzo/ticker-logos, a
@@ -9947,19 +10318,33 @@ function wireHandles(){
 
 /* ---------- wiring ---------- */
 $('#symInput').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();connect();}};
-$$('.tabs button').forEach(b=>b.onclick=()=>switchPane(b.dataset.pane));
-function moveTabPill(){
-  const pill=$('.tabpill'),on=$('.tabs button.on');
+// Tab wiring is scoped to whichever popout (.side / #side2) a button lives in, not a single
+// document-wide sweep — Pane 2's own popout has its own <.tabs>/<.pane> set (same classes, so
+// it gets the same CSS for free) and must never toggle the MAIN popout's tabs, or vice versa.
+function wireTabsIn(root){
+  if(!root)return;
+  root.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>switchPane(b.dataset.pane,root));
+}
+function moveTabPill(root){
+  root=root||$('#side');
+  const pill=root.querySelector('.tabpill'),on=root.querySelector('.tabs button.on');
   if(!pill||!on)return;
   pill.style.width=on.offsetWidth+'px';
   pill.style.transform='translateX('+on.offsetLeft+'px)';
 }
-function switchPane(p){$$('.tabs button').forEach(x=>x.classList.toggle('on',x.dataset.pane===p));$$('.pane').forEach(x=>x.classList.toggle('on',x.id==='pane-'+p));
+function switchPane(p,root){
+  root=root||$('#side');
+  root.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('on',x.dataset.pane===p));
+  root.querySelectorAll('.pane').forEach(x=>x.classList.toggle('on',x.id==='pane-'+p));
   if(p==='scanner')scanCatchUpIfStale();
-  moveTabPill();}
-addEventListener('resize',moveTabPill);
+  moveTabPill(root);
+}
+wireTabsIn($('#side'));wireTabsIn($('#side2'));
+// Wrapped in a closure — addEventListener would otherwise pass the resize Event itself as
+// moveTabPill's `root` argument, which is not an element and has no querySelector.
+addEventListener('resize',()=>{moveTabPill();moveTabPill($('#side2'));});
 // lay out before first paint so the pill does not visibly snap into place on load
-requestAnimationFrame(moveTabPill);
+requestAnimationFrame(()=>{moveTabPill();moveTabPill($('#side2'));});
 function syncTfButtons(){
   $$('.tfseg').forEach(seg=>{const i=+seg.dataset.pane,tf=cfg['tf'+i];
     seg.querySelectorAll('button').forEach(b=>{
@@ -10151,8 +10536,17 @@ function setPaneN(n){
         if(vw)vw.style.height=cfg.volH1+'px';
       }
       if(!panes[idx]&&window.LightweightCharts)panes[idx]=makePane(idx);
+      // When this pane was already unlinked from before (being re-shown, not created fresh),
+      // startAltPane() below re-enters applyPaneSym(idx)'s unlink branch, which itself calls
+      // showPane2Levels()/computeLevels2()/computeChainGex2() to bring its popout back — see there.
       startAltPane(idx);
-    }else stopAltPane(idx);
+    }else{
+      stopAltPane(idx);
+      // The mirror image of the above: hide Pane 2's own popout (and, via the paneN gate on
+      // gexAutoTick()/computeChainGex2()/computeLevels2(), stop its background polling) the
+      // moment its pane itself is hidden — never left floating over a chart that isn't there.
+      if(idx===1)hidePane2Levels();
+    }
   });
   alignPaneClusters();
   setTimeout(()=>{panes.forEach(pp=>{if(pp&&pp.sizeAll)pp.sizeAll();});alignPaneClusters();},60);
@@ -10315,159 +10709,164 @@ $('#setupBtn').onclick=openSetup;
    .mobopen overlay, which was already the right shape for a touch screen and is untouched. */
 const SIDE_MINW=300,SIDE_MAXW=640,SIDE_MINH=260,SIDE_MAXH=760;
 function sideIsMobile(){return matchMedia('(max-width:700px)').matches;}
-// A COUNT, not a boolean: the header drag and all 4 resize handles each increment this on their
-// own pointerdown and decrement on their own end, so if two gestures somehow overlap (a
-// touch-capable desktop-width device with one pointer on the header and another on a corner),
-// the first one finishing can't zero this out from under the other still-live gesture — which
-// would re-enable the .4s genie transition mid-drag and reintroduce the exact "panel lags behind
-// the cursor" bug transform-based positioning was built to avoid in the first place.
-let sideDragCount=0;
-function applySidePos(){
-  const side=$('.side'),btn=$('#sbBtn');
-  if(!side||!btn)return;
-  if(sideIsMobile()){
-    // The mobile media query owns position/size via !important; clearing these inline styles
-    // lets it win cleanly instead of fighting a stale desktop transform left over from a resize
-    // that crossed the breakpoint.
-    side.style.transform='';side.style.width='';side.style.height='';side.style.transition='';
-    btn.style.transform='';
-    return;
-  }
-  const vw=innerWidth,vh=innerHeight;
-  if(cfg.sideX==null){
-    cfg.sideW=Math.min(cfg.sideW,Math.max(SIDE_MINW,vw-40));
-    cfg.sideH=Math.min(cfg.sideH,Math.max(SIDE_MINH,vh-120));
-    cfg.sideX=Math.max(12,vw-20-cfg.sideW);cfg.sideY=64;
-    saveCfg();
-  }else{
-    // A size/position saved from a wider/taller window (or a since-resized one) is re-clamped to
-    // whatever viewport actually exists NOW, every call - not just computed once - so the panel
-    // (and #sbBtn, which tracks its corner) can never end up wider than the window, or parked
-    // off-screen, with no way back. Width/height first: X's own valid lower bound (-w+60) has to
-    // be computed from whatever w ends up being, not the pre-clamp value.
-    const clampedW=Math.min(cfg.sideW,Math.max(SIDE_MINW,vw-40));
-    const clampedH=Math.min(cfg.sideH,Math.max(SIDE_MINH,vh-120));
-    const clampedX=Math.min(Math.max(cfg.sideX,-clampedW+60),vw-60);
-    const clampedY=Math.min(Math.max(cfg.sideY,0),vh-40);
-    if(clampedW!==cfg.sideW||clampedH!==cfg.sideH||clampedX!==cfg.sideX||clampedY!==cfg.sideY){
-      cfg.sideW=clampedW;cfg.sideH=clampedH;cfg.sideX=clampedX;cfg.sideY=clampedY;saveCfg();
+// Factory so the exact same floating/draggable/resizable popout behaviour can be instantiated
+// twice — once for the main .side (Levels/GEX/Scanner/Log, tied to cfg.sym) and once for Pane
+// 2's own #side2 (Levels/GEX only, tied to whatever Pane 2 is unlinked to) — without copy-pasting
+// the drag/resize math. Each instance gets its OWN closed-over dragCount/btnDragged, so a drag
+// on one popout can never freeze or mis-toggle the other's transition/click state.
+function initSidePopout(o){
+  const side=$(o.sideSel),btn=$(o.btnSel),head=$(o.headSel);
+  if(!side||!btn)return null;
+  // A COUNT, not a boolean: the header drag and all 4 resize handles each increment this on
+  // their own pointerdown and decrement on their own end, so if two gestures somehow overlap (a
+  // touch-capable desktop-width device with one pointer on the header and another on a corner),
+  // the first one finishing can't zero this out from under the other still-live gesture — which
+  // would re-enable the .4s genie transition mid-drag and reintroduce the exact "panel lags
+  // behind the cursor" bug transform-based positioning was built to avoid in the first place.
+  let dragCount=0;
+  // Set whenever a pointerdown-on-btn actually moved past the drag threshold — the click event
+  // that follows pointerup either way still fires, so this is what tells the onclick handler
+  // below "that was a drag just now, not a click" and to skip the toggle once.
+  let btnDragged=false;
+  function applyPos(){
+    if(sideIsMobile()){
+      // The mobile media query owns position/size via !important; clearing these inline styles
+      // lets it win cleanly instead of fighting a stale desktop transform left over from a
+      // resize that crossed the breakpoint.
+      side.style.transform='';side.style.width='';side.style.height='';side.style.transition='';
+      btn.style.transform='';
+      return;
     }
+    const vw=innerWidth,vh=innerHeight;
+    if(cfg[o.cfgX]==null){
+      cfg[o.cfgW]=Math.min(cfg[o.cfgW],Math.max(SIDE_MINW,vw-40));
+      cfg[o.cfgH]=Math.min(cfg[o.cfgH],Math.max(SIDE_MINH,vh-120));
+      cfg[o.cfgX]=Math.max(12,vw-20-cfg[o.cfgW]);cfg[o.cfgY]=64;
+      saveCfg();
+    }else{
+      // A size/position saved from a wider/taller window (or a since-resized one) is re-clamped
+      // to whatever viewport actually exists NOW, every call - not just computed once - so the
+      // panel (and btn, which tracks its corner) can never end up wider than the window, or
+      // parked off-screen, with no way back. Width/height first: X's own valid lower bound
+      // (-w+60) has to be computed from whatever w ends up being, not the pre-clamp value.
+      const clampedW=Math.min(cfg[o.cfgW],Math.max(SIDE_MINW,vw-40));
+      const clampedH=Math.min(cfg[o.cfgH],Math.max(SIDE_MINH,vh-120));
+      const clampedX=Math.min(Math.max(cfg[o.cfgX],-clampedW+60),vw-60);
+      const clampedY=Math.min(Math.max(cfg[o.cfgY],0),vh-40);
+      if(clampedW!==cfg[o.cfgW]||clampedH!==cfg[o.cfgH]||clampedX!==cfg[o.cfgX]||clampedY!==cfg[o.cfgY]){
+        cfg[o.cfgW]=clampedW;cfg[o.cfgH]=clampedH;cfg[o.cfgX]=clampedX;cfg[o.cfgY]=clampedY;saveCfg();
+      }
+    }
+    const hidden=cfg[o.cfgHidden]===0;
+    const x=Math.round(cfg[o.cfgX]),y=Math.round(cfg[o.cfgY]);
+    side.style.width=cfg[o.cfgW]+'px';side.style.height=cfg[o.cfgH]+'px';
+    side.style.transform=`translate3d(${x}px,${y}px,0) scale(${hidden?.04:1})`;
+    side.style.opacity=hidden?'0':'1';
+    side.style.pointerEvents=hidden?'none':'auto';
+    // The genie-shrink-into-the-button transition applies to the open/close click only — kept
+    // off for the whole time any drag or resize is live (dragCount>0), otherwise every
+    // pointer-move would ease toward its new position over that same .4s curve instead of
+    // tracking the cursor 1:1, which is what actually read as the panel (and the button)
+    // lagging behind the mouse.
+    side.style.transition=dragCount>0?'none':'transform .4s cubic-bezier(.22,1,.36,1), opacity .28s ease';
+    btn.style.transform=`translate3d(${x+cfg[o.cfgW]-34}px,${y+12}px,0)`;
   }
-  const hidden=cfg.sb===0;
-  const x=Math.round(cfg.sideX),y=Math.round(cfg.sideY);
-  side.style.width=cfg.sideW+'px';side.style.height=cfg.sideH+'px';
-  side.style.transform=`translate3d(${x}px,${y}px,0) scale(${hidden?.04:1})`;
-  side.style.opacity=hidden?'0':'1';
-  side.style.pointerEvents=hidden?'none':'auto';
-  // The genie-shrink-into-the-button transition applies to the open/close click only — kept off
-  // for the whole time any drag or resize is live (sideDragCount>0), otherwise every pointer-move
-  // would ease toward its new position over that same .4s curve instead of tracking the cursor
-  // 1:1, which is what actually read as the panel (and the button) lagging behind the mouse.
-  side.style.transition=sideDragCount>0?'none':'transform .4s cubic-bezier(.22,1,.36,1), opacity .28s ease';
-  btn.style.transform=`translate3d(${x+cfg.sideW-34}px,${y+12}px,0)`;
-}
-function setSidebar(hidden){
-  cfg.sb=hidden?0:1;saveCfg();
-  $('#sbBtn').title=hidden?'Show side panel':'Hide side panel';
-  $('#sbIcon').classList.toggle('flip',hidden);
-  applySidePos();
-  // .side is scaled to ~0 while hidden, so the tab buttons measure 0 until it is shown again
-  if(!hidden)requestAnimationFrame(moveTabPill);
-}
-// Set by wireSideBtnDrag() whenever a pointerdown-on-#sbBtn actually moved past the drag
-// threshold — the click event that follows pointerup either way still fires, so this is what
-// tells THIS handler "that was a drag just now, not a click" and to skip the toggle once.
-let sbBtnDragged=false;
-$('#sbBtn').onclick=()=>{
-  if(sbBtnDragged){sbBtnDragged=false;return;}
-  // At phone width the sidebar is an overlay, not a floating window — toggle the transient
-  // .mobopen class instead of the desktop hide/show preference, so flipping it on a phone can
-  // never corrupt cfg.sb (which the SAME browser profile may also open at desktop width).
-  if(sideIsMobile()){
-    document.querySelector('.main').classList.toggle('mobopen');
-    return;
+  function setHidden(hidden){
+    cfg[o.cfgHidden]=hidden?0:1;saveCfg();
+    btn.title=hidden?o.showTitle:o.hideTitle;
+    const icon=$(o.iconSel);if(icon)icon.classList.toggle('flip',hidden);
+    applyPos();
+    // side is scaled to ~0 while hidden, so the tab buttons measure 0 until it is shown again
+    if(!hidden)requestAnimationFrame(()=>moveTabPill(side));
   }
-  setSidebar(cfg.sb!==0);
-};
-(function wireSideDragMove(){
-  const head=$('#sideHead');if(!head)return;
-  let live=false,sx=0,sy=0,sX=0,sY=0;
-  head.addEventListener('pointerdown',e=>{
+  btn.onclick=()=>{
+    if(btnDragged){btnDragged=false;return;}
+    // At phone width the sidebar is an overlay, not a floating window — toggle the transient
+    // .mobopen class instead of the desktop hide/show preference, so flipping it on a phone can
+    // never corrupt cfg[o.cfgHidden] (which the SAME browser profile may also open at desktop
+    // width). Pane 2's own popout has no mobile overlay at all (see its own CSS) — o.mobileToggle
+    // is false there, so this is simply a no-op on a phone rather than opening the wrong overlay.
+    if(sideIsMobile()){
+      if(o.mobileToggle)document.querySelector('.main').classList.toggle('mobopen');
+      return;
+    }
+    setHidden(cfg[o.cfgHidden]!==0);
+  };
+  if(head)head.addEventListener('pointerdown',e=>{
     // A pointerdown that landed on a real tab button must fall through to its own click, not
     // start a window drag — the header is what carries both.
     if(e.button!==0||sideIsMobile()||e.target.closest('button'))return;
     e.preventDefault();
-    sx=e.clientX;sy=e.clientY;sX=cfg.sideX;sY=cfg.sideY;live=true;sideDragCount++;
+    const sx=e.clientX,sy=e.clientY,sX=cfg[o.cfgX],sY=cfg[o.cfgY];
+    dragCount++;
     document.body.style.userSelect='none';
-    applySidePos();
+    applyPos();
     try{head.setPointerCapture(e.pointerId);}catch(_){}
+    const mv=e2=>{
+      const vw=innerWidth,vh=innerHeight;
+      cfg[o.cfgX]=Math.round(Math.min(Math.max(sX+(e2.clientX-sx),-cfg[o.cfgW]+60),vw-60));
+      cfg[o.cfgY]=Math.round(Math.min(Math.max(sY+(e2.clientY-sy),0),vh-40));
+      applyPos();
+    };
+    const stop=()=>{
+      dragCount=Math.max(0,dragCount-1);
+      document.body.style.userSelect='';
+      head.removeEventListener('pointermove',mv);
+      head.removeEventListener('pointerup',stop);head.removeEventListener('pointercancel',stop);
+      applyPos();saveCfg();
+    };
+    head.addEventListener('pointermove',mv);
+    head.addEventListener('pointerup',stop);head.addEventListener('pointercancel',stop);
   });
-  head.addEventListener('pointermove',e=>{
-    if(!live)return;
-    const vw=innerWidth,vh=innerHeight;
-    cfg.sideX=Math.round(Math.min(Math.max(sX+(e.clientX-sx),-cfg.sideW+60),vw-60));
-    cfg.sideY=Math.round(Math.min(Math.max(sY+(e.clientY-sy),0),vh-40));
-    applySidePos();
-  });
-  const stop=e=>{
-    if(!live)return;live=false;sideDragCount=Math.max(0,sideDragCount-1);
-    document.body.style.userSelect='';
-    try{head.releasePointerCapture(e.pointerId);}catch(_){}
-    applySidePos();saveCfg();
-  };
-  head.addEventListener('pointerup',stop);
-  head.addEventListener('pointercancel',stop);
-})();
-// #sbBtn is ALSO a drag-to-move handle, not just a click-to-toggle button - hover it, press
-// down, and dragging moves the whole panel exactly like dragging the header does. A plain click
-// (no movement past the threshold) still toggles hide/show as normal; sbBtnDragged is what tells
-// the onclick handler above to skip the toggle for a gesture that turned out to be a real drag.
-(function wireSideBtnDrag(){
-  const btn=$('#sbBtn');if(!btn)return;
-  const THRESH=4;
-  let live=false,dragged=false,sx=0,sy=0,sX=0,sY=0;
-  btn.addEventListener('pointerdown',e=>{
-    if(e.button!==0||sideIsMobile())return;
-    sx=e.clientX;sy=e.clientY;sX=cfg.sideX;sY=cfg.sideY;live=true;dragged=false;
-    try{btn.setPointerCapture(e.pointerId);}catch(_){}
-  });
-  btn.addEventListener('pointermove',e=>{
-    if(!live)return;
-    const dx=e.clientX-sx,dy=e.clientY-sy;
-    if(!dragged){
-      if(Math.hypot(dx,dy)<THRESH)return;
-      dragged=true;sbBtnDragged=true;sideDragCount++;
-      document.body.style.userSelect='none';
-    }
-    const vw=innerWidth,vh=innerHeight;
-    cfg.sideX=Math.round(Math.min(Math.max(sX+dx,-cfg.sideW+60),vw-60));
-    cfg.sideY=Math.round(Math.min(Math.max(sY+dy,0),vh-40));
-    applySidePos();
-  });
-  const stop=e=>{
-    if(!live)return;live=false;
-    try{btn.releasePointerCapture(e.pointerId);}catch(_){}
-    if(!dragged)return;                        // a plain click - let the onclick handler run
-    dragged=false;sideDragCount=Math.max(0,sideDragCount-1);
-    document.body.style.userSelect='';
-    applySidePos();saveCfg();
-    // pointercancel means the gesture was aborted rather than completed - no click event follows
-    // it to consume sbBtnDragged (onclick only fires after a real pointerup), so it has to be
-    // cleared right here or it would silently swallow the NEXT legitimate click on this button.
-    if(e.type==='pointercancel')sbBtnDragged=false;
-  };
-  btn.addEventListener('pointerup',stop);
-  btn.addEventListener('pointercancel',stop);
-})();
-(function wireSideResize(){
-  $$('.sideRsz').forEach(h=>{
+  // btn is ALSO a drag-to-move handle, not just a click-to-toggle button - hover it, press down,
+  // and dragging moves the whole panel exactly like dragging the header does. A plain click (no
+  // movement past the threshold) still toggles hide/show as normal.
+  (function(){
+    const THRESH=4;
+    let live=false,dragged=false,sx=0,sy=0,sX=0,sY=0;
+    btn.addEventListener('pointerdown',e=>{
+      if(e.button!==0||sideIsMobile())return;
+      sx=e.clientX;sy=e.clientY;sX=cfg[o.cfgX];sY=cfg[o.cfgY];live=true;dragged=false;
+      try{btn.setPointerCapture(e.pointerId);}catch(_){}
+    });
+    btn.addEventListener('pointermove',e=>{
+      if(!live)return;
+      const dx=e.clientX-sx,dy=e.clientY-sy;
+      if(!dragged){
+        if(Math.hypot(dx,dy)<THRESH)return;
+        dragged=true;btnDragged=true;dragCount++;
+        document.body.style.userSelect='none';
+      }
+      const vw=innerWidth,vh=innerHeight;
+      cfg[o.cfgX]=Math.round(Math.min(Math.max(sX+dx,-cfg[o.cfgW]+60),vw-60));
+      cfg[o.cfgY]=Math.round(Math.min(Math.max(sY+dy,0),vh-40));
+      applyPos();
+    });
+    const stop=e=>{
+      if(!live)return;live=false;
+      try{btn.releasePointerCapture(e.pointerId);}catch(_){}
+      if(!dragged)return;                        // a plain click - let the onclick handler run
+      dragged=false;dragCount=Math.max(0,dragCount-1);
+      document.body.style.userSelect='';
+      applyPos();saveCfg();
+      // pointercancel means the gesture was aborted rather than completed - no click event
+      // follows it to consume btnDragged (onclick only fires after a real pointerup), so it has
+      // to be cleared right here or it would silently swallow the NEXT legitimate click.
+      if(e.type==='pointercancel')btnDragged=false;
+    };
+    btn.addEventListener('pointerup',stop);
+    btn.addEventListener('pointercancel',stop);
+  })();
+  // Resize handles — scoped to THIS popout's own subtree, not a document-wide sweep, so two
+  // popouts on screen at once never fight over each other's corners.
+  side.querySelectorAll('.sideRsz').forEach(h=>{
     const corner=h.dataset.corner;
     let live=false,sx=0,sy=0,sX=0,sY=0,sW=0,sH=0;
     h.addEventListener('pointerdown',e=>{
       if(e.button!==0||sideIsMobile())return;
       e.preventDefault();
-      sx=e.clientX;sy=e.clientY;sX=cfg.sideX;sY=cfg.sideY;sW=cfg.sideW;sH=cfg.sideH;
-      live=true;sideDragCount++;
+      sx=e.clientX;sy=e.clientY;sX=cfg[o.cfgX];sY=cfg[o.cfgY];sW=cfg[o.cfgW];sH=cfg[o.cfgH];
+      live=true;dragCount++;
       document.body.style.userSelect='none';document.body.style.cursor=getComputedStyle(h).cursor;
       try{h.setPointerCapture(e.pointerId);}catch(_){}
     });
@@ -10483,51 +10882,66 @@ $('#sbBtn').onclick=()=>{
       if(w>SIDE_MAXW){if(corner==='tl'||corner==='bl')x+=(w-SIDE_MAXW);w=SIDE_MAXW;}
       if(ht<SIDE_MINH){if(corner==='tl'||corner==='tr')y-=(SIDE_MINH-ht);ht=SIDE_MINH;}
       if(ht>SIDE_MAXH){if(corner==='tl'||corner==='tr')y+=(ht-SIDE_MAXH);ht=SIDE_MAXH;}
-      cfg.sideX=Math.round(x);cfg.sideY=Math.round(y);cfg.sideW=Math.round(w);cfg.sideH=Math.round(ht);
-      applySidePos();
+      cfg[o.cfgX]=Math.round(x);cfg[o.cfgY]=Math.round(y);cfg[o.cfgW]=Math.round(w);cfg[o.cfgH]=Math.round(ht);
+      applyPos();
     });
     const stop=e=>{
-      if(!live)return;live=false;sideDragCount=Math.max(0,sideDragCount-1);
+      if(!live)return;live=false;dragCount=Math.max(0,dragCount-1);
       document.body.style.userSelect='';document.body.style.cursor='';
       try{h.releasePointerCapture(e.pointerId);}catch(_){}
-      applySidePos();saveCfg();
+      applyPos();saveCfg();
     };
     h.addEventListener('pointerup',stop);
     h.addEventListener('pointercancel',stop);
   });
-})();
-// Tab row's own "physical presence": collapses toward nothing scrolling down through a pane's
-// content, re-expands the instant you scroll back up. One capture-phase listener on .side
-// catches scroll from whichever .pane is currently visible (scroll doesn't bubble, so this has
-// to listen during capture rather than delegate normally).
-(function wireSideScrollCollapse(){
-  const side=$('.side'),head=$('#sideHead');if(!side||!head)return;
-  let lastScroll=0;
-  side.addEventListener('scroll',e=>{
-    const t=e.target.scrollTop;
-    if(t===undefined)return;
-    const dir=t>lastScroll?'down':'up';
-    lastScroll=t;
-    if(t<=4){head.classList.remove('collapsed');return;}
-    if(dir==='down')head.classList.add('collapsed');
-    else head.classList.remove('collapsed');
-  },true);
-})();
-// The GEX heatmap's column width and the tab pill's width/position both depend on .side's own
-// rendered box size (see renderGexHeat()'s wrap.clientWidth read and moveTabPill()'s
-// offsetWidth/offsetLeft read) — a ResizeObserver on .side itself refits both regardless of
-// WHY its size changed (a resize-corner drag, a breakpoint crossing, anything future), matching
-// the same ResizeObserver+rAF pattern the chart panes already use rather than hooking this into
-// every individual place that can change .side's size.
-(function wireSideResizeObserver(){
-  const side=$('.side');if(!side||typeof ResizeObserver!=='function')return;
-  let raf=0;
-  new ResizeObserver(()=>{
-    cancelAnimationFrame(raf);
-    raf=requestAnimationFrame(()=>{if(gexHeat)renderGexHeat();moveTabPill();});
-  }).observe(side);
-})();
-addEventListener('resize',applySidePos);
+  // Tab row's own "physical presence": collapses toward nothing scrolling down through a pane's
+  // content, re-expands the instant you scroll back up. One capture-phase listener on side
+  // catches scroll from whichever .pane is currently visible (scroll doesn't bubble, so this has
+  // to listen during capture rather than delegate normally).
+  if(head){
+    let lastScroll=0;
+    side.addEventListener('scroll',e=>{
+      const t=e.target.scrollTop;
+      if(t===undefined)return;
+      const dir=t>lastScroll?'down':'up';
+      lastScroll=t;
+      if(t<=4){head.classList.remove('collapsed');return;}
+      if(dir==='down')head.classList.add('collapsed');
+      else head.classList.remove('collapsed');
+    },true);
+  }
+  // The GEX heatmap's column width and the tab pill's width/position both depend on side's own
+  // rendered box size (see renderGexHeat()'s wrap.clientWidth read and moveTabPill()'s
+  // offsetWidth/offsetLeft read) — a ResizeObserver on side itself refits both regardless of WHY
+  // its size changed (a resize-corner drag, a breakpoint crossing, anything future), matching the
+  // same ResizeObserver+rAF pattern the chart panes already use rather than hooking this into
+  // every individual place that can change side's size.
+  if(typeof ResizeObserver==='function'){
+    let raf=0;
+    new ResizeObserver(()=>{
+      cancelAnimationFrame(raf);
+      raf=requestAnimationFrame(()=>{if(o.onResize)o.onResize();moveTabPill(side);});
+    }).observe(side);
+  }
+  addEventListener('resize',applyPos);
+  return{applyPos,setHidden};
+}
+const sidePop1=initSidePopout({sideSel:'#side',btnSel:'#sbBtn',headSel:'#sideHead',iconSel:'#sbIcon',
+  cfgX:'sideX',cfgY:'sideY',cfgW:'sideW',cfgH:'sideH',cfgHidden:'sb',
+  showTitle:'Show side panel',hideTitle:'Hide side panel',mobileToggle:true,
+  onResize:()=>{if(gexHeat)renderGexHeat();}});
+// Pane 2's own popout — created lazily by setPaneN()/applyPaneSym() the first time it is
+// actually needed, same lazy-creation spirit as makePane() for pane 2's chart itself, but the
+// DOM already exists at boot (just display:none) so this can wire up unconditionally here.
+const sidePop2=initSidePopout({sideSel:'#side2',btnSel:'#sbBtn2',headSel:'#sideHead2',iconSel:'#sbIcon2',
+  cfgX:'side2X',cfgY:'side2Y',cfgW:'side2W',cfgH:'side2H',cfgHidden:'sb2',
+  showTitle:'Show Pane 2 side panel',hideTitle:'Hide Pane 2 side panel',mobileToggle:false,
+  onResize:()=>{if(gex2Heat)renderGexHeat(true);}});
+// Back-compat wrappers: applySidePos()/setSidebar() are still called bare, with no args, from a
+// few places written before this was generalized to a factory (boot's own initial layout call,
+// among others) — these keep meaning exactly "the MAIN popout", never Pane 2's.
+function applySidePos(){if(sidePop1)sidePop1.applyPos();}
+function setSidebar(hidden){if(sidePop1)sidePop1.setHidden(hidden);}
 $('#cfgCancel').onclick=()=>$('#setup').style.display='none';
 $('#keyEye').onclick=e=>{e.preventDefault();const i=$('#cfgKey');i.type=i.type==='password'?'text':'password';$('#keyEye').textContent=i.type==='password'?'show':'hide';};
 $('#finnhubEye').onclick=e=>{e.preventDefault();const i=$('#cfgFinnhub');i.type=i.type==='password'?'text':'password';$('#finnhubEye').textContent=i.type==='password'?'show':'hide';};
