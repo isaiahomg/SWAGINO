@@ -518,9 +518,10 @@ table.lv td.p{font-weight:600;text-align:right;white-space:nowrap}
 .scantoggle:hover{text-decoration:underline}
 .scandetail{margin-top:8px;padding-top:8px}
 .badge{font-size:9px;border:none;background:rgba(255,255,255,.08);border-radius:4px;padding:1px 5px;color:var(--dim);margin-left:4px}
-/* CONFLUENCE badge — golden glow, brighter the more independent level families agree.
-   The badge is only rendered while the level is still confluent, so when a cluster breaks
-   up the glow disappears with it on the next recompute. */
+/* CONFLUENCE badge — golden glow. Shown only on the level SWAGINO's GEX board currently ranks
+   as the strongest dealer-gamma magnet (computeConfluence()), so the glow disappears the moment
+   that's no longer true on the next recompute. No strength tier (there used to be one for "3+
+   families agree" — that concept doesn't exist any more, this is always exactly one level). */
 .badge.conf{color:#f0d98a;background:rgba(214,179,90,.07);
   animation:confBreathe 4s ease-in-out infinite}
 /* A slow, even breath rather than a glow pulse — the opacity eases in and out on
@@ -534,13 +535,10 @@ table.lv td.p{font-weight:600;text-align:right;white-space:nowrap}
           filter:drop-shadow(0 0 3px rgba(214,179,90,.16)) drop-shadow(0 0 3px rgba(214,179,90,.28))}
   50%    {opacity:1;
           filter:drop-shadow(0 0 9px rgba(214,179,90,.42)) drop-shadow(0 0 6px rgba(214,179,90,.6))}}
-/* 3+ families: same breath, a little deeper and slightly quicker */
-.badge.conf.s3{color:#fff1b8;background:rgba(214,179,90,.13);animation-duration:2.8s}
 @keyframes confPop{0%{transform:scale(.7);opacity:0}
   55%{transform:scale(1.22);opacity:1;filter:brightness(1.9)}100%{transform:scale(1);opacity:1}}
 /* one-shot pop the first time a level becomes confluent */
 .badge.conf.fresh{animation:confPop .55s cubic-bezier(.2,.9,.3,1.3),confBreathe 4s ease-in-out .55s infinite}
-.badge.conf.s3.fresh{animation:confPop .55s cubic-bezier(.2,.9,.3,1.3),confBreathe 2.8s ease-in-out .55s infinite}
 /* collapsible sections inside the Settings modal */
 .setsec{width:100%;text-align:left;margin:12px 0 4px;color:var(--warn);letter-spacing:.14em;
   text-transform:uppercase;font-size:10.5px}
@@ -643,7 +641,6 @@ input:disabled,select:disabled{opacity:.45;cursor:not-allowed}
   background:transparent;padding:0 5px;
   text-shadow:0 1px 1px rgba(0,0,0,.85);
   animation:confTextBreathe 4s ease-in-out infinite}
-.conflab.s3{color:#fff1b8;animation-duration:2.8s}
 /* The dark 1px outline above is static (never changes, so it costs nothing after the first
    paint). The breathing glow itself used to be an animated text-shadow layered on top of that
    outline - text-shadow is not a compositor-only property, so it repainted the label on every
@@ -5765,18 +5762,19 @@ function positionConfLabels(p){
   levels.filter(l=>l.conf&&show[l.cat]&&lvlStyleOf(l).on).forEach(l=>{
     const k=l.price.toFixed(2);
     let g=byPx.get(k);
-    if(!g){g={key:k,price:l.price,names:[],confN:0};byPx.set(k,g);}
+    if(!g){g={key:k,price:l.price,names:[]};byPx.set(k,g);}
     if(g.names.indexOf(l.label)<0)g.names.push(l.label);
-    if((l.confN||0)>g.confN)g.confN=l.confN||0;
   });
   const want=[...byPx.values()];
-  const sig=want.map(g=>g.key+':'+g.confN+':'+g.names.join(',')).join('|');
+  // No strength tier any more (see computeConfluence()) - CONFLUENCE is a single GEX top-magnet
+  // pick, never a multi-family count, so there is nothing left to escalate the glow against.
+  const sig=want.map(g=>g.key+':'+g.names.join(',')).join('|');
   if(p._confSig!==sig){
     p._confSig=sig;
     host.querySelectorAll('.conflab').forEach(e=>e.remove());
     want.forEach(g=>{
       const d=document.createElement('div');
-      d.className='conflab'+(g.confN>=3?' s3':'');
+      d.className='conflab';
       d.dataset.key=g.key;
       d.textContent=g.names.join(', ');
       host.appendChild(d);
@@ -6997,71 +6995,37 @@ function drawLevels(){visPanes().forEach(p=>{drawLevelsOn(p);positionLvlTags(p);
   renderGexLevels(LS.gex?LS.gex.levels:[]);}
 /* ---------- levels engine ---------- */
 /* ---------- confluence ----------
-   A level is tagged CONFLUENCE when independent level families land on the same price.
-   Three things make this meaningful rather than decorative:
-   1. TOLERANCE IS THE CURRENT NOISE BAND, not a fixed dollar amount: 0.30 x ATR(14) on the
-      5m tape, clamped to [0.04%, 0.30%] of price. The previous build hard-coded $0.40 for
-      every symbol at every price — 0.07% on a $600 index but 2% on a $20 name.
-   2. SPAN-CAPPED CLUSTERING. A cluster is only extended while its TOTAL width stays inside
-      the tolerance, so every member is within tolerance of every other member. The previous
-      build tested each level pairwise, so a chain A-B-C where A~B and B~C each fit flagged
-      all three even when A and C were twice the tolerance apart — a "confluence" spanning
-      a band price could drive straight through. (Plain single-linkage has the same defect,
-      which is why the walk below measures from the START of the cluster, not the neighbour.)
-   3. THE FAMILIES MUST BE INDEPENDENT — at least two different categories. Two daily pivots
-      landing together is just pivot arithmetic agreeing with itself, not confirmation.
-   Strength = how many distinct families agree, and that drives the glow intensity. */
-let confTol=0;
-// ind5.atr is Wilder ATR(14) over bars5 UNFILTERED — every session included, per session_filter=
-// all (see fetchTsRange). That's correct for what ind5.atr otherwise backs (Market Structure's
-// break buffer, retest zone, probe pierce, stop pad — extended-hours gaps are real information
-// there). It is the WRONG input for confTolerance(): every family this tolerance compares
-// (Session, Previous Day, Institutional) is itself RTH-only, so sizing "are these the same
-// level" off a noise band that extended-hours can quietly dilute compares RTH numbers against a
-// non-RTH yardstick. Confirmed live on NVDA: at 4:00pm ET (RTH close, genuinely volatile day —
-// the stock had just closed -4.58%) the RTH-only ATR(14) was 0.60. Read again at 7:55pm, after
-// three hours of thin, calm post-market drift folded into the same Wilder smoothing, ind5.atr
-// had decayed to 0.096 — a 6x difference describing what should still be "the same" current
-// volatility for RTH-level comparison purposes. So confTolerance() gets its own RTH-only
-// ATR(14) below instead of reusing ind5.atr — ind5.atr and everything else built on it (Market
-// Structure's triggers) are untouched by this.
-function rthAtr14(){
-  if(!bars5.length)return null;
-  const rth=bars5.filter(b=>b.etMin>=570&&b.etMin<960);
-  if(rth.length<15)return null;
-  const trA=[];
-  for(let i=0;i<rth.length;i++){
-    if(i===0||rth[i].etYmd!==rth[i-1].etYmd){trA.push(null);continue;}
-    trA.push(Math.max(rth[i].h-rth[i].l,Math.abs(rth[i].h-rth[i-1].c),Math.abs(rth[i].l-rth[i-1].c)));
-  }
-  const series=rmaSeries(trA,14);
-  for(let i=series.length-1;i>=0;i--)if(series[i]!=null)return series[i];
-  return null;
-}
-function confTolerance(){
-  const px=lastPx||(bars5.length?bars5[bars5.length-1].c:0);
-  if(!px)return 0.40;
-  const atr=rthAtr14();
-  const base=atr?0.30*atr:px*0.0010;
-  return Math.max(px*0.0004,Math.min(px*0.0030,base));
-}
+   CONFLUENCE answers a different question than it used to: not "do independent level families
+   happen to land at the same price" (that was overlap, and overlap is not evidence price is
+   headed anywhere — two unrelated calculations agreeing is a coincidence, not a signal), but
+   "which existing level does SWAGINO's own data say price is currently most likely to move
+   toward next."
+
+   Audited against every level-producing system in this file (Session/Previous-day/Institutional/
+   GEX, plus Structure's swings and BOS/CHoCH, Saty's ATR ladder, RSI, VWAP, trend) for which of
+   them actually assert a FORWARD-LOOKING claim about a SPECIFIC price, as opposed to describing
+   historical structure (a swing, a break, a volume node — real, but backward-looking) or general
+   market condition (trend direction, RSI, VWAP side — real, but not about any one level). Exactly
+   one system clears that bar: GEX's own magnet/air-pocket classification already says outright,
+   in its own summary panel and its own plain-English tooltip elsewhere in this file, that a
+   magnet strike is "a price the market tends to gravitate toward" and that price "tends to stall
+   and get pulled back" there (see computeChainGex()'s summary text and the Scanner-side GEX
+   explainer). Nothing else in the codebase makes a claim like that about a specific price.
+
+   So: CONFLUENCE = whichever level in `levels` carries key 'MaxG' — GEX's OWN existing "Top
+   magnet" designation (the single largest dealer-gamma strike across the whole board, already
+   ranked and already labeled "Top" vs the lesser CW1-3 magnets, computeChainGex()/parseGexRows()
+   above). Not a new ranking: reusing the primary pick the GEX engine already makes for its own
+   board display. If GEX hasn't produced a board this cycle (market closed, or its own guardrails
+   rejected it), there is no MaxG entry and no level is CONFLUENCE — that absence is correct, not
+   a gap: forcing a "best available" pick from evidence that doesn't actually support one would be
+   exactly the unsupported-assumption problem this rework exists to remove. */
 function computeConfluence(){
-  confTol=confTolerance();
   levels.forEach(l=>{l.conf=false;l.confN=0;l.confWith='';});
-  const live=levels.slice().sort((a,b)=>a.price-b.price);
-  let i=0;
-  while(i<live.length){
-    let j=i+1;
-    while(j<live.length&&(live[j].price-live[i].price)<=confTol)j++;   // span from cluster start
-    if(j-i>1){
-      const group=live.slice(i,j);
-      const fams=new Set(group.map(g=>g.cat));
-      if(fams.size>=2){
-        const names=group.map(g=>g.label).join(' + ');
-        group.forEach(g=>{g.conf=true;g.confN=fams.size;g.confWith=names;});
-      }
-    }
-    i=j;
+  const mag=levels.find(l=>l.key==='MaxG');
+  if(mag){
+    mag.conf=true;mag.confN=1;
+    mag.confWith="SWAGINO's GEX board currently ranks this the single strongest dealer-gamma magnet on the chain.";
   }
 }
 // Which level families are drawn. Backed by cfg rather than by the checkboxes themselves,
@@ -7560,9 +7524,13 @@ function deleteAlert(id){
    about fitting this app rather than changing the maths:
      - Levels are drawn as this chart's price lines, so the axis plate is transparent and
        the reading carries the colour, exactly like every other price label here.
-     - They take no part in confluence. Confluence means "independent families agree at one
-       price"; this is a dense grid derived from a single number, so it would agree with
-       almost everything and make the badge meaningless.
+     - They take no part in confluence — CONFLUENCE is GEX's own top-magnet pick specifically
+       because that's the one place in this file that asserts a specific price is where the
+       market tends to gravitate (see computeConfluence()'s own comment). Saty's ladder makes
+       no such claim about any of its rungs — it's a Fibonacci-percentage grid measuring the
+       day's range against ATR, described in purely structural terms everywhere else in this
+       file, not a price-destination system — so it was never a candidate for this regardless
+       of how many rungs a price happens to sit near.
    ====================================================================================== */
 
 // TradingView's input list for this indicator, verbatim, with its defaults. Everything the
@@ -8156,10 +8124,10 @@ function renderLevelTable(){
       if(l.conf){
         nowConf.add(l.key);
         // "fresh" only on the render where a level first becomes confluent, so the pop
-        // fires once instead of on every recompute
-        const cls='badge conf'+(l.confN>=3?' s3':'')+(prevConfKeys.has(l.key)?'':' fresh');
-        badge=`<span class="${cls}" title="${l.confN} independent level families agree within `
-          +`${confTol.toFixed(2)}: ${esc(l.confWith)}">CONFLUENCE</span>`;
+        // fires once instead of on every recompute. No strength tier any more — a single
+        // GEX top-magnet pick has nothing to escalate against (see computeConfluence()).
+        const cls='badge conf'+(prevConfKeys.has(l.key)?'':' fresh');
+        badge=`<span class="${cls}" title="${esc(l.confWith)}">CONFLUENCE</span>`;
       }
       return`<tr class="lvrow${shown[cat]?'':' catoff'}">
       <td><span class="sw lvsw" data-key="${l.key}" style="background:${st.color}"></span><span class="lvlabel${st.on?' on':''}" data-key="${l.key}" role="button" tabindex="0">${esc(l.label)}</span>${badge}</td>
@@ -11310,7 +11278,7 @@ buildPicker();wireStyle();wireHandles();buildHelpIcons();
 document.addEventListener('click',e=>{if(!e.target.closest('.ihelp')&&!e.target.closest('#tipbox'))ihelpHide();});
 // The icon itself now sits right under the table (moved there in the HTML, not just its
 // popup) so the plain icon-relative default positioning is all this needs.
-try{wireIhelp($('#lvConfluenceHelp'),'<b class="tiptitle">CONFLUENCE</b>a price where two or more independent level families agree within the current noise band. The glow brightens with the number of families.');}catch(e){}
+try{wireIhelp($('#lvConfluenceHelp'),'<b class="tiptitle">CONFLUENCE</b>the level SWAGINO\'s GEX board currently ranks as the strongest dealer-gamma magnet — where price is expected to gravitate toward next. Shown only while the GEX board has a top magnet; not related to whether other level families happen to sit nearby.');}catch(e){}
 const g0=inGexWindow()?LS.gex:null;
 if(!g0){LS.gex=null;}
 if(g0){gexLastT=g0.t||0;gexSrc='last session';
