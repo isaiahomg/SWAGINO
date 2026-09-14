@@ -337,8 +337,8 @@ input[type=checkbox]{accent-color:var(--pivot)}
 .indtog:hover .mini{opacity:1}
 .indcollapse{display:flex;align-items:center;justify-content:center;width:20px;height:15px;
   background:rgba(255,255,255,.05);border:none;border-radius:4px;
-  color:var(--faint);cursor:pointer;padding:0}
-.indcollapse:hover{color:var(--dim);background:rgba(255,255,255,.09)}
+  color:var(--dim);cursor:pointer;padding:0}
+.indcollapse:hover{color:var(--text);background:rgba(255,255,255,.09)}
 .indcollapse svg{width:9px;height:9px;transition:transform .15s}
 .indcollapse.on svg{transform:rotate(180deg)}
 /* Chart-type (Candles/Line) dropdown — .mini button + small popup, same visual language as the
@@ -1910,10 +1910,10 @@ table.lv td{padding:6px 10px}
     </div>
     <button class="tbtn setupIconBtn" id="alertBellBtn" title="Alerts"><svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2.5c-2.2 0-4 1.8-4 4v2.3c0 .5-.2 1-.5 1.4L4 12.5A1 1 0 0 0 4.8 14h10.4a1 1 0 0 0 .8-1.5l-1.5-2.3c-.3-.4-.5-.9-.5-1.4V6.5c0-2.2-1.8-4-4-4Z"/><path d="M8.2 16.5a1.8 1.8 0 0 0 3.6 0"/></svg><span id="alertBellBadge" class="albadge" style="display:none">0</span></button>
     <button class="tbtn setupIconBtn" id="setupBtn" title="Settings"><svg viewBox="0 0 90 90" width="20" height="20" fill="currentColor"><path d="M 79.199 45 c 0 -2.017 -0.185 -3.99 -0.52 -5.912 l 10.238 -8.021 l -9.893 -17.135 l -12.065 4.856 c -3.016 -2.53 -6.473 -4.552 -10.242 -5.926 L 54.893 0 H 35.107 l -1.825 12.862 c -3.769 1.375 -7.225 3.397 -10.242 5.926 l -12.065 -4.856 L 1.083 31.067 l 10.238 8.021 c -0.335 1.921 -0.52 3.894 -0.52 5.912 s 0.185 3.99 0.52 5.912 L 1.083 58.933 l 9.893 17.135 l 12.065 -4.856 c 3.016 2.53 6.473 4.552 10.242 5.926 L 35.107 90 h 19.785 l 1.825 -12.862 c 3.769 -1.375 7.225 -3.397 10.242 -5.926 l 12.065 4.856 l 9.893 -17.135 l -10.238 -8.021 C 79.014 48.99 79.199 47.017 79.199 45 z M 45 66.659 c -11.962 0 -21.659 -9.697 -21.659 -21.659 S 33.038 23.341 45 23.341 S 66.659 33.038 66.659 45 S 56.962 66.659 45 66.659 z"/></svg></button>
-    <button class="sbFloat" id="sbBtn" title="Hide side panel"><svg id="sbIcon" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><g class="sbcompress"><polyline points="13 3 9 7"/><polyline points="13 7 9 7 9 3"/><polyline points="3 13 7 9"/><polyline points="3 9 7 9 7 13"/></g><g class="sbexpand"><polyline points="9 7 13 3"/><polyline points="9 3 13 3 13 7"/><polyline points="7 9 3 13"/><polyline points="7 13 3 13 3 9"/></g></svg></button>
+    <button class="sbFloat" id="sbBtn" title="Hide side panel"><svg id="sbIcon" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><g class="sbcompress"><polyline points="13 3 10 6"/><polyline points="13 6 10 6 10 3"/><polyline points="3 13 6 10"/><polyline points="3 10 6 10 6 13"/></g><g class="sbexpand"><polyline points="10 6 13 3"/><polyline points="9 3 13 3 13 7"/><polyline points="6 10 3 13"/><polyline points="7 13 3 13 3 9"/></g></svg></button>
     <!-- Pane 2's own show/hide handle for its own popout — only ever visible while Pane 2 is
          unlinked and on screen (see setPaneN()/applyPaneSym()). -->
-    <button class="sbFloat" id="sbBtn2" title="Hide Pane 2 side panel" style="display:none!important"><svg id="sbIcon2" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><g class="sbcompress"><polyline points="13 3 9 7"/><polyline points="13 7 9 7 9 3"/><polyline points="3 13 7 9"/><polyline points="3 9 7 9 7 13"/></g><g class="sbexpand"><polyline points="9 7 13 3"/><polyline points="9 3 13 3 13 7"/><polyline points="7 9 3 13"/><polyline points="7 13 3 13 3 9"/></g></svg></button>
+    <button class="sbFloat" id="sbBtn2" title="Hide Pane 2 side panel" style="display:none!important"><svg id="sbIcon2" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><g class="sbcompress"><polyline points="13 3 10 6"/><polyline points="13 6 10 6 10 3"/><polyline points="3 13 6 10"/><polyline points="3 10 6 10 6 13"/></g><g class="sbexpand"><polyline points="10 6 13 3"/><polyline points="9 3 13 3 13 7"/><polyline points="6 10 3 13"/><polyline points="7 13 3 13 3 9"/></g></svg></button>
   </div>
   <div class="main">
     <div class="chartcol">
