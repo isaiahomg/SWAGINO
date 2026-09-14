@@ -395,9 +395,15 @@ input[type=checkbox]{accent-color:var(--pivot)}
 .ctbtn .ct-line{display:none}
 .ctbtn.linesel .ct-candles{display:none}
 .ctbtn.linesel .ct-line{display:inline}
-.ctmenu{position:absolute;top:100%;left:0;margin-top:4px;z-index:60;display:none;
-  background:#1a1c22;border:none;border-radius:8px;padding:3px;min-width:104px}
-.ctmenu.open{display:block}
+/* Same animated open/close as .tfmenu (see its own comment) — display stays permanently block;
+   opacity/visibility/pointer-events/transform carry the actual show/hide. */
+.ctmenu{position:absolute;top:100%;left:0;margin-top:4px;z-index:60;
+  background:#1a1c22;border:none;border-radius:8px;padding:3px;min-width:104px;
+  opacity:0;visibility:hidden;pointer-events:none;transform-origin:top left;
+  transform:translateY(-6px) scale(.97);
+  transition:opacity .16s ease,transform .16s ease,visibility 0s linear .16s}
+.ctmenu.open{opacity:1;visibility:visible;pointer-events:auto;
+  transform:translateY(0) scale(1);transition:opacity .16s ease,transform .16s ease,visibility 0s linear 0s}
 .ctitem{display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:5px;
   font-size:11px;color:var(--axistext);cursor:pointer;white-space:nowrap}
 .ctitem:hover{background:var(--panel2);color:var(--axistext)}
@@ -424,20 +430,20 @@ input[type=checkbox]{accent-color:var(--pivot)}
 /* Same hover-reveal plate .indtog uses on the chart's on-chart indicator legend, applied to the
    Volume/RSI subpane label so its gear icon reads as part of one plate on hover too. */
 .ptag:hover{background:rgba(255,255,255,.06)}
-.ptag .volgear,.ptag .rsigear{opacity:0;transition:opacity .15s ease;
+.ptag .volgear,.ptag .rsigear,.ptag .macdgear{opacity:0;transition:opacity .15s ease;
   background:none!important;border:none!important;box-shadow:none!important}
-.subpane:hover .volgear,.subpane:hover .rsigear{opacity:1}
+.subpane:hover .volgear,.subpane:hover .rsigear,.subpane:hover .macdgear{opacity:1}
 /* On a touch device there is no persistent :hover state, so these opacity:0-until-hover
    controls (the per-indicator eye toggle + its collapse control, the RSI/Volume gear icons)
    would be permanently unreachable. Forced visible only where hover genuinely can't happen —
    mouse/trackpad users see no change at all. */
 @media (hover:none),(pointer:coarse){
-  .indtog .eye,.indtog .mini,.ptag .volgear,.ptag .rsigear{opacity:1}
+  .indtog .eye,.indtog .mini,.ptag .volgear,.ptag .rsigear,.ptag .macdgear{opacity:1}
   /* Same touch-only scope enlarges the gear icons up toward the ~40-44px minimum recommended
      touch target, without changing their dense desktop sizing at all. The color-swatch size
      bump lives further down, right after the base .sw rule it overrides (same specificity,
      so it must come later in source order to win). */
-  .ctbtn,.volgear,.rsigear{min-width:40px;min-height:40px;display:inline-flex;align-items:center;justify-content:center}
+  .ctbtn,.volgear,.rsigear,.macdgear{min-width:40px;min-height:40px;display:inline-flex;align-items:center;justify-content:center}
 }
 /* The side panel is a floating window, not a docked grid column: position/size/hidden state
    all live in cfg (sideX/sideY/sideW/sideH/sb - see applySidePos()) and render onto this
@@ -1047,9 +1053,10 @@ select option{background:var(--panel2);color:var(--text)}
    (generic $$('.tfbtn') click handler + closeTfMenus() outside-click/Escape handling — see the
    "Timeframe dropdown" JS below), but not .tfmenu's own sizing: the scanner holds a scrollable
    stack of per-symbol cards, not a short list of options, so it gets its own panel class instead
-   of fighting .tfmenu's 64px min-width/no-scroll assumptions. Explicitly requested to animate in
-   (unlike the plain instant-show .tfmenu family) since a panel this size popping in with zero
-   transition read as a layout glitch rather than a deliberate dropdown. */
+   of fighting .tfmenu's 64px min-width/no-scroll assumptions. This was the first dropdown here to
+   get a fade/slide/scale open animation instead of a flat display:none/block snap; .tfmenu and
+   .ctmenu (below/elsewhere) later picked up the identical treatment so every dropdown in the app
+   now animates the same way — see each one's own comment. */
 .scandrop{position:relative}
 .scanmenu{position:absolute;top:100%;right:0;margin-top:6px;z-index:60;
   width:400px;max-width:min(400px,calc(100vw - 24px));max-height:min(620px,70vh);
@@ -1059,13 +1066,30 @@ select option{background:var(--panel2);color:var(--text)}
   transition:opacity .16s ease,transform .16s ease,visibility 0s linear .16s}
 .tfdrop.open .scanmenu{opacity:1;visibility:visible;pointer-events:auto;
   transform:translateY(0) scale(1);transition:opacity .16s ease,transform .16s ease,visibility 0s linear 0s}
+/* Shared reduced-motion override for every animated dropdown in the app (Scanner, the
+   .tfmenu family — timeframe/chart-layout/session, the chart-type .ctmenu, and Settings' own
+   theme-preset popover): keeps the opacity/visibility swap (still needed for click-through and
+   screen-reader state) but drops the slide/scale motion and the crossfade duration to
+   effectively instant. */
 @media (prefers-reduced-motion:reduce){
-  .scanmenu{transition:opacity .01s linear,visibility 0s linear;transform:none}
-  .tfdrop.open .scanmenu{transition:opacity .01s linear,visibility 0s linear}
+  .scanmenu,.tfmenu,.ctmenu,#setup .presetlist{transition:opacity .01s linear,visibility 0s linear;transform:none}
+  .tfdrop.open .scanmenu,.tfdrop.open .tfmenu,.ctmenu.open,#themeSelBtn.open + .presetlist{
+    transition:opacity .01s linear,visibility 0s linear}
 }
-.tfmenu{position:absolute;top:100%;right:0;margin-top:6px;z-index:60;display:none;
-  background:#1a1c22;border-radius:8px;padding:3px;min-width:64px}
-.tfdrop.open .tfmenu{display:block}
+/* Opens with a fade+slide+scale rather than a flat display:none/block snap — the same
+   animated-dropdown treatment .scanmenu introduced, generalized onto the shared .tfmenu base so
+   every menu built on it (timeframe, chart layout, session) gets it for free, not just Scanner.
+   display stays permanently "block" (or, for .laymenu below, "flex") now that visibility runs
+   entirely through opacity/visibility/pointer-events; the visibility transition is delayed on
+   the way IN (0s) but deferred on the way OUT (delay .16s, after the fade finishes) so the panel
+   stays hit-testable and readable throughout its own exit animation instead of vanishing instantly. */
+.tfmenu{position:absolute;top:100%;right:0;margin-top:6px;z-index:60;
+  background:#1a1c22;border-radius:8px;padding:3px;min-width:64px;
+  opacity:0;visibility:hidden;pointer-events:none;transform-origin:top right;
+  transform:translateY(-6px) scale(.97);
+  transition:opacity .16s ease,transform .16s ease,visibility 0s linear .16s}
+.tfdrop.open .tfmenu{opacity:1;visibility:visible;pointer-events:auto;
+  transform:translateY(0) scale(1);transition:opacity .16s ease,transform .16s ease,visibility 0s linear 0s}
 /* Inside the dropdown the segmented control reads as a plain list, not a horizontal trough —
    same .ctitem row language as the chart-type menu, not a new pattern. */
 .tfmenu .seg{background:none;border:none;border-radius:0;padding:0;
@@ -1283,6 +1307,18 @@ table.lv td{padding:6px 10px}
   position:absolute;left:0;top:calc(100% + 8px);z-index:120;width:280px;max-height:280px;overflow-y:auto;padding:6px;border-radius:14px;
   background:#1a1c22;
   box-shadow:0 14px 40px rgba(0,0,0,.5);
+  /* Same animated open/close as the topbar's .tfmenu/.ctmenu dropdowns — see .tfmenu's own
+     comment. #themeSelBtn's own .open class (already toggled in JS for its caret-flip
+     animation) doubles as the trigger here via the adjacent-sibling selector below, so opening
+     this popover needed no new JS, just a CSS hook onto wiring that already existed. */
+  opacity:0;visibility:hidden;pointer-events:none;transform-origin:top left;
+  transform:translateY(-6px) scale(.98);
+  transition:opacity .16s ease,transform .16s ease,visibility 0s linear .16s;
+}
+#themeSelBtn.open + .presetlist{
+  opacity:1;visibility:visible;pointer-events:auto;
+  transform:translateY(0) scale(1);
+  transition:opacity .16s ease,transform .16s ease,visibility 0s linear 0s;
 }
 #setup .presetlist::-webkit-scrollbar{width:9px}
 #setup .presetlist::-webkit-scrollbar-thumb{background:#3a3d45;border-radius:999px;border:2px solid transparent;background-clip:content-box}
@@ -1463,8 +1499,8 @@ table.lv td{padding:6px 10px}
   background:none!important;border:none!important;box-shadow:none!important;border-radius:0!important}
 /* Indicator gear icons (Saty ATR/Ribbon/Market Structure, plus Volume/RSI) match the same
    chart/axis text color as the labels next to them, instead of the generic .mini dim gray. */
-.satygear,.rbgear,.stgear,.volgear,.rsigear,.vwgear,.kcgear{color:var(--axistext)}
-.satygear:hover,.rbgear:hover,.stgear:hover,.volgear:hover,.rsigear:hover{color:var(--axistext)}
+.satygear,.rbgear,.stgear,.volgear,.rsigear,.vwgear,.kcgear,.macdgear{color:var(--axistext)}
+.satygear:hover,.rbgear:hover,.stgear:hover,.volgear:hover,.rsigear:hover,.macdgear:hover{color:var(--axistext)}
 .indcollapse{width:23px;height:18px}
 .indcollapse svg{width:11px;height:11px}
 
@@ -1478,7 +1514,9 @@ table.lv td{padding:6px 10px}
 .sessdrop{position:absolute;right:8px;bottom:6px;z-index:8;border-left:none;padding-left:0;margin-left:0}
 .sessdrop .tfbtn{background:rgba(var(--chartbg-rgb),.85);color:var(--axistext);
   border-radius:7px;padding:3px 7px;font-family:var(--mono);font-size:10.5px}
-.sessdrop .tfmenu{top:auto;bottom:100%;right:0;margin-top:0;margin-bottom:6px}
+.sessdrop .tfmenu{top:auto;bottom:100%;right:0;margin-top:0;margin-bottom:6px;
+  transform-origin:bottom right;transform:translateY(6px) scale(.97)}
+.sessdrop.open .tfmenu{transform:translateY(0) scale(1)}
 /* chartOpts() makes the chart's own canvas background fully transparent (rgba(0,0,0,0)) on
    purpose, for the custom-backdrop feature — every pixel of the chart sees through to
    whatever sits behind it, price/time axis included, not just the candle area. Session
@@ -1494,12 +1532,11 @@ table.lv td{padding:6px 10px}
 /* Chart-layout picker (replaces the old Split text button): a small popover of 1/2/3-pane
    icons, numbered like the reference screenshot, next to Settings. */
 .laydrop{position:relative;border-left:none;padding-left:0;margin-left:0}
-/* NOT display:flex here — that would win over .tfmenu{display:none} at equal specificity by
-   source order alone and leave the popover permanently visible regardless of .open, which is
-   exactly the "stuck open, won't close" bug this replaces. Only .tfdrop.open .laymenu may set
-   display; closed state falls through to the base .tfmenu rule untouched. */
-.laymenu{flex-direction:column;gap:2px;padding:5px;min-width:auto}
-.tfdrop.open .laymenu{display:flex}
+/* display:flex is unconditional now (used to be gated behind .tfdrop.open to avoid beating
+   .tfmenu{display:none} at equal specificity and leaving the popover permanently visible — see
+   git history) — .tfmenu no longer hides via display at all (opacity/visibility/pointer-events
+   instead, see its own comment), so there is no closed-state display value left to fight with. */
+.laymenu{display:flex;flex-direction:column;gap:2px;padding:5px;min-width:auto}
 .layopt{display:flex;align-items:center;gap:7px;background:none;border:none;border-radius:5px;
   padding:5px 8px;font-size:11px;color:var(--dim);cursor:pointer;white-space:nowrap;
   transition:background .12s ease,color .12s ease}
@@ -1559,7 +1596,7 @@ table.lv td{padding:6px 10px}
     // guarded rather than ordered around, since applyBackdrop() itself is called once immediately
     // below at load time.
     if(typeof panes!=='undefined'){
-      panes.forEach(function(p){if(!p)return;[p.chart,p.vchart,p.rchart].forEach(function(c){
+      panes.forEach(function(p){if(!p)return;[p.chart,p.vchart,p.rchart,p.mchart].forEach(function(c){
         try{c.applyOptions({rightPriceScale:{borderColor:'transparent'},timeScale:{borderColor:'transparent'}});}catch(e){}
       });});
     }
@@ -1651,6 +1688,8 @@ table.lv td{padding:6px 10px}
         <div class="subpane" id="volc0wrap"><span class="ptag">Volume <button class="mini volgear" data-pane="0" style="padding:0 5px;margin-left:4px">&#9881;</button></span><div class="cinner" id="volc0"></div></div>
         <div class="phandle" data-pane="0" data-t="rsi" title="Drag to resize RSI panel"></div>
         <div class="subpane" id="rsic0wrap"><span class="ptag">RSI <button class="mini rsigear" data-pane="0" style="padding:0 5px;margin-left:4px">⚙</button></span><div class="cinner" id="rsic0"></div></div>
+        <div class="phandle" data-pane="0" data-t="macd" title="Drag to resize MACD panel"></div>
+        <div class="subpane" id="macdc0wrap"><span class="ptag">MACD <button class="mini macdgear" data-pane="0" style="padding:0 5px;margin-left:4px">⚙</button></span><div class="cinner" id="macdc0"></div></div>
       </div>
       <div class="panewrap" id="pw1" style="display:none">
         <div class="pchart"><div class="chartcorner" data-pane="1"><div class="indlist" id="indlist1"><span class="indtog" id="stylab1">Saty ATR Levels<button class="eye" data-ind="saty" data-pane="1" title="Saty ATR Levels"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini satygear" data-pane="1" style="padding:0 5px;margin-left:2px">&#9881;</button></span><span class="indtog" id="rblab1">Saty Pivot Ribbon<button class="eye" data-ind="ribbon" data-pane="1" title="Saty Pivot Ribbon"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini rbgear" data-pane="1" style="padding:0 5px;margin-left:2px">&#9881;</button></span><span class="indtog" id="stlab1">Market Structure<button class="eye" data-ind="struct" data-pane="1" title="Swing structure &amp; patterns"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini stgear" data-pane="1" style="padding:0 5px;margin-left:2px">⚙</button></span><span class="indtog" id="kclab1">Keltner Channels<button class="eye" data-ind="kc" data-pane="1" title="Keltner Channels"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini kcgear" data-pane="1" style="padding:0 5px;margin-left:2px">&#9881;</button></span><span class="indtog" id="vwlab1">VWAP<button class="eye" data-ind="vwap" data-pane="1" title="VWAP"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini vwgear" data-pane="1" style="padding:0 5px;margin-left:2px">&#9881;</button></span></div><button class="indcollapse on" id="indcollapse1" title="Show/hide overlay indicators"><svg viewBox="0 0 12 12" fill="none"><path d="M2.5 4.5L6 8l3.5-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div><div class="cinner" id="pc1"></div><div class="tips" id="tips1"></div><div class="cdown" id="cd1"></div></div>
@@ -1658,6 +1697,8 @@ table.lv td{padding:6px 10px}
         <div class="subpane" id="volc1wrap"><span class="ptag">Volume <button class="mini volgear" data-pane="1" style="padding:0 5px;margin-left:4px">&#9881;</button></span><div class="cinner" id="volc1"></div></div>
         <div class="phandle" data-pane="1" data-t="rsi" title="Drag to resize RSI panel"></div>
         <div class="subpane" id="rsic1wrap"><span class="ptag">RSI <button class="mini rsigear" data-pane="1" style="padding:0 5px;margin-left:4px">⚙</button></span><div class="cinner" id="rsic1"></div></div>
+        <div class="phandle" data-pane="1" data-t="macd" title="Drag to resize MACD panel"></div>
+        <div class="subpane" id="macdc1wrap"><span class="ptag">MACD <button class="mini macdgear" data-pane="1" style="padding:0 5px;margin-left:4px">⚙</button></span><div class="cinner" id="macdc1"></div></div>
       </div>
            </div>
     </div>
@@ -1900,6 +1941,31 @@ table.lv td{padding:6px 10px}
     <div class="row" style="justify-content:flex-end"><button class="tbtn" id="rsCancel">Close</button><button class="tbtn primary" id="rsOk">OK</button></div>
   </div>
 </div>
+<div id="macdModal" style="position:fixed;inset:0;background:rgba(6,9,15,.85);z-index:120;display:none;align-items:center;justify-content:center">
+  <div class="card" style="width:520px">
+    <h1>MACD <span id="macdPaneTag"></span></h1>
+    <h3 class="setsub">Inputs</h3>
+    <div class="row"><label>Source</label><select id="mcSrc">
+      <option value="close">Close</option><option value="open">Open</option><option value="high">High</option>
+      <option value="low">Low</option><option value="hl2">HL2</option><option value="hlc3">HLC3</option><option value="ohlc4">OHLC4</option></select></div>
+    <div class="row"><label>Fast length</label><input id="mcFast" style="width:60px"></div>
+    <div class="row"><label>Slow length</label><input id="mcSlow" style="width:60px"></div>
+    <div class="row"><label>Signal length</label><input id="mcSig" style="width:60px"></div>
+    <div class="row"><label>Oscillator MA type</label><select id="mcOscType"><option value="ema">EMA</option><option value="sma">SMA</option></select></div>
+    <div class="row"><label>Signal MA type</label><select id="mcSigType"><option value="ema">EMA</option><option value="sma">SMA</option></select></div>
+    <h3 class="setsub">Style</h3>
+    <div class="row"><label style="min-width:0"><input type="checkbox" id="mcHistOn"></label><span style="min-width:96px;font-size:12px">Histogram</span>
+      <span class="sw" id="swMcH0" title="Rising, at/above zero"></span>
+      <span class="sw" id="swMcH1" title="Falling, at/above zero"></span>
+      <span class="sw" id="swMcH2" title="Rising, below zero"></span>
+      <span class="sw" id="swMcH3" title="Falling, below zero"></span></div>
+    <div class="row"><label style="min-width:0"><input type="checkbox" id="mcMacdOn"></label><span style="min-width:96px;font-size:12px">MACD line</span><span class="sw" id="swMcMacd"></span></div>
+    <div class="row"><label style="min-width:0"><input type="checkbox" id="mcSigOn"></label><span style="min-width:96px;font-size:12px">Signal line</span><span class="sw" id="swMcSig"></span></div>
+    <div class="row"><span style="min-width:96px;font-size:12px">Zero line</span><span class="sw" id="swMcZero"></span></div>
+    <div class="hint">This is TradingView's built-in <b>Moving Average Convergence Divergence</b> indicator, ported from its Pine v6 source verbatim — fast/slow EMA (or SMA) of the source, MACD = fast &minus; slow, signal = EMA (or SMA) of MACD, histogram = MACD &minus; signal, coloured by sign and by whether it just rose or fell. Fast 12 / Slow 26 / Signal 9 / EMA+EMA are Pine's own defaults, fixed on every timeframe — unlike RSI's optional per-timeframe auto-tune, MACD has no measured basis here for retuning it per chart, so it runs the same on every timeframe the way TradingView's own version does.</div>
+    <div class="row" style="justify-content:flex-end"><button class="tbtn" id="mcCancel">Close</button><button class="tbtn primary" id="mcOk">OK</button></div>
+  </div>
+</div>
 <div id="volModal" style="position:fixed;inset:0;background:rgba(6,9,15,.85);z-index:120;display:none;align-items:center;justify-content:center">
   <div class="card" style="width:340px">
     <h1>Volume <span id="volPaneTag"></span></h1>
@@ -2057,7 +2123,7 @@ table.lv td{padding:6px 10px}
             <span class="nm" id="themeSelName">Custom (current colors)</span>
             <span class="caret"></span>
           </button>
-          <div class="presetlist" id="themeSelList" style="display:none"></div>
+          <div class="presetlist" id="themeSelList"></div>
         </span>
         <span class="hint" style="margin:0;flex:1">Sets candle body/wick/border colors, the chart background, and axis text color. Everything stays individually editable below afterward.</span></div>
       <div class="row"><label>Background</label><span class="sw" id="swBdColor"></span>
@@ -2260,7 +2326,7 @@ let cfg=Object.assign({proxy:true,quoteS:2,barS:10,
   // 34px taller than Pane 1's own (554 vs 520) — room for the "PANE 2" title row above its
   // Levels/GEX tabs (see #sideHead2's own max-height) so it doesn't open looking cramped.
   side2X:null,side2Y:null,side2W:380,side2H:554,
-  sym:'QQQ',sess:'eth',split:false,paneN:1,tf0:'5',tf1:'60',rsiH0:76,rsiH1:76,volH0:70,volH1:70,stream:true,satyCfg:null,link:true,sym1:'',tfPresets:true,struct0:false,struct1:false,saty0:false,saty1:false,ribbon0:false,ribbon1:false,
+  sym:'QQQ',sess:'eth',split:false,paneN:1,tf0:'5',tf1:'60',rsiH0:76,rsiH1:76,volH0:70,volH1:70,macdH0:90,macdH1:90,stream:true,satyCfg:null,link:true,sym1:'',tfPresets:true,struct0:false,struct1:false,saty0:false,saty1:false,ribbon0:false,ribbon1:false,
   chartType0:'candles',chartType1:'candles',  // per-pane main series type, same cfg[key+i] pattern as struct0/saty0/ribbon0
   axisTextColor:'#ffffff',  // price/volume/RSI axis tick-label colour (all three share one lightweight-charts layout.textColor)
   // Line chart type's own colour mode, mirrors TradingView's real Settings > Line control
@@ -2428,6 +2494,47 @@ cfg.kc=Object.assign({
 },cfg.kc||{});
 delete cfg.kc.length;delete cfg.kc.mult;delete cfg.kc.atrLen;   // migrate off any previously-saved fixed values
 cfg.kc.lines.forEach(L=>{if(L.width==null)L.width=1;if(L.style==null)L.style='solid';});
+// Ported verbatim from the user-supplied Pine v6 source ("Moving Average Convergence Divergence",
+// TradingView's own built-in MACD): fast/slow EMA(or SMA) of `src`, macd = fast-slow, signal =
+// EMA(or SMA) of macd, hist = macd-signal. Fast length 12 / Slow 26 / Signal 9 / EMA+EMA are
+// Pine's own defaults — NOT re-tuned per timeframe the way cfg.rsi's length optionally is.
+// This WAS actually tested (not just assumed) the same way RSI's own per-timeframe length was
+// first tried and rejected (see paneParams' comment): a histogram zero-cross ("Falling to
+// rising" / "Rising to falling" — Pine's own two alertcondition()s in the ported source) was
+// backtested across the 5 preset timeframes, on a 9-symbol tuning set (QQQ/SPY/AAPL/MSFT/
+// GOOGL/AMZN/NVDA/META/TSLA) and a 5-symbol held-out set (AMD/NFLX/JPM/XOM/DIS), at 5/10/20-bar
+// horizons, as excess return over drift (same measure the RSI-divergence rejection above uses),
+// against the fixed (12,26,9) default plus a halved (6,13,5) and doubled (24,52,18) variant.
+// Result: no candidate at any timeframe cleared significance on BOTH the tuning set and the
+// held-out set in the same direction — the held-out t-stats ranged roughly -3.4 to +1.7 with no
+// consistent sign, i.e. noise, not signal. Shortening the lookback for the "noisier" intraday
+// timeframes — which is what worked for RSI's own length — did NOT generalize here; if
+// anything it was the single most reliably NEGATIVE result (5m held-out t=-3.41, 60m held-out
+// t=-1.81 for the halved variant). A second, independent argument against a per-timeframe
+// variant: unlike RSI (a bounded 0-100 oscillator whose calibrated lengths only ever move
+// between 12 and 16 bars across every timeframe), MACD's classical 26-period "slow" line spans
+// wildly different real durations depending on the very definition being tested — preserving
+// Pine's OWN 12/26/9-trading-DAYS convention onto 5-minute bars would demand a ~2000-period EMA,
+// which is not a length anyone actually runs; there is no reference duration that both
+// generalizes AND stays a lengths anyone would recognize as "MACD" on an intraday chart. Both
+// lines of evidence point the same way, so MACD runs the same fixed lengths on every timeframe,
+// like TradingView's own version does, adjustable only by hand via its own gear — same
+// conclusion as RSI's own length reached the same way, just without RSI's later, DIFFERENT
+// calibration (a units fix, not a profit fit) rescuing a per-timeframe variant for MACD too.
+// histC[0..3] is Pine's own hColor ternary, read straight off the source: histC[0] = hist>=0 &
+// rising, histC[1] = hist>=0 & falling, histC[2] = hist<0 & rising, histC[3] = hist<0 & falling.
+// macdC (#2962FF) is TradingView's own default plot colour for an unstyled plot() call — the same
+// "TradingView blue" cfg.vwap/cfg.kc already default to; sigC (#ff6d00) and the four histC entries
+// are the literal hex codes the Pine source itself passes to plot()/the hColor ternary. zeroC is
+// the literal hline(0,"Zero",#787b8680) colour, alpha included.
+cfg.macd=Object.assign({
+  src:'close',fastLen:12,slowLen:26,sigLen:9,oscType:'ema',sigType:'ema',
+  histOn:true,histC:['#26a69a','#b2dfdb','#ffcdd2','#ff5252'],
+  macdOn:true,macdC:'#2962FF',macdW:1,macdSt:'solid',
+  sigOn:true,sigC:'#ff6d00',sigW:1,sigSt:'solid',
+  zeroC:'#787b8680'
+},cfg.macd||{});
+if(!Array.isArray(cfg.macd.histC)||cfg.macd.histC.length!==4)cfg.macd.histC=['#26a69a','#b2dfdb','#ffcdd2','#ff5252'];
 const LSTYLE={solid:0,dotted:1,dashed:2};
 
 /* ---------- time ---------- */
@@ -2865,13 +2972,13 @@ function chartOpts(extra){
 function applyCrosshairCfg(){
   const opt={vertLine:{color:cfg.crosshair.color,style:lwcStyle(cfg.crosshair.style)},
              horzLine:{color:cfg.crosshair.color,style:lwcStyle(cfg.crosshair.style)}};
-  panes.forEach(p=>{if(!p)return;[p.chart,p.vchart,p.rchart].forEach(c=>{try{c.applyOptions({crosshair:opt});}catch(e){}});});
+  panes.forEach(p=>{if(!p)return;[p.chart,p.vchart,p.rchart,p.mchart].forEach(c=>{try{c.applyOptions({crosshair:opt});}catch(e){}});});
 }
 // Live-updates the axis tick-label colour (price/volume/RSI y-axis numbers AND the time axis)
 // on every already-created chart, same pattern as applyCrosshairCfg. lightweight-charts only
 // exposes ONE text colour for both axes here (layout.textColor) - no separate y-axis-only knob.
 function applyAxisTextColor(){
-  panes.forEach(p=>{if(!p)return;[p.chart,p.vchart,p.rchart].forEach(c=>{try{c.applyOptions({layout:{textColor:cfg.axisTextColor}});}catch(e){}});});
+  panes.forEach(p=>{if(!p)return;[p.chart,p.vchart,p.rchart,p.mchart].forEach(c=>{try{c.applyOptions({layout:{textColor:cfg.axisTextColor}});}catch(e){}});});
   // --axistext: the ticker box, timeframe label, market-phase pill, Levels/GEX/Log tabs, ETH/RTH
   // chip, and the Levels table's own text all reference this one variable — see its definition.
   document.documentElement.style.setProperty('--axistext',cfg.axisTextColor);
@@ -3012,9 +3119,10 @@ function makeRibbonLine(chart){
     crosshairMarkerVisible:false,autoscaleInfoProvider:NO_SCALE});
 }
 function makePane(idx){
-  const pEl=$('#pc'+idx),rEl=$('#rsic'+idx),vEl=$('#volc'+idx);
+  const pEl=$('#pc'+idx),rEl=$('#rsic'+idx),vEl=$('#volc'+idx),mEl=$('#macdc'+idx);
   $('#rsic'+idx+'wrap').style.height=(cfg['rsiH'+idx]||76)+'px';
   $('#volc'+idx+'wrap').style.height=(cfg['volH'+idx]||70)+'px';
+  $('#macdc'+idx+'wrap').style.height=(cfg['macdH'+idx]||90)+'px';
   // Solid backing for the price/time axis strips — see .axisback's own comment above.
   // Inserted BEFORE pEl so plain DOM paint order puts them underneath the chart's own
   // (transparent) canvas once LWC injects it into pEl below; no z-index juggling needed.
@@ -3089,7 +3197,28 @@ function makePane(idx){
   const rsiBBu=mkBB(),rsiBBl=mkBB();
   const rsiMa=rchart.addLineSeries({color:cfg.rsi.maC,lineWidth:cfg.rsi.maW,priceLineVisible:false,lastValueVisible:true,crosshairMarkerVisible:false,autoscaleInfoProvider:LOCK});
   const rsi=rchart.addLineSeries({color:cfg.ind.rsi.c,lineWidth:cfg.ind.rsi.w,priceLineVisible:false,crosshairMarkerVisible:false,autoscaleInfoProvider:LOCK});
-  linkCharts([chart,rchart,vchart]);
+  // MACD: TradingView's own built-in "Moving Average Convergence Divergence" (Pine v6),
+  // ported verbatim — see cfg.macd's own comment for the exact source and colour mapping.
+  // Its own subpane/chart, below RSI, with the same independent-scale treatment as the RSI
+  // panel above (own LWC chart instance, own price scale) except UNLOCKED (not 0-100), since
+  // MACD/histogram are unbounded — the scale simply auto-fits whichever of
+  // histogram/MACD/signal are currently visible (a hidden series stops contributing to that
+  // fit for free, the same way applyOptions({visible:false}) already behaves everywhere else
+  // in this file).
+  const mchart=LightweightCharts.createChart(mEl,chartOpts({timeScale:{visible:false},rightPriceScale:{borderColor:'transparent',scaleMargins:{top:0.1,bottom:0.1}}}));
+  const macdHist=mchart.addHistogramSeries({priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
+  const macdLine=mchart.addLineSeries({color:cfg.macd.macdC,lineWidth:cfg.macd.macdW,lineStyle:lwcStyle(cfg.macd.macdSt),
+    priceLineVisible:false,lastValueVisible:true,crosshairMarkerVisible:false});
+  const sigLine=mchart.addLineSeries({color:cfg.macd.sigC,lineWidth:cfg.macd.sigW,lineStyle:lwcStyle(cfg.macd.sigSt),
+    priceLineVisible:false,lastValueVisible:true,crosshairMarkerVisible:false});
+  // hline(0, "Zero", #787b8680) — a fixed reference line with no on/off of its own in the Pine
+  // source, so it is created once here (never re-created per render, unlike the RSI bands,
+  // which DO need to be rebuilt whenever their own on/off/value changes) and only ever has its
+  // colour re-applied later, from the settings modal's Zero swatch.
+  const macdZeroLine=macdLine.createPriceLine({price:0,color:cfg.macd.zeroC,lineWidth:1,
+    lineStyle:LightweightCharts.LineStyle.Solid,axisLabelVisible:false,title:''});
+  try{mchart.applyOptions({crosshair:{horzLine:{visible:false,labelVisible:true}}});}catch(e){}
+  linkCharts([chart,rchart,vchart,mchart]);
   // crossSync is wired after the pane object exists (needs pane.tIndex)
   /* The synced crosshair drew a full-width dotted horizontal rule across the volume, RSI
      and DMI panels at the value it was echoing. On the price chart that line is useful —
@@ -3098,6 +3227,7 @@ function makePane(idx){
      the RSI under the cursor. */
   try{rchart.applyOptions({crosshair:{horzLine:{visible:false,labelVisible:true}}});}catch(e){}
   const pane={idx,chart,candles,vol,vchart,rchart,rsi,rsiMa,rsiFill,rsiOB,rsiOS,rsiBBu,rsiBBl,
+    mchart,macdHist,macdLine,sigLine,macdZeroLine,macdTail:null,
     rbCloudFast,rbCloudSlow,rbFast,rbPivot,rbSlow,rbFastConv,rbSlowConv,rbArrows:[],rbTail:null,vwLines,vwapTail:null,vwSets:null,vwLast:null,kcLines,kcTail:null,rsiDivLines:[],rsiBands:[],priceLines:[],alertLines:[],tf:cfg['tf'+idx]||'5',tips:{},last:{},
     _chartType:'candles'};   // matches the candlestick series just created above; ensureChartType() swaps both together
   // The 'close' entry uses a LIVE getter, not the captured `candles` value: ensureChartType() can
@@ -3105,7 +3235,7 @@ function makePane(idx){
   // captured reference here would keep pointing at the OLD, by-then-removed series — silently
   // breaking the crosshair sync FROM the volume/RSI panels back onto the price pane (the failure is
   // swallowed by this function's own try/catch, so it would otherwise fail with no visible error).
-  crossSync(pane,[{chart:chart,get series(){return pane.candles;},key:'close'},{chart:vchart,series:vol,key:'vol'},{chart:rchart,series:rsi,key:'rsi'}]);
+  crossSync(pane,[{chart:chart,get series(){return pane.candles;},key:'close'},{chart:vchart,series:vol,key:'vol'},{chart:rchart,series:rsi,key:'rsi'},{chart:mchart,series:macdLine,key:'macd'}]);
   trackOverlays(pane);
   applyRsiBands(pane);
   // The HTML overlays (session shading, EMA tags, structure labels, the countdown) are
@@ -3119,7 +3249,7 @@ function makePane(idx){
   chart.timeScale().subscribeVisibleLogicalRangeChange(nudge);
   // Marks the chart as user-driven. Set on real interaction only — resetView and the
   // timeframe restore clear it again, so a programmatic move never counts as "you zoomed".
-  [pEl,rEl,vEl].forEach(el=>{
+  [pEl,rEl,vEl,mEl].forEach(el=>{
     if(!el)return;
     el.addEventListener('wheel',()=>{pane._userZoomed=true;},{passive:true});
     el.addEventListener('pointerdown',()=>{pane._userZoomed=true;});
@@ -3150,19 +3280,20 @@ function makePane(idx){
     });
     el.addEventListener('wheel',nudge,{passive:true});
   };
-  [pEl,rEl,vEl].forEach(holdWhileDragging);
+  [pEl,rEl,vEl,mEl].forEach(holdWhileDragging);
   const sizeAll=()=>{
     try{
       chart.applyOptions({width:pEl.clientWidth,height:pEl.clientHeight});
       vchart.applyOptions({width:vEl.clientWidth,height:vEl.clientHeight});
       rchart.applyOptions({width:rEl.clientWidth,height:rEl.clientHeight});
+      mchart.applyOptions({width:mEl.clientWidth,height:mEl.clientHeight});
       syncScaleWidths(pane);positionTips(pane);
     }catch(e){}
   };
   pane.sizeAll=sizeAll;
   let raf=0;
   const ro=new ResizeObserver(()=>{cancelAnimationFrame(raf);raf=requestAnimationFrame(sizeAll);});
-  ro.observe(pEl.parentElement);ro.observe(rEl.parentElement);ro.observe(vEl.parentElement);
+  ro.observe(pEl.parentElement);ro.observe(rEl.parentElement);ro.observe(vEl.parentElement);ro.observe(mEl.parentElement);
   const tipsEl=$('#tips'+idx);
   tipsEl.innerHTML=['fast','piv','slow','fc','sc'].map(k=>`<div class="tip rbtip" data-rk="${k}"></div>`).join('')
     +[0,1,2].map(k=>`<div class="tip vwtip" data-vk="${k}"></div>`).join('');
@@ -3207,7 +3338,7 @@ function syncScaleWidths(p){
     }
     const w=Math.max(56,Math.min(120,
       Math.max(need(px.toFixed(2)),need(volTxt),need('100.00'))));
-    [p.chart,p.vchart,p.rchart].filter(Boolean)
+    [p.chart,p.vchart,p.rchart,p.mchart].filter(Boolean)
       .forEach(c=>c.priceScale('right').applyOptions({minimumWidth:w}));
     // Stashed so anything ELSE that needs "how wide is the axis right now" (positionSessDrop)
     // can read this instead of priceScale('right').width() — width() lags one render behind
@@ -5153,6 +5284,63 @@ function renderPane(p){
     }else{try{p.rsi.setMarkers([]);}catch(e){}}
     p._rsiRenderCache={data,sw:p.sw,key:rBlockKey};
   }
+  // ---- MACD (own subpane, below RSI) — ported verbatim from the Pine v6 source given for
+  // this feature; see cfg.macd's own comment for the source and the exact colour mapping.
+  // Same "recompute only when data or settings actually changed" cache idiom as the RSI block
+  // just above (rBlockKey/rbc), in its own cache field so the two can never invalidate each
+  // other by accident.
+  {
+    const M=cfg.macd;
+    const macdBlockKey=JSON.stringify(M);
+    const mrc=p._macdRenderCache;
+    if(!(mrc&&mrc.data===data&&mrc.key===macdBlockKey)){
+      const fastLen=Math.max(1,+M.fastLen||12),slowLen=Math.max(1,+M.slowLen||26),sigLen=Math.max(1,+M.sigLen||9);
+      const srcArrM=data.map(d=>srcVal(d,M.src));
+      const maFast=maCalc(srcArrM,fastLen,M.oscType);
+      const maSlow=maCalc(srcArrM,slowLen,M.oscType);
+      const macdArr=maFast.map((v,i)=>v==null||maSlow[i]==null?null:v-maSlow[i]);
+      const sigArr=maCalc(macdArr,sigLen,M.sigType);
+      const histArr=macdArr.map((v,i)=>v==null||sigArr[i]==null?null:v-sigArr[i]);
+      p.vals.macd=macdArr;   // crossSync value lookup (key:'macd'), independent of any style on/off
+      // hColor = hist>=0 ? (hist>hist[1] ? histC[0] : histC[1]) : (hist>hist[1] ? histC[2] : histC[3])
+      // — hist[1] is just the PREVIOUS bar's histogram value; na (bar 0, or any bar right after a
+      // null) compares false in Pine, which the `prevH!=null&&h>prevH` guard below reproduces.
+      const histPts=data.map((d,i)=>{
+        const h=histArr[i];
+        if(h==null)return{time:d.time};
+        const prevH=i>0?histArr[i-1]:null;
+        const rising=prevH!=null&&h>prevH;
+        const col=h>=0?(rising?M.histC[0]:M.histC[1]):(rising?M.histC[2]:M.histC[3]);
+        return{time:d.time,value:+h.toFixed(2),color:col};
+      });
+      p.macdHist.applyOptions({visible:!!M.histOn});
+      p.macdHist.setData(M.histOn?histPts:[]);
+      p.macdLine.applyOptions({visible:!!M.macdOn,color:M.macdC,lineWidth:M.macdW,lineStyle:lwcStyle(M.macdSt)});
+      p.macdLine.setData(M.macdOn?padSeries(data,macdArr):[]);
+      p.sigLine.applyOptions({visible:!!M.sigOn,color:M.sigC,lineWidth:M.sigW,lineStyle:lwcStyle(M.sigSt)});
+      p.sigLine.setData(M.sigOn?padSeries(data,sigArr):[]);
+      try{p.macdZeroLine.applyOptions({color:M.zeroC});}catch(e){}
+      // CONFIRMED tail for paneTick's own live one-step recursion (or, for the SMA case, a
+      // window re-sum) — same pair/window-seeding idiom every other per-bar recursive
+      // indicator in this file already uses (ribbon/VWAP/KC/RSI's own smoothing MA): fast and
+      // slow step from the raw SOURCE series, signal steps from the MACD series itself, and
+      // the histogram's colour rule needs only the last two CONFIRMED hist values — never
+      // touched by a tick, since that comparison is against the last CLOSED bar throughout the
+      // forming bar's whole life, exactly like Pine's hist[1] on a still-forming realtime bar.
+      const n=data.length;
+      const pair=a=>[n>=2?a[n-2]:null,n>=1?a[n-1]:null];
+      const winAt=(arr,endIdx,winN)=>{const out=[];for(let j=0;j<winN;j++){const idx=endIdx-j;out.push(idx>=0?arr[idx]:null);}return out;};
+      const tailFor=(kind,len,valsArr,seedArr)=>({kind,len,
+        prevMa:pair(valsArr),
+        win:[winAt(seedArr,n-2,len-1),winAt(seedArr,n-1,len-1)]});
+      p.macdTail={t:n?data[n-1].time:null,src:M.src,
+        fast:tailFor(M.oscType,fastLen,maFast,srcArrM),
+        slow:tailFor(M.oscType,slowLen,maSlow,srcArrM),
+        sig:tailFor(M.sigType,sigLen,sigArr,macdArr),
+        prevHist:pair(histArr)};
+      p._macdRenderCache={data,key:macdBlockKey};
+    }
+  }
   p.lastClose=data.length?data[data.length-1].close:null;
   p.swLabels=null;
   if(p.brkLines)p.brkLines.forEach(l=>{try{p.candles.removePriceLine(l);}catch(e){}});
@@ -6715,6 +6903,40 @@ function paneTick(p){
       }
       if(mv!=null){try{p.rsiMa.update({time:bar.time,value:+mv.toFixed(4)});}
         catch(e){logDiagError('tick|rsiMa|'+p.idx,`RSI-MA tick update failed — ${tickCtx}: ${e&&e.message||e}`);}}
+    }
+    // MACD — one-step recursion for fast/slow (from the raw source) and signal (from the
+    // freshly-stepped MACD value), same seed-selection rule as every tail above: sd4=0 stays on
+    // the bar the last render saw (still forming), sd4=1 means a genuinely new bar has started
+    // since (seed from the bar that just closed). Histogram colour is fixed against the last
+    // CONFIRMED bar's hist (macdTail.prevHist) — never against a tick's own live histogram value
+    // — matching Pine's hist[1] on a still-forming realtime bar, exactly like rsiTail's
+    // seed-pair convention above never lets an intrabar tick poison the running RSI RMAs.
+    const MC=p.macdTail;
+    if(MC&&p.macdLine){
+      const M=cfg.macd,sd4=bar.time!==MC.t?1:0,sv=srcVal(bar,MC.src);
+      const stepTail=(tail,liveInput)=>{
+        if(tail.kind==='ema'){
+          const prev=tail.prevMa[sd4];if(prev==null)return null;
+          const k=2/(tail.len+1);return liveInput*k+prev*(1-k);
+        }
+        const win=tail.win[sd4];let sum=liveInput,ok=true;
+        for(let j=0;j<tail.len-1;j++){const v=win[j];if(v==null){ok=false;break;}sum+=v;}
+        return ok?sum/tail.len:null;
+      };
+      const nf=stepTail(MC.fast,sv),ns=stepTail(MC.slow,sv);
+      if(nf!=null&&ns!=null){
+        const nm=nf-ns,nsig=stepTail(MC.sig,nm);
+        if(nsig!=null){
+          const nh=nm-nsig,prevH=MC.prevHist[sd4],rising=prevH!=null&&nh>prevH;
+          const col=nh>=0?(rising?M.histC[0]:M.histC[1]):(rising?M.histC[2]:M.histC[3]);
+          try{if(M.macdOn)p.macdLine.update({time:bar.time,value:+nm.toFixed(2)});}
+          catch(e){logDiagError('tick|macdLine|'+p.idx,`MACD tick update failed — ${tickCtx}: ${e&&e.message||e}`);}
+          try{if(M.sigOn)p.sigLine.update({time:bar.time,value:+nsig.toFixed(2)});}
+          catch(e){logDiagError('tick|macdSig|'+p.idx,`MACD signal tick update failed — ${tickCtx}: ${e&&e.message||e}`);}
+          try{if(M.histOn)p.macdHist.update({time:bar.time,value:+nh.toFixed(2),color:col});}
+          catch(e){logDiagError('tick|macdHist|'+p.idx,`MACD histogram tick update failed — ${tickCtx}: ${e&&e.message||e}`);}
+        }
+      }
     }
   }
   p.lastClose=bar.close;p.lastOpen=bar.open;
@@ -10121,14 +10343,18 @@ function wireStyle(){
         [...list.children].forEach((el,i)=>{el.querySelector('.nm').textContent=rows[i].name;});
       };
       let themeSelIdx=-1;
-      const close=()=>{list.style.display='none';btn.classList.remove('open');
+      // Visibility runs through #themeSelBtn.open's own CSS (the adjacent-sibling rule on
+      // .presetlist — see its comment) now, not a direct style.display toggle, so the popover
+      // gets the same fade/slide animation every other dropdown in the app has; this JS only
+      // ever needs to track/toggle the one class it was already setting for the caret flip.
+      const close=()=>{btn.classList.remove('open');
         const sc=$('#themeSelScrim');if(sc)sc.remove();};
       const open=()=>{
-        render();list.style.display='block';btn.classList.add('open');
+        render();btn.classList.add('open');
         const sc=document.createElement('div');sc.id='themeSelScrim';sc.className='presetscrim';
         sc.onclick=close;$('#setup .card').appendChild(sc);
       };
-      btn.onclick=(e)=>{e.stopPropagation();if(list.style.display==='block')close();else open();};
+      btn.onclick=(e)=>{e.stopPropagation();if(btn.classList.contains('open'))close();else open();};
       list.onclick=(e)=>{
         const row=e.target.closest('.presetitem');if(!row)return;
         const idx=+row.dataset.idx;themeSelIdx=idx;close();
@@ -10156,7 +10382,7 @@ function wireHandles(){
     h.addEventListener('pointerdown',e=>{
       e.preventDefault();
       const i=+h.dataset.pane,t=h.dataset.t;
-      const wrap=$('#'+({rsi:'rsic',vol:'volc'})[t]+i+'wrap');
+      const wrap=$('#'+({rsi:'rsic',vol:'volc',macd:'macdc'})[t]+i+'wrap');
       const startY=e.clientY,startH=wrap.getBoundingClientRect().height;
       document.body.style.userSelect='none';document.body.style.cursor='ns-resize';
       // While pane 2 is showing, dragging Pane 1's handle mirrors the height to pane 2's matching
@@ -10164,7 +10390,7 @@ function wireHandles(){
       // follows; dragging pane 2's own handle does exactly what it always did (resizes that pane
       // alone, no effect on the other).
       const others=(i===0)?[1].filter(o=>o<cfg.paneN&&panes[o]):[];
-      const otherWraps=others.map(o=>$('#'+({rsi:'rsic',vol:'volc'})[t]+o+'wrap')).filter(Boolean);
+      const otherWraps=others.map(o=>$('#'+({rsi:'rsic',vol:'volc',macd:'macdc'})[t]+o+'wrap')).filter(Boolean);
       // No explicit sizeAll() here: each pane already has its own ResizeObserver on this exact
       // wrap element, rAF-throttled (see makePane) to coalesce a burst of height changes into one
       // resize per animation frame. Calling sizeAll() again here on every mousemove was doing the
@@ -10175,8 +10401,8 @@ function wireHandles(){
         let nh=startH-(ev.clientY-startY);
         nh=Math.max(48,Math.min(320,nh));
         wrap.style.height=nh+'px';
-        cfg[({rsi:'rsiH',vol:'volH'})[t]+i]=Math.round(nh);
-        otherWraps.forEach((ow,k)=>{ow.style.height=nh+'px';cfg[({rsi:'rsiH',vol:'volH'})[t]+others[k]]=Math.round(nh);});
+        cfg[({rsi:'rsiH',vol:'volH',macd:'macdH'})[t]+i]=Math.round(nh);
+        otherWraps.forEach((ow,k)=>{ow.style.height=nh+'px';cfg[({rsi:'rsiH',vol:'volH',macd:'macdH'})[t]+others[k]]=Math.round(nh);});
       };
       const up=()=>{
         document.removeEventListener('pointermove',mv);document.removeEventListener('pointerup',up);
@@ -10408,10 +10634,11 @@ function setPaneN(n){
       // rsiH1/volH1 stale, which otherwise surfaces the moment pane 2 comes back — this closes
       // that gap by re-syncing on every hidden-to-visible transition, not just during a live drag.
       if(wasN<2){
-        cfg.rsiH1=cfg.rsiH0;cfg.volH1=cfg.volH0;
-        const rw=$('#rsic1wrap'),vw=$('#volc1wrap');
+        cfg.rsiH1=cfg.rsiH0;cfg.volH1=cfg.volH0;cfg.macdH1=cfg.macdH0;
+        const rw=$('#rsic1wrap'),vw=$('#volc1wrap'),mw=$('#macdc1wrap');
         if(rw)rw.style.height=cfg.rsiH1+'px';
         if(vw)vw.style.height=cfg.volH1+'px';
+        if(mw)mw.style.height=cfg.macdH1+'px';
       }
       if(!panes[idx]&&window.LightweightCharts)panes[idx]=makePane(idx);
       // When this pane was already unlinked from before (being re-shown, not created fresh),
@@ -10863,6 +11090,12 @@ function initSidePopout(o){
 const sidePop1=initSidePopout({sideSel:'#side',btnSel:'#sbBtn',headSel:'#sideHead',iconSel:'#sbIcon',
   cfgX:'sideX',cfgY:'sideY',cfgW:'sideW',cfgH:'sideH',cfgHidden:'sb',
   showTitle:'Show side panel',hideTitle:'Hide side panel',mobileToggle:true,
+  // Confines this popout to Pane 1's own chart column (#pw0) — same reasoning and mechanism as
+  // Pane 2's own boundsSel below: in 2-pane layout it can never be dragged or resized over onto
+  // Pane 2's column. #pw0 is never display:none (unlike #pw1), so in 1-pane layout — where it
+  // spans the chart column's full width — this is functionally the same unrestricted range the
+  // popout always had; the constraint only actually bites once a second pane exists to cross into.
+  boundsSel:'#pw0',
   onResize:()=>{if(gexHeat)renderGexHeat();}});
 // Pane 2's own popout — created lazily by setPaneN()/applyPaneSym() the first time it is
 // actually needed, same lazy-creation spirit as makePane() for pane 2's chart itself, but the
@@ -10871,8 +11104,7 @@ const sidePop2=initSidePopout({sideSel:'#side2',btnSel:'#sbBtn2',headSel:'#sideH
   cfgX:'side2X',cfgY:'side2Y',cfgW:'side2W',cfgH:'side2H',cfgHidden:'sb2',
   showTitle:'Show Pane 2 side panel',hideTitle:'Hide Pane 2 side panel',mobileToggle:false,
   // Confines this popout to Pane 2's own chart column (#pw1) — it can never be dragged or
-  // resized over onto Pane 1's, unlike the main popout above (no boundsSel — free to roam the
-  // whole window, unchanged from before Pane 2's popout existed).
+  // resized over onto Pane 1's, mirroring the main popout's own boundsSel:'#pw0' above.
   boundsSel:'#pw1',
   onResize:()=>{if(gex2Heat)renderGexHeat(true);}});
 // Back-compat wrappers: applySidePos()/setSidebar() are still called bare, with no args, from a
@@ -10976,6 +11208,45 @@ bindLineSwatch($('#swRsiMa'),()=>({color:cfg.rsi.maC,width:cfg.rsi.maW,style:cfg
 bindSwatch($('#swRsBb'),()=>cfg.rsi.bbC,c=>{cfg.rsi.bbC=c;saveCfg();scheduleRenderAll();});
 bindSwatch($('#swRsOb'),()=>cfg.rsi.obC,c=>{cfg.rsi.obC=c;saveCfg();scheduleRenderAll();});
 bindSwatch($('#swRsOs'),()=>cfg.rsi.osC,c=>{cfg.rsi.osC=c;saveCfg();scheduleRenderAll();});
+
+// MACD has no per-timeframe auto-tuning either (see cfg.macd's own comment for why) and no
+// per-pane style — one shared cfg.macd object drives both panes, same as cfg.rsi — so dlgPane
+// only drives the pane-tag pill here too, exactly like Volume below.
+function openMacdModal(i){
+  if(i!=null)dlgPane=+i||0;
+  const M=cfg.macd;
+  $('#mcSrc').value=M.src;
+  $('#mcFast').value=M.fastLen;$('#mcSlow').value=M.slowLen;$('#mcSig').value=M.sigLen;
+  $('#mcOscType').value=M.oscType;$('#mcSigType').value=M.sigType;
+  $('#mcHistOn').checked=!!M.histOn;$('#mcMacdOn').checked=!!M.macdOn;$('#mcSigOn').checked=!!M.sigOn;
+  $('#swMcH0').style.background=M.histC[0];$('#swMcH1').style.background=M.histC[1];
+  $('#swMcH2').style.background=M.histC[2];$('#swMcH3').style.background=M.histC[3];
+  $('#swMcMacd').style.background=M.macdC;$('#swMcSig').style.background=M.sigC;$('#swMcZero').style.background=M.zeroC;
+  {const t=$('#macdPaneTag');if(t)t.innerHTML=paneTag();}
+  $('#macdModal').style.display='flex';
+}
+function applyMacdModal(){
+  const M=cfg.macd;
+  M.src=$('#mcSrc').value;
+  M.fastLen=Math.max(1,+$('#mcFast').value||12);
+  M.slowLen=Math.max(1,+$('#mcSlow').value||26);
+  M.sigLen=Math.max(1,+$('#mcSig').value||9);
+  M.oscType=$('#mcOscType').value;M.sigType=$('#mcSigType').value;
+  M.histOn=$('#mcHistOn').checked;M.macdOn=$('#mcMacdOn').checked;M.sigOn=$('#mcSigOn').checked;
+  saveCfg();scheduleRenderAll();
+}
+$$('.macdgear').forEach(b=>b.onclick=()=>openMacdModal(+b.dataset.pane||0));
+$('#mcCancel').onclick=()=>$('#macdModal').style.display='none';
+$('#mcOk').onclick=()=>{applyMacdModal();$('#macdModal').style.display='none';};
+bindSwatch($('#swMcH0'),()=>cfg.macd.histC[0],c=>{cfg.macd.histC[0]=c;saveCfg();scheduleRenderAll();});
+bindSwatch($('#swMcH1'),()=>cfg.macd.histC[1],c=>{cfg.macd.histC[1]=c;saveCfg();scheduleRenderAll();});
+bindSwatch($('#swMcH2'),()=>cfg.macd.histC[2],c=>{cfg.macd.histC[2]=c;saveCfg();scheduleRenderAll();});
+bindSwatch($('#swMcH3'),()=>cfg.macd.histC[3],c=>{cfg.macd.histC[3]=c;saveCfg();scheduleRenderAll();});
+bindLineSwatch($('#swMcMacd'),()=>({color:cfg.macd.macdC,width:cfg.macd.macdW,style:cfg.macd.macdSt}),
+  st=>{cfg.macd.macdC=st.color;cfg.macd.macdW=st.width;cfg.macd.macdSt=st.style;saveCfg();scheduleRenderAll();});
+bindLineSwatch($('#swMcSig'),()=>({color:cfg.macd.sigC,width:cfg.macd.sigW,style:cfg.macd.sigSt}),
+  st=>{cfg.macd.sigC=st.color;cfg.macd.sigW=st.width;cfg.macd.sigSt=st.style;saveCfg();scheduleRenderAll();});
+bindSwatch($('#swMcZero'),()=>cfg.macd.zeroC,c=>{cfg.macd.zeroC=c;saveCfg();scheduleRenderAll();});
 
 // Volume has no per-timeframe auto-tuning and no per-pane style (both panes share one
 // up/down color pair), so dlgPane only drives the pane-tag pill here, not any auto-tuned value.
