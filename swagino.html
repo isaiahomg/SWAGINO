@@ -450,9 +450,14 @@ input[type=checkbox]{accent-color:var(--pivot)}
      shrink/grow kept animating toward the button's old side of the panel instead of its new one. */
   transform-origin:23px 19px}
 .sideHead{position:relative;z-index:2;cursor:move;overflow:hidden;max-height:44px;padding:8px 8px 4px;opacity:1;
-  transition:max-height .32s cubic-bezier(.22,1,.36,1),opacity .32s ease,padding .32s cubic-bezier(.22,1,.36,1)}
+  /* padding dropped from the transition list — it was animating in lockstep with max-height for
+     no visual gain (overflow:hidden already clips the content the instant max-height starts
+     shrinking) while still being a second layout-triggering property reflowing every frame. */
+  transition:max-height .32s cubic-bezier(.22,1,.36,1),opacity .32s ease}
 /* Physical-presence tab bar: shrinks out of the way scrolling down through a pane's content,
-   springs back the moment you scroll up - see wireSideScrollCollapse(). */
+   springs back the moment you scroll up - see the scroll listener below (in the popout factory),
+   which now needs to travel a real distance before flipping this, not just see one event of
+   opposite sign - see that listener's own comment for why. */
 .sideHead.collapsed{max-height:0;padding:0 8px;opacity:0}
 /* Pane 2's popout carries its own "PANE 2" title above the Levels/GEX tabs (Pane 1's #sideHead
    is untouched — this only ever targets #sideHead2 by id) — its expanded max-height needs room
@@ -11461,15 +11466,31 @@ function initSidePopout(o){
   // content, re-expands the instant you scroll back up. One capture-phase listener on side
   // catches scroll from whichever .pane is currently visible (scroll doesn't bubble, so this has
   // to listen during capture rather than delegate normally).
+  //
+  // DIR_HYSTERESIS: trackpad/inertia scrolling delivers a stream of small scroll events whose
+  // sign can flip from one event to the next even while the user is moving steadily in one
+  // direction (momentum micro-jitter, sub-pixel rounding). The old version flipped the
+  // .collapsed class on every single event with the "wrong" sign — each flip is a REAL state
+  // change, so each one restarts the .32s max-height transition, fighting the one still running
+  // from the flip before it. That's the reported glitch, and it reads worse the smaller the
+  // popout is: the header's up-to-44px collapse is a much bigger fraction of a small panel's
+  // total height, so every interrupted reflow is more of the visible area moving at once.
+  // Fixed by requiring a real, sustained run of scrollTop movement in a direction — not just one
+  // event's sign — before actually toggling. dirStart resets to the CURRENT position the instant
+  // the raw per-event direction changes, so jitter (which keeps flipping the raw sign back and
+  // forth) never accumulates enough distance to cross the threshold and never touches the class.
   if(head){
-    let lastScroll=0;
+    const DIR_HYSTERESIS=10;
+    let lastScroll=0,lastDir=null,dirStart=0;
     side.addEventListener('scroll',e=>{
       const t=e.target.scrollTop;
       if(t===undefined)return;
-      const dir=t>lastScroll?'down':'up';
+      if(t<=4){head.classList.remove('collapsed');lastScroll=t;lastDir=null;return;}
+      const rawDir=t>lastScroll?'down':(t<lastScroll?'up':lastDir);
       lastScroll=t;
-      if(t<=4){head.classList.remove('collapsed');return;}
-      if(dir==='down')head.classList.add('collapsed');
+      if(rawDir!==lastDir){dirStart=t;lastDir=rawDir;}
+      if(Math.abs(t-dirStart)<DIR_HYSTERESIS)return;
+      if(rawDir==='down')head.classList.add('collapsed');
       else head.classList.remove('collapsed');
     },true);
   }
