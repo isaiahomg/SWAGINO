@@ -480,7 +480,7 @@ input[type=checkbox]{accent-color:var(--pivot)}
 .sideRsz-l{left:0}
 .sideRsz-r{right:0}
 .tabs{display:flex;position:relative;z-index:2}
-.tabs button{flex:1;background:none;border:none;color:var(--dim);padding:9px 0;font-size:11px;letter-spacing:.02em}
+.tabs button{flex:1;background:none;border:none;color:var(--dim);padding:9px 0;font-size:12px;letter-spacing:.02em}
 /* transform:translateZ(0)+contain:paint give this its OWN compositing layer, separate from
    .side's backdrop-filter layer above it. Without it, every scroll frame here re-rasterizes this
    pane's text (text-shadow forces CPU rasterization, it can't just composite) against the
@@ -1109,7 +1109,7 @@ input[type=checkbox]{accent-color:var(--accent)}
 .seg button:hover{color:var(--text)}
 .seg button.on{color:#fff; background:#26282e}
 /* ── tabs ── */
-.tabs button{color:var(--axistext); font-weight:520; transition:color .15s ease}
+.tabs button{color:var(--axistext); font-weight:600; transition:color .15s ease}
 .tabs button.on{color:var(--text)}
 /* ── inputs ── */
 input,select,textarea{background:#0a0b0d; border:none; border-radius:9px; color:var(--text); padding:6px 10px;
@@ -1650,7 +1650,10 @@ table.lv td{padding:6px 10px}
 .tabs button{flex:1;position:relative;z-index:1;display:flex;align-items:center;justify-content:center;
   gap:5px;border-bottom:none;border-radius:9px;padding:7px 0;transition:color .18s ease}
 .tabs button.on{border-bottom:none}
-.tabic{flex:none;opacity:.85;transition:opacity .18s ease}
+/* width/height here override the SVGs' own inline 16/16 attributes — a CSS size declaration
+   always wins over an SVG presentation attribute regardless of specificity, so this is enough on
+   its own, no markup change needed. */
+.tabic{flex:none;width:18px;height:18px;opacity:.85;transition:opacity .18s ease}
 .tabs button.on .tabic{opacity:1}
 /* Was a flat #26282e — a fixed dark grey that could match or nearly match a user-picked
    Backdrop colour (the side panel it sits on now tracks that colour, see --chartbg), making the
