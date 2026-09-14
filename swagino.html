@@ -9598,6 +9598,16 @@ let scanData={};
 SCANNER_SYMS.forEach(s=>scanData[s]={sym:s});
 let scanSlowBusy=false,scanLastFullAt=0;
 
+// Watchlist sparkline's own rolling window — a genuinely live price-action trace, not a
+// resample of 5-min bars. scanFetchQuotes() below is the actual live cadence available for
+// these 9 symbols (one batched REST poll every 5s — there's no per-symbol WebSocket tick stream
+// for the Watchlist the way the main chart's own symbol gets); each poll's real last price is
+// appended here and the oldest sample drops once the buffer is full, so the trace is always
+// exactly this many of the most recent REAL samples — nothing simulated, nothing smoothed.
+// FLAG: 180 (=15 minutes at 5s/sample) is a chosen window size, not derived from anything; the
+// row fills up from a shorter trace right after page load/market open and behaves as a true
+// sliding window once it reaches this length.
+const WL_LIVE_MAXPTS=180;
 async function scanFetchQuotes(){
   if(!LS.k)return;   // not connected yet — nothing to fetch, and avoids spamming an auth-error log
   try{
@@ -9611,6 +9621,11 @@ async function scanFetchQuotes(){
       d.rvol=(d.avgVolume>0&&isFinite(d.volume))?d.volume/d.avgVolume:null;
       d.prevClose=+q.prevclose;d.bid=+q.bid;d.ask=+q.ask;
       d.quoteAt=now;d.quoteOk=true;
+      if(isFinite(d.last)){
+        if(!d.liveSeries)d.liveSeries=[];
+        d.liveSeries.push(d.last);
+        if(d.liveSeries.length>WL_LIVE_MAXPTS)d.liveSeries.shift();
+      }
     });
   }catch(e){
     // A failed batch leaves every symbol's LAST GOOD quote in place — its own age (quoteAt) is
@@ -9633,25 +9648,9 @@ async function scanFetchBars(sym){
     const bars5=await fetchTsRange('5min',new Date(Date.now()-5*864e5),now,sym);
     const todayYmd=nowET().ymd;
     const todayBars=bars5.filter(b=>b.etYmd===todayYmd);
-    // Watchlist's compact sparkline reuses these SAME 5-min bars (already fetched above for
-    // ATR/VWAP/PM-H-L) rather than opening a bar-fetch of its own — zero extra requests.
-    // RTH-only on purpose (9:30a-4:00p, same SCAN_RTH_OPEN_MIN/RTH_CLOSE_MIN bounds the rest of
-    // the file uses) — pre/post-market bars are thin and choppy, and the sparkline is meant to
-    // read as "today's regular session", not the whole extended-hours tape. Falls back to the
-    // last RTH session in the window above when today has no RTH bars yet (pre-market, weekend,
-    // or the instant the session flips and today's own bars haven't printed), so the row never
-    // sits empty just because "today" technically has nothing in it yet.
-    const rthBars=b=>b.etMin>=SCAN_RTH_OPEN_MIN&&b.etMin<RTH_CLOSE_MIN;
-    const todayRth=todayBars.filter(rthBars);
-    const sparkFull=todayRth.length>=2;
-    // Each point carries its own etMin (minutes since midnight ET) alongside the close so
-    // wlSparkSvg can place it by CLOCK TIME rather than by bar index — see that function's own
-    // comment for why (index-based placement stretches whatever bars exist edge-to-edge, which
-    // makes an early trading day look complete instead of leaving the un-elapsed rest of the
-    // session visibly blank, the way the reference app draws it). Only meaningful when sparkFull
-    // is true — the multi-day fallback has no single day to anchor a clock to.
-    d.sparkline=(sparkFull?todayRth:bars5.filter(rthBars).slice(-60)).map(b=>({m:b.etMin,c:b.c}));
-    d.sparkFull=sparkFull;
+    // The Watchlist's own sparkline no longer comes from these bars at all — see
+    // scanFetchQuotes()'s own d.liveSeries, a real rolling buffer of actual quote polls, which
+    // wlSparkSvg() now renders directly. bars5/todayBars stay here for ATR/VWAP/PM-H-L below.
     const pmBars=todayBars.filter(b=>b.etMin<SCAN_RTH_OPEN_MIN);
     d.pmHigh=pmBars.length?Math.max(...pmBars.map(b=>b.h)):null;
     d.pmLow=pmBars.length?Math.min(...pmBars.map(b=>b.l)):null;
@@ -9972,9 +9971,15 @@ function wlSortedSyms(){
 // attribute string, set fresh on every watchlistRender() call alongside everything else in the
 // row - "incremental" here means never touching lightweight-charts/renderPane at all, the same
 // isolation the Scanner section above already guarantees for the SAME reason.
+// Renders straight off d.liveSeries (scanFetchQuotes()'s own rolling buffer of real quote-poll
+// prices — see its own comment) with plain, EVEN index spacing: unlike the bar-based version this
+// replaced, every sample here really is ~5s apart by construction, so uniform spacing is the
+// correct mapping, not an approximation. No smoothing/averaging — every sample is plotted exactly
+// as polled, so a genuine spike or reversal in the real tape shows up as a genuine sharp corner
+// in the path, never rounded off.
 function wlSparkSvg(sym){
   const d=scanData[sym];
-  const src=d.sparkline;
+  const src=d.liveSeries;
   const prev=d.prevClose;
   // PLOT_TOP/PLOT_BOT are symmetric around H/2 (10 and 30, both 10px from the 20 midline) on
   // purpose - they weren't before (15/36, centered on 25.5), which put the actual visible line
@@ -9982,42 +9987,28 @@ function wlSparkSvg(sym){
   // centered by .wlrow's flexbox - the box was centered, its content wasn't.
   const W=100,H=40,PLOT_TOP=10,PLOT_BOT=30,DOT_Y=4;
   const dots=[18,39,60,81].map(x=>`<circle cx="${x}" cy="${DOT_Y}" r="1.3"/>`).join('');
-  if(!src||!src.length||!(prev>0)){
+  // Under 2 real samples (page just loaded, first poll hasn't landed yet) or no prevClose to
+  // anchor a direction/reference line against — genuinely nothing to plot yet.
+  if(!src||src.length<2||!(prev>0)){
     return`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><g class="wlspdots">${dots}</g></svg>`;
   }
-  const pts=src.map(p=>p.c);
-  // Deliberately NOT patched with the live quote (d.last) any more — the sparkline is meant to
-  // read purely off the 5-min bars, updating on that same 5-min cadence, not tick-by-tick off the
-  // 5s quote poll (the price/%change pill beside it stays real-time; only the chart itself is
-  // frozen between bar closes now).
-  const all=pts.concat([prev]);
+  const all=src.concat([prev]);
   let lo=Math.min(...all),hi=Math.max(...all);
   if(hi===lo){hi+=1;lo-=1;}
-  // X position: when the source is today's own session bars (d.sparkFull), anchor each point to
-  // its REAL clock time against the fixed RTH window (SCAN_RTH_OPEN_MIN-RTH_CLOSE_MIN, 9:30a-4:00p
-  // ET) instead of its bar INDEX. That's what makes a still-early trading day fill only its true
-  // proportion of the row — e.g. 30 minutes into the session fills ~1/13th of the width — leaving
-  // the rest visibly blank, matching the reference app, rather than stretching whatever few bars
-  // exist edge-to-edge. The rare multi-day fallback (sparkFull false — no RTH bars for "today"
-  // yet) has no single day to anchor against, so it keeps the old edge-to-edge index stretch.
-  const x=d.sparkFull
-    ?i=>4+(W-8)*Math.min(1,Math.max(0,(src[i].m-SCAN_RTH_OPEN_MIN)/(RTH_CLOSE_MIN-SCAN_RTH_OPEN_MIN)))
-    :i=>pts.length>1?(W-8)*i/(pts.length-1)+4:W/2;
+  // Fills up from a short trace right after load/open and becomes a true fixed-width rolling
+  // window once d.liveSeries reaches WL_LIVE_MAXPTS — both cases are just "however many real
+  // samples exist right now, spread evenly across the row", the same expression either way.
+  const x=i=>src.length>1?(W-8)*i/(src.length-1)+4:W/2;
   const y=v=>PLOT_TOP+(PLOT_BOT-PLOT_TOP)*(1-(v-lo)/(hi-lo));
-  // up/col come from the last BAR close now too (not the live quote) so the whole sparkline —
-  // shape, colour, and dot — is one unit that only ever changes together, every 5 minutes.
-  const up=pts[pts.length-1]>=prev;
+  const up=src[src.length-1]>=prev;
   const col=up?'var(--long)':'var(--short)';
-  const line=pts.map((v,i)=>`${x(i).toFixed(2)},${y(v).toFixed(2)}`).join(' ');
-  const lastX=x(pts.length-1).toFixed(2),lastY=y(pts[pts.length-1]).toFixed(2);
+  const line=src.map((v,i)=>`${x(i).toFixed(2)},${y(v).toFixed(2)}`).join(' ');
   const prevY=y(prev).toFixed(2);
-  // No decorative wlspdots here any more — redundant with wlspref, the one grey dashed line that
-  // actually means something (the prevClose reference). Dots stay for the true no-data state
-  // above, the only place they're the whole picture.
+  // No endpoint dot, no glow, no fill — a bare polyline plus the one reference line that carries
+  // real meaning (prevClose), per explicit request.
   return`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
     <line class="wlspref" x1="4" y1="${prevY}" x2="${W-4}" y2="${prevY}"/>
-    <polyline points="${line}" fill="none" stroke="${col}" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
-    <circle cx="${lastX}" cy="${lastY}" r="2.4" fill="${col}"/>
+    <polyline points="${line}" fill="none" stroke="${col}" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
   </svg>`;
 }
 function watchlistRender(){
