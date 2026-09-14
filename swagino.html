@@ -29,21 +29,7 @@
      there is nothing left here to fetch. A platform with neither installed falls through to the
      browser's own generic sans-serif instead of a loaded webfont, by design (Inter/Roboto Mono
      were dropped earlier for the same reason - one less network dependency for body text). -->
-<!-- Euclid Circular B — vendored locally in fonts/ (a licensed desktop family the user supplied
-     directly, not fetched from any font CDN), used ONLY for the chart's own floating data labels
-     (--lab below: swing/pattern/break/level/Saty/EMA-VWAP tags and axis price badges)
-     per explicit instruction to keep that one part on it while everything else reverts. -->
 <style>
-@font-face{font-family:'Euclid Circular B';src:url('fonts/EuclidCircularB-Light.ttf') format('truetype');font-weight:300;font-style:normal;font-display:swap}
-@font-face{font-family:'Euclid Circular B';src:url('fonts/EuclidCircularB-LightItalic.ttf') format('truetype');font-weight:300;font-style:italic;font-display:swap}
-@font-face{font-family:'Euclid Circular B';src:url('fonts/EuclidCircularB-Regular.ttf') format('truetype');font-weight:400;font-style:normal;font-display:swap}
-@font-face{font-family:'Euclid Circular B';src:url('fonts/EuclidCircularB-Italic.ttf') format('truetype');font-weight:400;font-style:italic;font-display:swap}
-@font-face{font-family:'Euclid Circular B';src:url('fonts/EuclidCircularB-Medium.ttf') format('truetype');font-weight:500;font-style:normal;font-display:swap}
-@font-face{font-family:'Euclid Circular B';src:url('fonts/EuclidCircularB-MediumItalic.ttf') format('truetype');font-weight:500;font-style:italic;font-display:swap}
-@font-face{font-family:'Euclid Circular B';src:url('fonts/EuclidCircularB-SemiBold.ttf') format('truetype');font-weight:600;font-style:normal;font-display:swap}
-@font-face{font-family:'Euclid Circular B';src:url('fonts/EuclidCircularB-SemiBoldItalic.ttf') format('truetype');font-weight:600;font-style:italic;font-display:swap}
-@font-face{font-family:'Euclid Circular B';src:url('fonts/EuclidCircularB-Bold.ttf') format('truetype');font-weight:700;font-style:normal;font-display:swap}
-@font-face{font-family:'Euclid Circular B';src:url('fonts/EuclidCircularB-BoldItalic.ttf') format('truetype');font-weight:700;font-style:italic;font-display:swap}
 :root{
   --ink:#000000; --panel:#000000; --panel2:#000000; --line:#1a1a1a; --line2:#282828;
   --text:#ffffff; --dim:#ffffff; --faint:#ffffff;
@@ -61,15 +47,13 @@
   --mono:"Trebuchet MS",sans-serif;
   --disp:"Trebuchet MS",sans-serif;
   --heat:"Trebuchet MS",sans-serif;
-  /* The one deliberate exception to the revert above: the chart's own floating data-label
-     overlays (see the classes listed in the @font-face comment) stay on the embedded family. */
-  --lab:'Euclid Circular B',ui-sans-serif,system-ui,sans-serif;
+  --lab:"Trebuchet MS",sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;background:#000;color:var(--text);font-family:var(--disp);font-weight:300;font-size:14px;
+html,body{height:100%;background:#000;color:var(--text);font-family:var(--disp);font-weight:400;font-size:14px;
   font-variant-numeric:tabular-nums;font-feature-settings:'tnum' 1,'cv05' 1}
-button{font-family:var(--disp);font-weight:300;cursor:pointer}
-input,select,textarea{font-family:var(--mono);font-weight:300;background:var(--panel2);color:var(--text);border:none;border-radius:4px;padding:5px 8px;font-size:12px}
+button{font-family:var(--disp);font-weight:400;cursor:pointer}
+input,select,textarea{font-family:var(--mono);font-weight:400;background:var(--panel2);color:var(--text);border:none;border-radius:4px;padding:5px 8px;font-size:12px}
 input:focus,textarea:focus,select:focus{outline:1px solid var(--pivot)}
 /* iOS Safari auto-zooms the page when a focused text input computes below 16px. The 12px
    base above is deliberate desktop density (kept as-is for mouse/trackpad); this touch-only
@@ -167,9 +151,14 @@ input[type=checkbox]{accent-color:var(--pivot)}
    one column. The old 1fr 340px / nosb / scanwide column-swapping is gone with it: showing,
    hiding or resizing the popout no longer changes how much width the chart gets. */
 .main{display:grid;grid-template-columns:1fr;min-height:0}
-/* #sbBtn is now the one toggle for both directions - #sbIcon mirrors horizontally when the
-   panel is hidden, so the same button reads as "bring it back" instead of "hide" again. */
-#sbIcon.flip,#sbIcon2.flip{transform:scaleX(-1)}
+/* #sbBtn is now the one toggle for both directions. Unlike the old double-chevron glyph,
+   mirroring the compress icon horizontally would NOT turn it into a correct expand icon (a
+   diagonal converging-arrows shape reflects into another converging-arrows shape, not a
+   diverging one) - so instead of a transform, the SVG carries both full icons as sibling <g>
+   groups and this just swaps which one is visible, same idiom as .eye's .eo/.ec swap above. */
+#sbIcon .sbexpand,#sbIcon2 .sbexpand{display:none}
+#sbIcon.flip .sbexpand,#sbIcon2.flip .sbexpand{display:inline}
+#sbIcon.flip .sbcompress,#sbIcon2.flip .sbcompress{display:none}
 .chartcol{display:flex;flex-direction:column;min-width:0;background:var(--ink)}
 /* Solid --chartbg (opaque, matches topbar/side/etc exactly) — the Backdrop is a single flat
    colour, so a translucent tint over it would only mix that colour toward near-black and
@@ -231,11 +220,11 @@ input[type=checkbox]{accent-color:var(--pivot)}
    says WHEN - it sits on the bar that settled the break. No ring, no fill - just the glyph,
    with a text-shadow halo (not a box-shadow) so it stays legible without a solid backing. */
 .brkmark{position:absolute;pointer-events:auto;transform:translate(-50%,-50%);
-  font-family:var(--lab);font-size:15px;font-weight:700;line-height:22px;
+  font-family:var(--lab);font-size:15px;font-weight:400;line-height:22px;
   width:22px;height:22px;text-align:center;background:none;
   text-shadow:0 1px 1px rgba(0,0,0,.85)}
 .brklab{position:absolute;z-index:7;
-  font-family:var(--lab);font-size:9.5px;font-weight:700;letter-spacing:.02em;
+  font-family:var(--lab);font-size:9.5px;font-weight:400;letter-spacing:.02em;
   white-space:nowrap;pointer-events:auto;padding:0 5px;
   background:transparent;text-shadow:0 1px 1px rgba(0,0,0,.85)}
 /* Anchored to the wick tick, not the axis, and horizontally CENTRED on it (translateX(-50%),
@@ -250,7 +239,7 @@ input[type=checkbox]{accent-color:var(--pivot)}
 /* the level line, drawn in two pieces so the label sits in a real gap */
 .lvseg{position:absolute;height:0;pointer-events:none;z-index:5;border-top-width:1px}
 .lvltag{position:absolute;transform:translateY(-50%);z-index:6;pointer-events:auto;cursor:pointer;
-  font-family:var(--lab);font-size:9.5px;font-weight:700;letter-spacing:.02em;
+  font-family:var(--lab);font-size:9.5px;font-weight:400;letter-spacing:.02em;
   white-space:nowrap;background:transparent;
   text-shadow:0 1px 1px rgba(0,0,0,.85)}
 /* price reading in the price-axis column, drawn as a compact filled badge — the charting library
@@ -258,7 +247,7 @@ input[type=checkbox]{accent-color:var(--pivot)}
    alert lines hide that plate and draw their own number here instead: a rounded box in the
    line's own colour with white text, in place of the plain line-coloured text this used to be. */
 .axpx{position:absolute;right:12px;transform:translateY(-50%);z-index:6;pointer-events:none;
-  font-family:var(--lab);font-size:11px;font-weight:700;letter-spacing:.01em;white-space:nowrap;
+  font-family:var(--lab);font-size:11px;font-weight:400;letter-spacing:.01em;white-space:nowrap;
   font-variant-numeric:tabular-nums;text-align:right;color:#fff;
   padding:1px 5px;border-radius:3px;
   /* a dark legibility halo, not a colored glow — some level colors (muted greys, light tones)
@@ -289,7 +278,7 @@ input[type=checkbox]{accent-color:var(--pivot)}
    abandoned elsewhere in this file for reading as a strike-through; the plate that replaced it —
    a tight, background-coloured rect that cuts the line cleanly (line - gap - text - gap - line) —
    is reused here instead of inventing a third approach. */
-.swlab{position:absolute;font-family:var(--lab);font-size:9.5px;font-weight:700;
+.swlab{position:absolute;font-family:var(--lab);font-size:9.5px;font-weight:400;
   letter-spacing:.02em;pointer-events:auto;cursor:default;white-space:nowrap;
   transform:translate(-50%,-50%);background:transparent;padding:0 3px;border-radius:3px;
   text-shadow:0 1px 1px rgba(0,0,0,.85)}
@@ -297,7 +286,7 @@ input[type=checkbox]{accent-color:var(--pivot)}
    highlight together), and a tiny bin appears to remove it from the chart for good. */
 /* Transparent like the swing/break labels elsewhere on the chart (.brkmark/.brklab) — a
    text-shadow halo keeps the name legible over a bright candle instead of a solid plate. */
-.patlab{position:absolute;font-family:var(--lab);font-size:10.5px;font-weight:600;
+.patlab{position:absolute;font-family:var(--lab);font-size:10.5px;font-weight:400;
   padding:1px 6px;border-radius:3px;background:transparent;pointer-events:auto;
   white-space:nowrap;transform:translateY(-50%);cursor:grab;touch-action:none;
   text-shadow:0 1px 1px rgba(0,0,0,.85);
@@ -319,7 +308,7 @@ input[type=checkbox]{accent-color:var(--pivot)}
 .eye .eyeic{transition:filter .2s ease,color .2s ease}
 .eye .ec{display:none} .eye:not(.on) .eo{display:none} .eye:not(.on) .ec{display:inline}
 .eye:not(.on){opacity:.5;filter:none;color:var(--faint)}
-.indtog{display:inline-flex;align-items:center;gap:2px;font-family:var(--mono);font-weight:300;font-size:10px;color:var(--faint);margin-left:8px;
+.indtog{display:inline-flex;align-items:center;gap:2px;font-family:var(--mono);font-weight:400;font-size:10px;color:var(--faint);margin-left:8px;
   text-shadow:0 1px 1px rgba(0,0,0,.85)}
 .indtog.on{color:var(--axistext)}
 /* Saty ATR Levels / Saty Pivot Ribbon / Market Structure toggles, moved off the panebar and
@@ -416,15 +405,15 @@ input[type=checkbox]{accent-color:var(--pivot)}
 .ctlinerow select{flex:1;min-width:0;font-size:11px;padding:2px 4px}
 .tip{position:absolute;font-family:var(--lab);font-size:9px;padding:0 5px;
   background:transparent;text-shadow:0 1px 1px rgba(0,0,0,.85);
-  font-weight:700;transform:translateY(-50%);white-space:nowrap}
+  font-weight:400;transform:translateY(-50%);white-space:nowrap}
 .cdown{position:absolute;right:0;z-index:7;font-family:var(--lab);transform:translateY(-50%);display:none;pointer-events:none;text-align:center;min-width:58px;border-radius:2px;overflow:hidden}
-.cdown .v{font-size:10px;font-weight:700;padding:1px 6px;color:#050505;text-align:center}
-.cdown .t{font-size:9px;padding:0 6px 1px;color:#050505;font-weight:600;text-align:center}
+.cdown .v{font-size:10px;font-weight:400;padding:1px 6px;color:#050505;text-align:center}
+.cdown .t{font-size:9px;padding:0 6px 1px;color:#050505;font-weight:400;text-align:center}
 .phandle{height:5px;cursor:ns-resize;background:var(--panel);touch-action:none}
 .phandle:hover{background:var(--line)}
 .subpane{position:relative}
 .subpane>div.cinner{position:absolute;inset:0}
-.ptag{position:absolute;left:8px;top:4px;z-index:5;font-family:var(--mono);font-weight:300;font-size:10px;color:var(--axistext);
+.ptag{position:absolute;left:8px;top:4px;z-index:5;font-family:var(--mono);font-weight:400;font-size:10px;color:var(--axistext);
   text-shadow:0 1px 1px rgba(0,0,0,.85);
   padding:2px 4px;border-radius:4px;transition:background .12s ease}
 /* Same hover-reveal plate .indtog uses on the chart's on-chart indicator legend, applied to the
@@ -453,7 +442,13 @@ input[type=checkbox]{accent-color:var(--pivot)}
    radius actually clip the tab row and content instead of just rounding the outer shadow. */
 .side{position:fixed;left:0;top:0;display:flex;flex-direction:column;min-height:0;overflow:hidden;
   border-radius:28px;z-index:55;will-change:transform;
-  transform-origin:calc(100% - 23px) 19px}
+  /* Must track #sbBtn's own corner exactly, in coordinates local to THIS element (23px = the
+     btn's 12px inset from .side's own left edge + half its 22px width; 19px = its inset from the
+     top). This was still calc(100% - 23px) - a right-edge anchor - left over from when the
+     button lived at the panel's top-right; moving the button to the top-left (see #sbBtn's own
+     "Top-LEFT corner, not top-right" comment in applyPos()) never updated this, so the genie
+     shrink/grow kept animating toward the button's old side of the panel instead of its new one. */
+  transform-origin:23px 19px}
 .sideHead{position:relative;z-index:2;cursor:move;overflow:hidden;max-height:44px;padding:8px 8px 4px;opacity:1;
   transition:max-height .32s cubic-bezier(.22,1,.36,1),opacity .32s ease,padding .32s cubic-bezier(.22,1,.36,1)}
 /* Physical-presence tab bar: shrinks out of the way scrolling down through a pane's content,
@@ -500,12 +495,12 @@ table.lv td.p{font-weight:600;text-align:right;white-space:nowrap}
   padding:10px 12px;margin-bottom:8px}
 .scanhead{display:flex;align-items:baseline;gap:8px;margin-bottom:8px;
   padding-bottom:8px}
-.scanrank{font-family:var(--lab);font-size:10px;font-weight:700;color:var(--faint);
+.scanrank{font-family:var(--lab);font-size:10px;font-weight:400;color:var(--faint);
   background:rgba(255,255,255,.06);border-radius:4px;padding:1px 5px;margin-right:1px}
 .scancard.scanquiet{opacity:.6}
-.scansym{font-family:var(--lab);font-weight:700;font-size:15px;letter-spacing:.01em;color:var(--text)}
-.scanpx{font-family:var(--lab);font-size:14px;font-weight:600;color:var(--text)}
-.scanchg{font-family:var(--lab);font-size:12px;font-weight:600}
+.scansym{font-family:var(--lab);font-weight:400;font-size:15px;letter-spacing:.01em;color:var(--text)}
+.scanpx{font-family:var(--lab);font-size:14px;font-weight:400;color:var(--text)}
+.scanchg{font-family:var(--lab);font-size:12px;font-weight:400}
 .scangrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px 10px}
 .scangrid.wide{grid-template-columns:1fr}
 .scanstat .k{font-family:var(--lab);font-size:10px;letter-spacing:.03em;text-transform:uppercase;
@@ -520,14 +515,14 @@ table.lv td.p{font-weight:600;text-align:right;white-space:nowrap}
    it's-moving up front — everything else (ATR, VWAP, premarket, support/resistance, the whole
    options/GEX block) sits behind one "More details" toggle per card, collapsed by default. */
 .scanquick{display:flex;gap:20px;margin-bottom:8px}
-.scanquick .scanstat .v{font-size:14px;font-weight:600;color:var(--text)}
+.scanquick .scanstat .v{font-size:14px;font-weight:400;color:var(--text)}
 .scannews{font-family:var(--lab);font-size:11.5px;color:var(--dim);margin-bottom:8px;
   line-height:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .scannews a{color:inherit;text-decoration:none}
 .scannews a:hover{text-decoration:underline}
 .scannewssrc{color:var(--faint);font-size:10px;margin-left:5px}
 .scantoggle{background:none;border:none;color:var(--pivot);font-family:var(--lab);font-size:11px;
-  font-weight:600;cursor:pointer;padding:2px 0;display:flex;align-items:center;gap:3px}
+  font-weight:400;cursor:pointer;padding:2px 0;display:flex;align-items:center;gap:3px}
 .scantoggle:hover{text-decoration:underline}
 .scandetail{margin-top:8px;padding-top:8px}
 .badge{font-size:9px;border:none;background:rgba(255,255,255,.08);border-radius:4px;padding:1px 5px;color:var(--dim);margin-left:4px}
@@ -615,7 +610,7 @@ input:disabled,select:disabled{opacity:.45;cursor:not-allowed}
    colour/width/style/text-size picker a Level Label opens (see openSatyStyler). Everything else
    here — font, size, weight, padding, shadow — is unchanged. */
 .satylab{position:absolute;transform:translateY(-50%);z-index:6;
-  font-family:var(--lab);font-size:9.5px;font-weight:600;letter-spacing:.02em;
+  font-family:var(--lab);font-size:9.5px;font-weight:400;letter-spacing:.02em;
   white-space:nowrap;pointer-events:auto;cursor:pointer;padding:0 5px;
   background:transparent;text-shadow:0 1px 1px rgba(0,0,0,.85)}
 .gexsum{font-family:var(--mono);font-size:11px;line-height:1.7}
@@ -889,7 +884,18 @@ body.tab-hidden .tbheart,body.tab-hidden .tbjet,body.tab-hidden .bspin{animation
    tappable position at this breakpoint regardless of whatever JS did or didn't set. */
 @media (max-width:700px){
   .main{grid-template-columns:1fr;position:relative}
-  .side{display:none}
+  /* display:none/flex can't transition, so the mobile overlay used to just snap open/shut with
+     no animation at all. Opacity+transform can - same recipe as the desktop popout right above
+     (and the same one .tfmenu/.ctmenu already use): a small slide+scale+fade, plain ease, .16s.
+     display stays flex and position/size match .mobopen's own full-screen box exactly even while
+     hidden (only opacity/transform/pointer-events differ) - an unconstrained fixed;left:0;top:0
+     box with no width/height (this element's plain desktop base, see above) would otherwise still
+     generate a real, if invisible, laid-out box at every viewport this query covers, not just
+     inert. pointer-events is what actually keeps it from intercepting taps while closed. */
+  .side{position:absolute;inset:0;width:100%;height:100%;border-radius:0;border-left:none;
+    background:var(--panel2);
+    opacity:0;pointer-events:none;transform:translateY(10px) scale(.97);
+    transition:opacity .16s ease,transform .16s ease}
   /* Pane 2's popout is a desktop/advanced-layout feature (it only exists while a 2-chart,
      unlinked layout is active, itself impractical at phone width) — always off at this
      breakpoint, never promoted to the full-screen .mobopen treatment the main popout gets. */
@@ -908,6 +914,17 @@ body.tab-hidden .tbheart,body.tab-hidden .tbjet,body.tab-hidden .bspin{animation
   #toasts{right:12px}
   .toast{min-width:0;max-width:calc(100vw - 24px)}
   .tbpix{display:none}
+  /* .scanmenu/.watchmenu are position:absolute; right:0 against their OWN .tfdrop wrapper (see
+     each one's own comment) - fine on desktop, where that wrapper always sits near the topbar's
+     right edge, but the topbar wraps onto multiple rows below 700px and a wrapped button can
+     land almost anywhere, including near the LEFT edge. A 350+px-wide menu still anchored to
+     THAT button's right edge then opens mostly off-screen to the left (reproduced at 375px:
+     #watchMenu's own left edge landed at -300px). Anchoring to the viewport instead - the same
+     "pin it to a real screen edge, not wherever the button ended up" fix #sbBtn's own comment
+     above already uses - makes both immune to wherever their button wraps to, not just usually
+     fine by luck of where that happens to land. */
+  .scanmenu,.watchmenu{position:fixed;left:12px;right:12px;top:96px;width:auto;max-width:none;
+    max-height:min(70vh,calc(100vh - 108px))}
 }
 
 /* ═══════════ Apple design refresh (flat surfaces — no blur/translucency/glass) ═══════════ */
@@ -1039,16 +1056,25 @@ select option{background:var(--panel2);color:var(--text)}
    Settings/Hide-panel: needs its own direct override, not a stronger one on the button. */
 #layIcon{width:16px!important;height:16px!important;color:var(--axistext)!important}
 #layBtn:hover #layIcon{color:var(--axistext)!important}
+/* Same override, same reason: #scanIcon is currentColor now (a plain fill, no more hardcoded
+   per-shape hex colours), so it inherits .tfbtn svg's color:var(--faint) above like any other
+   .tfbtn svg would - and reads visibly dimmer than #layIcon/the alert bell beside it in the same
+   row unless it gets the identical axistext override. */
+#scanIcon{color:var(--axistext)!important}
 /* Meant for the tiny chevron caret used by the timeframe/RTH-ETH dropdowns — flipping 180°
    reads as "now pointing up" for a caret. #layBtn reuses .tfbtn purely for the same open/close
    wiring, not a caret, so its real icon (a pane-layout glyph) was getting the same flip and
    spinning open/closed for no reason every time that menu toggled. */
 .tfdrop.open .tfbtn svg{transform:rotate(180deg)}
 .tfdrop.open .tfbtn #layIcon{transform:none}
-/* Same reasoning as #layIcon just above: #scanIcon is a real (multi-colour, non-currentColor)
-   icon reusing .tfbtn purely for its open/close wiring, not a caret, so it must not spin 180°
-   every time the dropdown opens. */
+/* Same reasoning as #layIcon just above: #scanIcon is a real glyph (binoculars) reusing .tfbtn
+   purely for its open/close wiring, not a caret, so it must not spin 180° every time the
+   dropdown opens. */
 .tfdrop.open .tfbtn #scanIcon{transform:none}
+/* Watchlist's own star icon: same three rules as #scanIcon just above, same reasons (real glyph,
+   dimmer than its topbar siblings without the axistext override, must not spin like a caret). */
+#watchIcon{color:var(--axistext)!important}
+.tfdrop.open .tfbtn #watchIcon{transform:none}
 /* Watchlist Scanner topbar dropdown. Reuses .tfdrop/.tfbtn wholesale for its open/close wiring
    (generic $$('.tfbtn') click handler + closeTfMenus() outside-click/Escape handling — see the
    "Timeframe dropdown" JS below), but not .tfmenu's own sizing: the scanner holds a scrollable
@@ -1066,14 +1092,57 @@ select option{background:var(--panel2);color:var(--text)}
   transition:opacity .16s ease,transform .16s ease,visibility 0s linear .16s}
 .tfdrop.open .scanmenu{opacity:1;visibility:visible;pointer-events:auto;
   transform:translateY(0) scale(1);transition:opacity .16s ease,transform .16s ease,visibility 0s linear 0s}
-/* Shared reduced-motion override for every animated dropdown in the app (Scanner, the
+/* Watchlist's own dropdown: identical panel treatment to .scanmenu just above (same reasons —
+   a scrollable stack of rows, not a short option list), just its own class since the row layout
+   (ticker/name/sparkline/pill) is a different shape from Scanner's cards. */
+.watchdrop{position:relative}
+.watchmenu{position:absolute;top:100%;right:0;margin-top:6px;z-index:60;
+  width:360px;max-width:min(360px,calc(100vw - 24px));max-height:min(620px,70vh);
+  overflow-y:auto;border-radius:10px;background:#1a1c22;box-shadow:0 12px 32px rgba(0,0,0,.35);
+  opacity:0;visibility:hidden;pointer-events:none;transform-origin:top right;
+  transform:translateY(-8px) scale(.97);
+  transition:opacity .16s ease,transform .16s ease,visibility 0s linear .16s}
+.tfdrop.open .watchmenu{opacity:1;visibility:visible;pointer-events:auto;
+  transform:translateY(0) scale(1);transition:opacity .16s ease,transform .16s ease,visibility 0s linear 0s}
+.wlhead{display:flex;align-items:center;justify-content:space-between;margin:8px 10px 2px;min-height:18px}
+.wlhead .hint{margin:0}
+.wlrow{display:flex;align-items:center;gap:10px;padding:12px 12px;border-bottom:1px solid var(--line)}
+.wlrow:last-child{border-bottom:none}
+.wlleft{flex:0 0 auto;min-width:0}
+.wlsym{font-family:var(--disp);font-size:15px;font-weight:600;color:var(--text);line-height:1.25}
+.wlname{font-family:var(--disp);font-size:12px;color:var(--faint);line-height:1.25;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:104px}
+.wlspark{flex:1 1 auto;min-width:0;height:40px}
+.wlspark svg{display:block;width:100%;height:100%;overflow:visible}
+.wlspdots circle{fill:var(--faint);opacity:.5}
+.wlspref{stroke:var(--faint);stroke-width:1;stroke-dasharray:2,2;opacity:.5}
+.wlpill{flex:0 0 auto;min-width:78px;padding:8px 12px;border-radius:13px;text-align:center;
+  font-family:var(--mono);font-size:14px;font-weight:700;color:var(--ink);
+  font-variant-numeric:tabular-nums;white-space:nowrap}
+/* Sort sheet: a much bigger radius than the settings-modal .card convention (10px) - matches
+   the reference screenshot's own rounder, friendlier sheet look, so it gets a dedicated class
+   instead of reusing .card, whose padding/radius/typography are tuned for a form, not this. */
+.sortsheet{background:#1a1c22;border-radius:26px;padding:22px 20px 18px;width:360px;max-width:92vw}
+.sortsheet h2{text-align:center;font-family:var(--disp);font-size:21px;font-weight:600;
+  margin:4px 0 10px;color:var(--text)}
+.sortrow{display:flex;align-items:center;justify-content:space-between;padding:15px 6px;
+  font-family:var(--disp);font-size:15px;color:var(--text);border-bottom:1px solid var(--line);
+  cursor:pointer}
+.sortrow:last-of-type{border-bottom:none}
+.sortrow:hover{color:var(--long)}
+.sortarr{width:18px;height:18px;color:var(--long);display:flex;align-items:center;justify-content:center}
+.sortdone{width:100%;margin-top:16px;background:#fff;color:#111;border:none;border-radius:26px;
+  padding:15px 0;font-family:var(--disp);font-size:15px;font-weight:700;cursor:pointer}
+.sortdone:hover{background:#eee}
+.sortdone:active{transform:translateY(.5px) scale(.99)}
+/* Shared reduced-motion override for every animated dropdown in the app (Scanner, Watchlist, the
    .tfmenu family — timeframe/chart-layout/session, the chart-type .ctmenu, and Settings' own
    theme-preset popover): keeps the opacity/visibility swap (still needed for click-through and
    screen-reader state) but drops the slide/scale motion and the crossfade duration to
    effectively instant. */
 @media (prefers-reduced-motion:reduce){
-  .scanmenu,.tfmenu,.ctmenu,#setup .presetlist{transition:opacity .01s linear,visibility 0s linear;transform:none}
-  .tfdrop.open .scanmenu,.tfdrop.open .tfmenu,.ctmenu.open,#themeSelBtn.open + .presetlist{
+  .scanmenu,.watchmenu,.tfmenu,.ctmenu,#setup .presetlist{transition:opacity .01s linear,visibility 0s linear;transform:none}
+  .tfdrop.open .scanmenu,.tfdrop.open .watchmenu,.tfdrop.open .tfmenu,.ctmenu.open,#themeSelBtn.open + .presetlist{
     transition:opacity .01s linear,visibility 0s linear}
 }
 /* Opens with a fade+slide+scale rather than a flat display:none/block snap — the same
@@ -1564,6 +1633,7 @@ table.lv td{padding:6px 10px}
   document.documentElement.style.setProperty('--mono',dominantFont);
   document.documentElement.style.setProperty('--disp',dominantFont);
   document.documentElement.style.setProperty('--heat',dominantFont);
+  document.documentElement.style.setProperty('--lab',dominantFont);
   // The chart library takes its font as a plain JS string, not CSS - reusing this exact value
   // (rather than a second hardcoded copy) is what keeps the axis labels from ever drifting out
   // of sync with the rest of the UI's font again.
@@ -1666,18 +1736,28 @@ table.lv td{padding:6px 10px}
       </div>
     </div>
     <div class="tfdrop scandrop" id="scanDrop">
-      <button class="tbtn scanTopBtn tfbtn setupIconBtn" id="scanBtn" title="Watchlist Scanner"><svg id="scanIcon" viewBox="0 0 24 24" width="16" height="16"><circle cx="8.5" cy="6" r="2.3" fill="#37424E"/><circle cx="15.5" cy="6" r="2.3" fill="#37424E"/><rect x="4" y="7" width="16" height="6" rx="3" fill="#37424E"/><circle cx="7.5" cy="15" r="6.8" fill="#37424E"/><circle cx="16.5" cy="15" r="6.8" fill="#37424E"/><circle cx="7.5" cy="15" r="5.4" fill="#9BE0F2"/><circle cx="16.5" cy="15" r="5.4" fill="#9BE0F2"/><circle cx="5.7" cy="12.7" r="1.6" fill="#fff"/><circle cx="8.3" cy="14.3" r="0.7" fill="#fff"/><circle cx="14.7" cy="12.7" r="1.6" fill="#fff"/><circle cx="17.3" cy="14.3" r="0.7" fill="#fff"/><circle cx="12" cy="10" r="1" fill="#9BE0F2"/></svg></button>
+      <button class="tbtn scanTopBtn tfbtn setupIconBtn" id="scanBtn" title="Scanner"><svg id="scanIcon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><rect x="5.3" y="1.2" width="2.4" height="3.2" rx="1.1"/><rect x="16.3" y="1.2" width="2.4" height="3.2" rx="1.1"/><rect x="4.3" y="4" width="4.4" height="10" rx="1.8"/><rect x="15.3" y="4" width="4.4" height="10" rx="1.8"/><rect x="7" y="4.5" width="10" height="2.6" rx="1.3"/><circle cx="12" cy="5.8" r="1.6"/><path fill-rule="evenodd" d="M0.2,16.5 A6.3,6.3 0 1,0 12.8,16.5 A6.3,6.3 0 1,0 0.2,16.5 Z M2.2,16.5 A4.3,4.3 0 1,0 10.8,16.5 A4.3,4.3 0 1,0 2.2,16.5 Z M11.2,16.5 A6.3,6.3 0 1,0 23.8,16.5 A6.3,6.3 0 1,0 11.2,16.5 Z M13.2,16.5 A4.3,4.3 0 1,0 21.8,16.5 A4.3,4.3 0 1,0 13.2,16.5 Z"/></svg></button>
       <div class="scanmenu" id="scanMenu">
         <div id="scanStatus" class="hint" style="margin:8px 10px 2px">not loaded yet</div>
         <div id="scanCards"></div>
       </div>
     </div>
+    <div class="tfdrop watchdrop" id="watchDrop">
+      <button class="tbtn watchTopBtn tfbtn setupIconBtn" id="watchBtn" title="Watchlist"><svg id="watchIcon" viewBox="0 0 20 20" width="16" height="16" fill="currentColor"><path d="M10 1.2l2.69 5.45 6.01.87-4.35 4.24 1.03 6L10 14.77l-5.38 2.99 1.03-6-4.35-4.24 6.01-.87L10 1.2z"/></svg></button>
+      <div class="watchmenu" id="watchMenu">
+        <div class="wlhead">
+          <span id="watchStatus" class="hint"></span>
+          <button class="scantoggle" id="watchSortBtn">Sort<span class="scancaret"> ▾</span></button>
+        </div>
+        <div id="watchRows"></div>
+      </div>
+    </div>
     <button class="tbtn setupIconBtn" id="alertBellBtn" title="Alerts"><svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2.5c-2.2 0-4 1.8-4 4v2.3c0 .5-.2 1-.5 1.4L4 12.5A1 1 0 0 0 4.8 14h10.4a1 1 0 0 0 .8-1.5l-1.5-2.3c-.3-.4-.5-.9-.5-1.4V6.5c0-2.2-1.8-4-4-4Z"/><path d="M8.2 16.5a1.8 1.8 0 0 0 3.6 0"/></svg><span id="alertBellBadge" class="albadge" style="display:none">0</span></button>
     <button class="tbtn setupIconBtn" id="setupBtn" title="Settings"><svg viewBox="0 0 90 90" width="20" height="20" fill="currentColor"><path d="M 79.199 45 c 0 -2.017 -0.185 -3.99 -0.52 -5.912 l 10.238 -8.021 l -9.893 -17.135 l -12.065 4.856 c -3.016 -2.53 -6.473 -4.552 -10.242 -5.926 L 54.893 0 H 35.107 l -1.825 12.862 c -3.769 1.375 -7.225 3.397 -10.242 5.926 l -12.065 -4.856 L 1.083 31.067 l 10.238 8.021 c -0.335 1.921 -0.52 3.894 -0.52 5.912 s 0.185 3.99 0.52 5.912 L 1.083 58.933 l 9.893 17.135 l 12.065 -4.856 c 3.016 2.53 6.473 4.552 10.242 5.926 L 35.107 90 h 19.785 l 1.825 -12.862 c 3.769 -1.375 7.225 -3.397 10.242 -5.926 l 12.065 4.856 l 9.893 -17.135 l -10.238 -8.021 C 79.014 48.99 79.199 47.017 79.199 45 z M 45 66.659 c -11.962 0 -21.659 -9.697 -21.659 -21.659 S 33.038 23.341 45 23.341 S 66.659 33.038 66.659 45 S 56.962 66.659 45 66.659 z"/></svg></button>
-    <button class="sbFloat" id="sbBtn" title="Hide side panel"><svg id="sbIcon" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="3.5 3 8 8 3.5 13"/><polyline points="7.5 3 12 8 7.5 13"/></svg></button>
+    <button class="sbFloat" id="sbBtn" title="Hide side panel"><svg id="sbIcon" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><g class="sbcompress"><polyline points="13 3 9 7"/><polyline points="13 7 9 7 9 3"/><polyline points="3 13 7 9"/><polyline points="3 9 7 9 7 13"/></g><g class="sbexpand"><polyline points="9 7 13 3"/><polyline points="9 3 13 3 13 7"/><polyline points="7 9 3 13"/><polyline points="7 13 3 13 3 9"/></g></svg></button>
     <!-- Pane 2's own show/hide handle for its own popout — only ever visible while Pane 2 is
          unlinked and on screen (see setPaneN()/applyPaneSym()). -->
-    <button class="sbFloat" id="sbBtn2" title="Hide Pane 2 side panel" style="display:none"><svg id="sbIcon2" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="3.5 3 8 8 3.5 13"/><polyline points="7.5 3 12 8 7.5 13"/></svg></button>
+    <button class="sbFloat" id="sbBtn2" title="Hide Pane 2 side panel" style="display:none!important"><svg id="sbIcon2" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><g class="sbcompress"><polyline points="13 3 9 7"/><polyline points="13 7 9 7 9 3"/><polyline points="3 13 7 9"/><polyline points="3 9 7 9 7 13"/></g><g class="sbexpand"><polyline points="9 7 13 3"/><polyline points="9 3 13 3 13 7"/><polyline points="7 9 3 13"/><polyline points="7 13 3 13 3 9"/></g></svg></button>
   </div>
   <div class="main">
     <div class="chartcol">
@@ -1974,6 +2054,15 @@ table.lv td{padding:6px 10px}
     <div class="row"><span style="min-width:96px;font-size:12px">Up bars</span><span class="sw" id="swVoUp"></span></div>
     <div class="row"><span style="min-width:96px;font-size:12px">Down bars</span><span class="sw" id="swVoDn"></span></div>
     <div class="row" style="justify-content:flex-end"><button class="tbtn" id="voCancel">Close</button><button class="tbtn primary" id="voOk">OK</button></div>
+  </div>
+</div>
+<div id="sortModal" style="position:fixed;inset:0;background:rgba(6,9,15,.85);z-index:130;display:none;align-items:center;justify-content:center">
+  <div class="sortsheet">
+    <h2>Sort by</h2>
+    <div class="sortrow" data-field="symbol"><span>Symbol</span><span class="sortarr"></span></div>
+    <div class="sortrow" data-field="price"><span>Price</span><span class="sortarr"></span></div>
+    <div class="sortrow" data-field="changePct"><span>% Change</span><span class="sortarr"></span></div>
+    <button class="sortdone" id="sortDoneBtn">Done</button>
   </div>
 </div>
 <div id="vwapModal" style="position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:120;display:none;align-items:center;justify-content:center">
@@ -3162,11 +3251,22 @@ function makePane(idx){
      independent, so a 40-million bar cannot touch the price range — and because it is on
      the same chart there is no second time axis to keep in step, which is one fewer thing
      that can drift out of alignment. */
-  const vchart=LightweightCharts.createChart(vEl,chartOpts({timeScale:{visible:false},rightPriceScale:{borderColor:'transparent',scaleMargins:{top:0.12,bottom:0}}}));
+  // chartOpts()'s own handleScale (axisPressedMouseMove.price:true, etc) is deliberate for the
+  // MAIN price chart - see its own comment - but Volume/RSI/MACD all inherited it too, unchanged,
+  // with nothing actually overriding it. RSI's autoscaleInfoProvider LOCK below only overrides
+  // the AUTOSCALE computation, not the axis-drag gesture itself, so a manual drag can still throw
+  // its 0-100 range off (reproduced live: dragged RSI's own axis and watched it read -50 to 150)
+  // - Volume and MACD, with no lock at all, are just as draggable. None of the three were ever
+  // meant to be user-adjustable (unlike the main chart), so this turns the price-axis drag/
+  // double-click-reset gestures off for all three subpane charts below, leaving the time axis
+  // (panning/zooming, kept in sync with the main chart via linkCharts) untouched.
+  const STATIC_SCALE={handleScale:{axisPressedMouseMove:{time:true,price:false},mouseWheel:true,pinch:true,
+    axisDoubleClickReset:{time:true,price:false}}};
+  const vchart=LightweightCharts.createChart(vEl,chartOpts(Object.assign({timeScale:{visible:false},rightPriceScale:{borderColor:'transparent',scaleMargins:{top:0.12,bottom:0}}},STATIC_SCALE)));
   const vol=vchart.addHistogramSeries({priceFormat:{type:'volume'},priceLineVisible:false,lastValueVisible:false});
   try{vchart.priceScale('right').applyOptions({scaleMargins:{top:0.12,bottom:0}});}catch(e){}
   try{vchart.applyOptions({crosshair:{horzLine:{visible:false,labelVisible:true}}});}catch(e){}
-  const rchart=LightweightCharts.createChart(rEl,chartOpts({timeScale:{visible:false},rightPriceScale:{borderColor:'transparent',scaleMargins:{top:0.05,bottom:0.05}}}));
+  const rchart=LightweightCharts.createChart(rEl,chartOpts(Object.assign({timeScale:{visible:false},rightPriceScale:{borderColor:'transparent',scaleMargins:{top:0.05,bottom:0.05}}},STATIC_SCALE)));
   const LOCK=()=>({priceRange:{minValue:0,maxValue:100}}); // RSI scale locked 0–100, TradingView-style
   const NOFILL='rgba(0,0,0,0)';
   // fill(rsiUpperBand, rsiLowerBand, ...) — a flat band between 70 and 30. Drawn as a
@@ -3200,12 +3300,13 @@ function makePane(idx){
   // MACD: TradingView's own built-in "Moving Average Convergence Divergence" (Pine v6),
   // ported verbatim — see cfg.macd's own comment for the exact source and colour mapping.
   // Its own subpane/chart, below RSI, with the same independent-scale treatment as the RSI
-  // panel above (own LWC chart instance, own price scale) except UNLOCKED (not 0-100), since
-  // MACD/histogram are unbounded — the scale simply auto-fits whichever of
+  // panel above (own LWC chart instance, own price scale), except its range is not pinned to a
+  // fixed 0-100 like RSI's since MACD/histogram are unbounded — the scale auto-fits whichever of
   // histogram/MACD/signal are currently visible (a hidden series stops contributing to that
-  // fit for free, the same way applyOptions({visible:false}) already behaves everywhere else
-  // in this file).
-  const mchart=LightweightCharts.createChart(mEl,chartOpts({timeScale:{visible:false},rightPriceScale:{borderColor:'transparent',scaleMargins:{top:0.1,bottom:0.1}}}));
+  // fit for free, the same way applyOptions({visible:false}) already behaves everywhere else in
+  // this file) instead. Static either way - see STATIC_SCALE above - the user can't drag this
+  // axis into a stuck manual range any more than RSI's or Volume's own.
+  const mchart=LightweightCharts.createChart(mEl,chartOpts(Object.assign({timeScale:{visible:false},rightPriceScale:{borderColor:'transparent',scaleMargins:{top:0.1,bottom:0.1}}},STATIC_SCALE)));
   const macdHist=mchart.addHistogramSeries({priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
   const macdLine=mchart.addLineSeries({color:cfg.macd.macdC,lineWidth:cfg.macd.macdW,lineStyle:lwcStyle(cfg.macd.macdSt),
     priceLineVisible:false,lastValueVisible:true,crosshairMarkerVisible:false});
@@ -9217,6 +9318,12 @@ async function scanFetchBars(sym){
     const bars5=await fetchTsRange('5min',new Date(Date.now()-2*864e5),now,sym);
     const todayYmd=nowET().ymd;
     const todayBars=bars5.filter(b=>b.etYmd===todayYmd);
+    // Watchlist's compact sparkline reuses these SAME 5-min bars (already fetched above for
+    // ATR/VWAP/PM-H-L) rather than opening a bar-fetch of its own — zero extra requests. Falls
+    // back to the tail of the 2-day window outside RTH/before today has any bars yet (pre-market,
+    // or the instant the session flips and today's own bars haven't printed), so the row never
+    // sits empty just because "today" technically has nothing in it yet.
+    d.sparkline=(todayBars.length>=2?todayBars:bars5.slice(-60)).map(b=>b.c);
     const pmBars=todayBars.filter(b=>b.etMin<SCAN_RTH_OPEN_MIN);
     d.pmHigh=pmBars.length?Math.max(...pmBars.map(b=>b.h)):null;
     d.pmLow=pmBars.length?Math.min(...pmBars.map(b=>b.l)):null;
@@ -9378,7 +9485,13 @@ async function scanRefreshSlow(){
 let _scanRenderRaf=0;
 function scanScheduleRender(){
   if(_scanRenderRaf)return;
-  _scanRenderRaf=requestAnimationFrame(()=>{_scanRenderRaf=0;scanRender();});
+  // Watchlist reads the exact same scanData this whole file is already keeping fresh (quotes
+  // every 5s, bars/sparkline on the 5-min boundary — see the block comment above) — it has no
+  // fetch, timer, or subscription of its own. Piggybacking its render on this SAME rAF-coalesced
+  // trigger (instead of a second scheduler) is what "reuse the existing pipeline, don't create a
+  // duplicate one" actually means here, and it costs nothing extra: whether the Watchlist dropdown
+  // is open or closed, this was always going to fire for scanRender() anyway.
+  _scanRenderRaf=requestAnimationFrame(()=>{_scanRenderRaf=0;scanRender();watchlistRender();});
 }
 // Per-symbol expand/collapse state for the "More details" toggle — module-level so it survives
 // scanRender()'s full innerHTML rebuilds (a re-render must not silently re-collapse a card the
@@ -9497,6 +9610,125 @@ function scanRender(){
   scanExpanded[sym]=!scanExpanded[sym];
   scanRender();
 });}
+
+/* ================================ Watchlist =================================================
+   Same 9 tickers, same scanData, same quote/bars pipeline above — zero fetches, timers or
+   subscriptions of its own (see scanScheduleRender's own comment). Just a second, differently-
+   shaped view onto data the Scanner section already keeps current: a compact per-symbol
+   ticker/name/sparkline/value row instead of a stat-card, plus its own Sort-by sheet. */
+const WL_NAMES={QQQ:'Invesco QQQ',SPY:'SPDR S&P 500',AAPL:'Apple',MSFT:'Microsoft',
+  GOOGL:'Alphabet Class A',AMZN:'Amazon',META:'Meta Platforms',NVDA:'NVIDIA',TSLA:'Tesla'};
+// Not persisted to cfg, same call as scanExpanded above — a sort preference is session UI state,
+// not a saved setting, and every other transient panel-open/expand flag in this file draws that
+// same line.
+let wlSort={field:'changePct',dir:'asc'};
+const WL_ARROW_UP='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="5"/><polyline points="6 11 12 5 18 11"/></svg>';
+const WL_ARROW_DOWN='<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="4" x2="12" y2="19"/><polyline points="6 13 12 19 18 13"/></svg>';
+function wlSortedSyms(){
+  const dir=wlSort.dir==='asc'?1:-1,field=wlSort.field;
+  return SCANNER_SYMS.slice().sort((a,b)=>{
+    if(field==='symbol')return a.localeCompare(b)*dir;
+    const av=field==='price'?scanData[a].last:scanData[a].changePct;
+    const bv=field==='price'?scanData[b].last:scanData[b].changePct;
+    // No quote yet always sorts last, in EITHER direction — never lets a symbol that hasn't
+    // reported in outrank real data just because "dir" flipped.
+    if(av==null&&bv==null)return 0;
+    if(av==null)return 1;
+    if(bv==null)return-1;
+    return(av-bv)*dir;
+  });
+}
+// Plain SVG, not a lightweight-charts instance: 9 of those just to show a compact shape-only
+// line would be real chart-library overhead (canvas + resize observer + its own render loop
+// each) for something that needs none of a real chart's interactivity. A <polyline> costs one
+// attribute string, set fresh on every watchlistRender() call alongside everything else in the
+// row - "incremental" here means never touching lightweight-charts/renderPane at all, the same
+// isolation the Scanner section above already guarantees for the SAME reason.
+function wlSparkSvg(sym){
+  const d=scanData[sym];
+  const src=d.sparkline;
+  const prev=d.prevClose;
+  const W=100,H=40,PLOT_TOP=15,PLOT_BOT=36,DOT_Y=6;
+  const dots=[18,39,60,81].map(x=>`<circle cx="${x}" cy="${DOT_Y}" r="1.3"/>`).join('');
+  if(!src||!src.length||!(prev>0)){
+    return`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><g class="wlspdots">${dots}</g></svg>`;
+  }
+  const pts=src.slice();
+  // The historical shape only refreshes on the 5-min bar boundary, but the LIVE quote (every 5s)
+  // is fresher than that - swap it into the last point so the line's tip (and its dot/colour)
+  // never lags the price actually shown in the pill beside it.
+  if(d.last!=null)pts[pts.length-1]=d.last;
+  const all=pts.concat([prev]);
+  let lo=Math.min(...all),hi=Math.max(...all);
+  if(hi===lo){hi+=1;lo-=1;}
+  const x=i=>pts.length>1?(W-8)*i/(pts.length-1)+4:W/2;
+  const y=v=>PLOT_TOP+(PLOT_BOT-PLOT_TOP)*(1-(v-lo)/(hi-lo));
+  const up=d.last!=null?d.last>=prev:true;
+  const col=up?'var(--long)':'var(--short)';
+  const line=pts.map((v,i)=>`${x(i).toFixed(2)},${y(v).toFixed(2)}`).join(' ');
+  const lastX=x(pts.length-1).toFixed(2),lastY=y(pts[pts.length-1]).toFixed(2);
+  const prevY=y(prev).toFixed(2);
+  return`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+    <g class="wlspdots">${dots}</g>
+    <line class="wlspref" x1="4" y1="${prevY}" x2="${W-4}" y2="${prevY}"/>
+    <polyline points="${line}" fill="none" stroke="${col}" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="${lastX}" cy="${lastY}" r="2.4" fill="${col}"/>
+  </svg>`;
+}
+function watchlistRender(){
+  const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const n=(v,dp)=>v==null||!isFinite(v)?'—':(+v).toFixed(dp==null?2:dp);
+  const syms=wlSortedSyms();
+  const rows=syms.map(sym=>{
+    const d=scanData[sym];
+    const hasPx=d.last!=null&&isFinite(d.last);
+    const hasPrev=d.prevClose>0;
+    const up=hasPx&&hasPrev?d.last>=d.prevClose:true;
+    const col=up?'var(--long)':'var(--short)';
+    // The pill's own metric follows the active sort (Price sort shows $price; Symbol and
+    // % Change sort both show %change, %change being the sensible default when the sort itself
+    // isn't a number the pill could otherwise echo) — this is the literal "displayed value must
+    // reflect the active sort" requirement, not a coincidence of reusing scanData's fields.
+    const pillVal=wlSort.field==='price'
+      ?(hasPx?'$'+n(d.last):'—')
+      :(hasPx&&hasPrev?(d.changePct>=0?'+':'')+n(d.changePct)+'%':'—');
+    return`<div class="wlrow">
+      <div class="wlleft">
+        <div class="wlsym">${esc(sym)}</div>
+        <div class="wlname">${esc(WL_NAMES[sym]||sym)}</div>
+      </div>
+      <div class="wlspark">${wlSparkSvg(sym)}</div>
+      <div class="wlpill" style="background:${hasPx&&hasPrev?col:'var(--line2)'}">${pillVal}</div>
+    </div>`;
+  }).join('');
+  const host=$('#watchRows');if(host)host.innerHTML=rows;
+  const st=$('#watchStatus');
+  if(st)st.textContent=syms.some(s=>scanData[s].last!=null)?'':'not loaded yet';
+  wlUpdateSortSheetUI();
+}
+function wlUpdateSortSheetUI(){
+  $$('#sortModal .sortrow').forEach(row=>{
+    const active=row.dataset.field===wlSort.field;
+    const arr=row.querySelector('.sortarr');
+    arr.innerHTML=active?(wlSort.dir==='asc'?WL_ARROW_UP:WL_ARROW_DOWN):'';
+    row.classList.toggle('active',active);
+  });
+}
+$('#watchBtn').addEventListener('click',()=>scanCatchUpIfStale());
+$('#watchSortBtn').addEventListener('click',e=>{
+  e.stopPropagation();
+  $('#sortModal').style.display='flex';
+  wlUpdateSortSheetUI();
+});
+$('#sortDoneBtn').addEventListener('click',()=>{$('#sortModal').style.display='none';});
+$('#sortModal').addEventListener('click',e=>{if(e.target.id==='sortModal')$('#sortModal').style.display='none';});
+$$('#sortModal .sortrow').forEach(row=>row.addEventListener('click',()=>{
+  const f=row.dataset.field;
+  if(wlSort.field===f)wlSort.dir=wlSort.dir==='asc'?'desc':'asc';
+  else{wlSort.field=f;wlSort.dir='asc';}
+  watchlistRender();
+}));
+watchlistRender();   // paint the "not loaded yet" placeholder rows immediately, before any fetch
 
 async function scanTick(){
   await scanFetchQuotes();
@@ -10872,10 +11104,13 @@ function initSidePopout(o){
   }
   function applyPos(){
     if(sideIsMobile()){
-      // The mobile media query owns position/size via !important; clearing these inline styles
-      // lets it win cleanly instead of fighting a stale desktop transform left over from a
-      // resize that crossed the breakpoint.
+      // The mobile media query owns position/size (and, now that the mobile overlay animates
+      // too, opacity/pointer-events) via !important; clearing these inline styles lets it win
+      // cleanly instead of fighting stale desktop values left over from a resize that crossed
+      // the breakpoint - opacity/pointerEvents included, now that CSS actually needs to drive
+      // them here rather than just losing to a flat display:none regardless of their value.
       side.style.transform='';side.style.width='';side.style.height='';side.style.transition='';
+      side.style.opacity='';side.style.pointerEvents='';
       btn.style.transform='';
       return;
     }
@@ -10907,15 +11142,18 @@ function initSidePopout(o){
     const hidden=cfg[o.cfgHidden]===0;
     const x=Math.round(cfg[o.cfgX]),y=Math.round(cfg[o.cfgY]);
     side.style.width=cfg[o.cfgW]+'px';side.style.height=cfg[o.cfgH]+'px';
-    side.style.transform=`translate3d(${x}px,${y}px,0) scale(${hidden?.04:1})`;
+    // Two rounds of a bespoke "genie into the button" effect (shrink-to-.04, then a rotate, then
+    // an overshoot ease) all read as gimmicky rather than polished. Dropped that whole approach in
+    // favor of reusing the app's OWN already-proven popover recipe verbatim - the exact numbers
+    // .tfmenu/.ctmenu/.scanmenu use (translate 8px, scale .97, plain ease, .16s) - just applied to
+    // a floating panel instead of an anchored popover. Same restrained motion the user already
+    // has around dropdowns everywhere else, not a new one invented for this one button.
+    side.style.transform=hidden
+      ?`translate3d(${x}px,${y+8}px,0) scale(.97)`
+      :`translate3d(${x}px,${y}px,0) scale(1)`;
     side.style.opacity=hidden?'0':'1';
     side.style.pointerEvents=hidden?'none':'auto';
-    // The genie-shrink-into-the-button transition applies to the open/close click only — kept
-    // off for the whole time any drag or resize is live (dragCount>0), otherwise every
-    // pointer-move would ease toward its new position over that same .4s curve instead of
-    // tracking the cursor 1:1, which is what actually read as the panel (and the button)
-    // lagging behind the mouse.
-    side.style.transition=dragCount>0?'none':'transform .4s cubic-bezier(.22,1,.36,1), opacity .28s ease';
+    side.style.transition=dragCount>0?'none':'transform .16s ease, opacity .16s ease';
     // Top-LEFT corner, not top-right: the tab row's own reserved gutter (.tabs padding-left, see
     // its own comment) is sized to this exact 12px inset, so the button never sits on top of a
     // tab or the sliding .tabpill highlight the way a bare top-right placement did. y+19 (not the
