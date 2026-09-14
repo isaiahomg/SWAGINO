@@ -794,9 +794,9 @@ input:disabled,select:disabled{opacity:.45;cursor:not-allowed}
   background:rgba(20,21,25,.3);
   backdrop-filter:blur(3px) saturate(1.3) brightness(1.03);
   -webkit-backdrop-filter:blur(3px) saturate(1.3) brightness(1.03);
-  border:1px solid rgba(255,255,255,.14);
+  border:1px solid rgba(255,255,255,.10);
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.35),
+    inset 0 1px 0 rgba(255,255,255,.16),
     inset 0 -1px 0 rgba(255,255,255,.05),
     0 8px 24px rgba(0,0,0,.4),
     0 2px 8px rgba(0,0,0,.3);
@@ -1048,9 +1048,14 @@ input[type=checkbox]{accent-color:var(--accent)}
   background:rgba(20,21,25,.3);
   backdrop-filter:blur(3px) saturate(1.3) brightness(1.03);
   -webkit-backdrop-filter:blur(3px) saturate(1.3) brightness(1.03);
-  border:1px solid rgba(255,255,255,.14);
+  /* Dimmed per explicit request ("the glow around the pill border is still a little too
+     bright") — the top inset highlight (simulating light catching the glass edge) and the
+     border itself were both a shade of white bright enough to read as a glow around the whole
+     shape rather than a subtle edge highlight; brought down without removing the effect
+     entirely. .satyinfo copies these same two values — see its own comment. */
+  border:1px solid rgba(255,255,255,.10);
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.35),
+    inset 0 1px 0 rgba(255,255,255,.16),
     inset 0 -1px 0 rgba(255,255,255,.05),
     0 24px 70px rgba(0,0,0,.55),
     0 4px 18px rgba(0,0,0,.35)}
@@ -1634,8 +1639,14 @@ table.lv td{padding:6px 10px}
    pill's tracked position — correctly in sync automatically, no JS change needed. Applies to both
    #side and #side2 (same .tabs class, same button/gutter relationship in each). 45px = the
    button's 19px inset (see applyPos()'s own comment — same on both axes now) + its 22px width
-   + 4px clearance. */
-.tabs{padding-left:45px}
+   + 4px clearance.
+   padding-RIGHT matches it — nothing occupies that side, it exists purely so the tab buttons sit
+   centered as a group within the row instead of skewed toward the right edge (the one-sided left
+   gutter left "Levels"/"GEX" visibly off-center — reported live, the icon wasn't literally
+   overlapping either tab, just eating unbalanced space next to them). Moving the icon itself
+   elsewhere would need to eat into the header's already-tight height for no better result than
+   this: a matching empty gutter reads identically to the eye as "the tabs are centered". */
+.tabs{padding-left:45px;padding-right:45px}
 .tabs button{flex:1;position:relative;z-index:1;display:flex;align-items:center;justify-content:center;
   gap:5px;border-bottom:none;border-radius:9px;padding:7px 0;transition:color .18s ease}
 .tabs button.on{border-bottom:none}
