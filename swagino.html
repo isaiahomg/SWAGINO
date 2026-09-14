@@ -9401,7 +9401,15 @@ async function scanFetchBars(sym){
     // back to the tail of the 2-day window outside RTH/before today has any bars yet (pre-market,
     // or the instant the session flips and today's own bars haven't printed), so the row never
     // sits empty just because "today" technically has nothing in it yet.
-    d.sparkline=(todayBars.length>=2?todayBars:bars5.slice(-60)).map(b=>b.c);
+    const sparkFull=todayBars.length>=2;
+    // Each point carries its own etMin (minutes since midnight ET) alongside the close so
+    // wlSparkSvg can place it by CLOCK TIME rather than by bar index — see that function's own
+    // comment for why (index-based placement stretches whatever bars exist edge-to-edge, which
+    // makes an early trading day look complete instead of leaving the un-elapsed rest of the
+    // 4:00a-8:00p session visibly blank, the way the reference app draws it). Only meaningful
+    // when sparkFull is true — the multi-day fallback has no single day to anchor a clock to.
+    d.sparkline=(sparkFull?todayBars:bars5.slice(-60)).map(b=>({m:b.etMin,c:b.c}));
+    d.sparkFull=sparkFull;
     const pmBars=todayBars.filter(b=>b.etMin<SCAN_RTH_OPEN_MIN);
     d.pmHigh=pmBars.length?Math.max(...pmBars.map(b=>b.h)):null;
     d.pmLow=pmBars.length?Math.min(...pmBars.map(b=>b.l)):null;
@@ -9735,7 +9743,7 @@ function wlSparkSvg(sym){
   if(!src||!src.length||!(prev>0)){
     return`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><g class="wlspdots">${dots}</g></svg>`;
   }
-  const pts=src.slice();
+  const pts=src.map(p=>p.c);
   // The historical shape only refreshes on the 5-min bar boundary, but the LIVE quote (every 5s)
   // is fresher than that - swap it into the last point so the line's tip (and its dot/colour)
   // never lags the price actually shown in the pill beside it.
@@ -9743,7 +9751,18 @@ function wlSparkSvg(sym){
   const all=pts.concat([prev]);
   let lo=Math.min(...all),hi=Math.max(...all);
   if(hi===lo){hi+=1;lo-=1;}
-  const x=i=>pts.length>1?(W-8)*i/(pts.length-1)+4:W/2;
+  // X position: when the source is today's own session bars (d.sparkFull), anchor each point to
+  // its REAL clock time against the fixed 4:00a-8:00p ET extended-hours window (240-1200 minutes
+  // — same bounds this file uses everywhere else for the pre/RTH/post split) instead of its bar
+  // INDEX. That's what makes a still-early trading day fill only its true proportion of the row
+  // — e.g. an hour into pre-market fills ~1/16th of the width — leaving the rest visibly blank,
+  // matching the reference app, rather than stretching whatever few bars exist edge-to-edge. The
+  // rare multi-day fallback (sparkFull false — no bars for "today" yet) has no single day to
+  // anchor against, so it keeps the old edge-to-edge index stretch.
+  const DAY_START=240,DAY_END=1200;
+  const x=d.sparkFull
+    ?i=>4+(W-8)*Math.min(1,Math.max(0,(src[i].m-DAY_START)/(DAY_END-DAY_START)))
+    :i=>pts.length>1?(W-8)*i/(pts.length-1)+4:W/2;
   const y=v=>PLOT_TOP+(PLOT_BOT-PLOT_TOP)*(1-(v-lo)/(hi-lo));
   const up=d.last!=null?d.last>=prev:true;
   const col=up?'var(--long)':'var(--short)';
