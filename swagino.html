@@ -6340,6 +6340,15 @@ function positionTips(p){
   // job positionLvlTags just did above for every other level family — GEX needs its own call here
   // because it's excluded from that shared function's pass (see drawLevelsOn's own comment on why).
   renderGexLevels(LS.gex?LS.gex.levels:[]);
+  // Pane 2's own GEX board (gex2Board, while unlinked) was NEVER reached by the call above: its
+  // default targetPanes is "every pane currently showing cfg.sym", which Pane 2 fails by
+  // definition while unlinked, and LS.gex is Pane 1's board anyway, not gex2Board. Its tags were
+  // only ever positioned ONCE, at creation (inside computeChainGex2()'s own parseGexRows call) —
+  // every pan/zoom/live tick afterward left them exactly where they were first drawn, reading as
+  // "stuck" until something recreated the DOM nodes from scratch (toggling the category off then
+  // on removes and recreates them, which is why that "fixed" it). Explicit call, scoped to just
+  // this pane and this board, the same way computeChainGex2()'s own first render already is.
+  if(p.idx===1&&cfg.link===false&&gex2Board)renderGexLevels(gex2Board.levels,[p],true);
   positionAxisChrome(p);
   deoverlapLabels($('#tips'+p.idx));
   drawLevelSegments(p);
@@ -7347,7 +7356,10 @@ function drawLevelsOn(p,srcLevels){
     if(p.tradeLines){p.tradeLines.forEach(pl=>{try{p.candles.removePriceLine(pl);}catch(e){}});p.tradeLines=[];}
     return;}
   p.priceLines.forEach(pl=>p.candles.removePriceLine(pl));p.priceLines=[];
-  const show=catShown();
+  // An explicit srcLevels means Pane 2's own independent board (see this function's own doc
+  // comment above) — use its own category visibility, not the shared one Pane 1's default call
+  // reads, or toggling a category on one board's table silently toggled it on both.
+  const show=catShown(!!srcLevels);
   /* Levels that land on the SAME price are one line carrying one joined name, so PM Low and
      Prev Low sitting together at 699.00 read "PM Low, Prev Low" instead of stacking two lines
      and two overlapping titles on the same pixel row. Grouping is on the price AS DISPLAYED
@@ -7427,18 +7439,27 @@ function drawLevels(){visPanes().forEach(p=>{
 const CAT_ORDER=['session','prev','gex','inst'];
 const CAT_LABEL={session:'Session',
   prev:'Previous day',gex:'GEX',inst:'Institutional'};
-function catShown(){
+// forPane2: read/write cfg.catOn2 (Pane 2's OWN category visibility) instead of the shared
+// cfg.catOn. Only meaningful while Pane 2 is genuinely unlinked — #lvlTable2's own catlabel
+// handlers (the only callers that ever pass true) don't exist/aren't interactive otherwise, so
+// there is no linked-Pane-2 case to also branch on here. Was a single shared cfg.catOn for both
+// boards — toggling a category from EITHER pane's table changed both, even with two different
+// tickers up. lvlOn2 (individual level on/off, not the category master switch) already got this
+// exact per-pane split; this brings the category switch in line with it.
+function catShown(forPane2){
   const d={session:1,prev:1,gex:1,inst:1};
-  const c=Object.assign(d,cfg.catOn||{});
+  const c=Object.assign(d,(forPane2?cfg.catOn2:cfg.catOn)||{});
   const out={};CAT_ORDER.forEach(k=>out[k]=!!c[k]);
   return out;
 }
-function setCat(k,on){
+function setCat(k,on,forPane2){
+  if(forPane2){
+    cfg.catOn2=Object.assign({},catShown(true),{[k]:!!on});
+    saveCfg();redrawPane2Levels();renderLevelTable2();
+    return;
+  }
   cfg.catOn=Object.assign({},catShown(),{[k]:!!on});
   saveCfg();drawLevels();renderLevelTable();
-  // Category visibility (catShown()) is shared app-wide, not per-board — Pane 2's own board (if
-  // active) needs the same instant redraw drawLevels()/renderLevelTable() above just gave Pane 1.
-  if(cfg.paneN>=2&&cfg.link===false){redrawPane2Levels();renderLevelTable2();}
 }
 
 /* ================================ Price Alerts ==========================================
@@ -8586,7 +8607,7 @@ function renderLevelTable(){
 // levels2/#lvlTable2 instead.
 function renderLevelTable2(){
   const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-  const shown=catShown();
+  const shown=catShown(true);
   const html=CAT_ORDER.map(cat=>{
     const mine=levels2.filter(l=>l.cat===cat).sort((a,b)=>b.price-a.price);
     if(!mine.length)return '';
@@ -8602,7 +8623,7 @@ function renderLevelTable2(){
   }).join('');
   $('#lvlTable2').innerHTML=html||'<tr><td>no data yet</td></tr>';
   $$('#lvlTable2 .catlabel').forEach(el=>{
-    const toggle=()=>setCat(el.dataset.cat,!el.classList.contains('on'));
+    const toggle=()=>setCat(el.dataset.cat,!el.classList.contains('on'),true);
     el.onclick=toggle;
     el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle();}};
   });
@@ -8798,7 +8819,7 @@ function renderGexLevels(lv,targetPanes,alt){
   // reimplemented, so a user's custom color/width/style for a GEX level (set via the same Levels
   // table swatch every other category uses) is honored exactly as it already is elsewhere. GEX
   // is just another displayed level — every qualifying one is drawn, unconditionally.
-  const shown=catShown().gex?lv.filter(x=>lvlStyleOf({key:x.key,dc:x.color,ds:x.style,cat:'gex',w:x.w},alt).on):[];
+  const shown=catShown(alt).gex?lv.filter(x=>lvlStyleOf({key:x.key,dc:x.color,ds:x.style,cat:'gex',w:x.w},alt).on):[];
   const wantedKeys=new Set(shown.map(x=>x.key));
   const panesToUse=targetPanes||visPanes().filter(p=>!(p.sym&&p.sym!==cfg.sym));
   panesToUse.forEach(p=>{
