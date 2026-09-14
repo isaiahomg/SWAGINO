@@ -1108,41 +1108,54 @@ select option{background:var(--panel2);color:var(--text)}
 .wlhead .hint{margin:0}
 .wlrow{display:flex;align-items:center;gap:10px;padding:12px 12px;border-bottom:1px solid var(--line)}
 .wlrow:last-child{border-bottom:none}
-.wlleft{flex:0 0 auto;min-width:0}
+/* Ticker/name and the pill were both flex:0 0 auto - sized to their OWN text, so "NVIDIA" (short)
+   and "Alphabet Class A" (long) gave each row a different left-column width, which pushed the
+   sparkline's own start/end X to a different spot on every row - reproduced live: sparkLeft
+   ranged from 1012px to 1066px across the 9 rows. Fixed widths here (not auto) are what actually
+   makes the chart column a COLUMN - same left edge, same right edge, every row, regardless of
+   what text sits next to it. */
+.wlleft{flex:0 0 92px;min-width:0}
 .wlsym{font-family:var(--disp);font-size:15px;font-weight:600;color:var(--text);line-height:1.25}
 .wlname{font-family:var(--disp);font-size:12px;color:var(--faint);line-height:1.25;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:104px}
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:92px}
 .wlspark{flex:1 1 auto;min-width:0;height:40px}
 .wlspark svg{display:block;width:100%;height:100%;overflow:visible}
 .wlspdots circle{fill:var(--faint);opacity:.5}
 .wlspref{stroke:var(--faint);stroke-width:1;stroke-dasharray:2,2;opacity:.5}
-.wlpill{flex:0 0 auto;min-width:78px;padding:8px 12px;border-radius:13px;text-align:center;
+.wlpill{flex:0 0 80px;padding:8px 6px;border-radius:13px;text-align:center;
   font-family:var(--mono);font-size:14px;font-weight:700;color:var(--ink);
-  font-variant-numeric:tabular-nums;white-space:nowrap}
-/* Sort sheet: a much bigger radius than the settings-modal .card convention (10px) - matches
-   the reference screenshot's own rounder, friendlier sheet look, so it gets a dedicated class
-   instead of reusing .card, whose padding/radius/typography are tuned for a form, not this. */
-.sortsheet{background:#1a1c22;border-radius:26px;padding:22px 20px 18px;width:360px;max-width:92vw}
-.sortsheet h2{text-align:center;font-family:var(--disp);font-size:21px;font-weight:600;
-  margin:4px 0 10px;color:var(--text)}
-.sortrow{display:flex;align-items:center;justify-content:space-between;padding:15px 6px;
-  font-family:var(--disp);font-size:15px;color:var(--text);border-bottom:1px solid var(--line);
+  font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden}
+/* Sort — a small anchored dropdown, same idiom as every other menu in this file (.tfmenu/
+   .scanmenu/.watchmenu: fade+slide+scale, plain ease, .16s), not the full-page modal this
+   started as. Markup lives as a top-level sibling near the other modals (see its own HTML
+   comment for why - short version: .watchmenu's own `transform` makes IT the containing block
+   for anything position:fixed underneath it, overflow-clipping included, so position:fixed
+   bought nothing as long as this lived inside it). Toggled by its OWN .open class directly
+   (set/cleared in JS from #watchSortBtn's click, not via a wrapper .sortdrop ancestor - there
+   isn't one anymore) and positioned by wlPositionSortMenu() from #watchSortBtn's own live
+   getBoundingClientRect(), since it no longer has any CSS anchor to inherit a position from. */
+.sortmenu{position:fixed;z-index:70;width:180px;border-radius:10px;background:#1a1c22;
+  box-shadow:0 12px 32px rgba(0,0,0,.35);
+  opacity:0;visibility:hidden;pointer-events:none;transform-origin:top right;
+  transform:translateY(-8px) scale(.97);
+  transition:opacity .16s ease,transform .16s ease,visibility 0s linear .16s}
+.sortmenu.open{opacity:1;visibility:visible;pointer-events:auto;
+  transform:translateY(0) scale(1);transition:opacity .16s ease,transform .16s ease,visibility 0s linear 0s}
+.sorthdr{font-family:var(--disp);font-size:11px;font-weight:600;color:var(--faint);
+  letter-spacing:.03em;text-transform:uppercase;padding:9px 12px 5px}
+.sortrow{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;
+  font-family:var(--disp);font-size:13px;color:var(--text);border-top:1px solid var(--line);
   cursor:pointer}
-.sortrow:last-of-type{border-bottom:none}
 .sortrow:hover{color:var(--long)}
-.sortarr{width:18px;height:18px;color:var(--long);display:flex;align-items:center;justify-content:center}
-.sortdone{width:100%;margin-top:16px;background:#fff;color:#111;border:none;border-radius:26px;
-  padding:15px 0;font-family:var(--disp);font-size:15px;font-weight:700;cursor:pointer}
-.sortdone:hover{background:#eee}
-.sortdone:active{transform:translateY(.5px) scale(.99)}
+.sortarr{width:15px;height:15px;color:var(--long);display:flex;align-items:center;justify-content:center}
 /* Shared reduced-motion override for every animated dropdown in the app (Scanner, Watchlist, the
    .tfmenu family — timeframe/chart-layout/session, the chart-type .ctmenu, and Settings' own
    theme-preset popover): keeps the opacity/visibility swap (still needed for click-through and
    screen-reader state) but drops the slide/scale motion and the crossfade duration to
    effectively instant. */
 @media (prefers-reduced-motion:reduce){
-  .scanmenu,.watchmenu,.tfmenu,.ctmenu,#setup .presetlist{transition:opacity .01s linear,visibility 0s linear;transform:none}
-  .tfdrop.open .scanmenu,.tfdrop.open .watchmenu,.tfdrop.open .tfmenu,.ctmenu.open,#themeSelBtn.open + .presetlist{
+  .scanmenu,.watchmenu,.sortmenu,.tfmenu,.ctmenu,#setup .presetlist{transition:opacity .01s linear,visibility 0s linear;transform:none}
+  .tfdrop.open .scanmenu,.tfdrop.open .watchmenu,.sortmenu.open,.tfdrop.open .tfmenu,.ctmenu.open,#themeSelBtn.open + .presetlist{
     transition:opacity .01s linear,visibility 0s linear}
 }
 /* Opens with a fade+slide+scale rather than a flat display:none/block snap — the same
@@ -2021,6 +2034,24 @@ table.lv td{padding:6px 10px}
     <div class="row" style="justify-content:flex-end"><button class="tbtn" id="rsCancel">Close</button><button class="tbtn primary" id="rsOk">OK</button></div>
   </div>
 </div>
+<!-- Lives here, a plain top-level sibling, NOT nested inside #watchMenu where it used to sit -
+     .watchmenu animates its own open/close with `transform`, and any transform on an ancestor
+     (even a resting transform:scale(1)/translateY(0), not just mid-transition) makes THAT
+     ancestor the containing block for a position:fixed descendant instead of the viewport, per
+     spec - and, since .watchmenu is also overflow-y:auto (which computes overflow-x to auto too
+     even though only -y was ever set), that containing block clips it right along with everything
+     else scrollable inside. #sortMenu being position:fixed bought it nothing while it lived in
+     there; it was fixed to .watchmenu, not the screen. Confirmed live: getComputedStyle(#watchMenu
+     open).transform read a real matrix, never "none", at every point in its open state, not only
+     mid-animation. Up here, its only ancestors are plain block elements - transform:none, overflow
+     visible - so position:fixed finally means what it says: anchored to the viewport, painting
+     over everything, never clipped by whatever happens to be scrolled inside Watchlist. -->
+<div class="sortmenu" id="sortMenu">
+  <div class="sorthdr">Sort by</div>
+  <div class="sortrow" data-field="symbol"><span>Symbol</span><span class="sortarr"></span></div>
+  <div class="sortrow" data-field="price"><span>Price</span><span class="sortarr"></span></div>
+  <div class="sortrow" data-field="changePct"><span>% Change</span><span class="sortarr"></span></div>
+</div>
 <div id="macdModal" style="position:fixed;inset:0;background:rgba(6,9,15,.85);z-index:120;display:none;align-items:center;justify-content:center">
   <div class="card" style="width:520px">
     <h1>MACD <span id="macdPaneTag"></span></h1>
@@ -2054,15 +2085,6 @@ table.lv td{padding:6px 10px}
     <div class="row"><span style="min-width:96px;font-size:12px">Up bars</span><span class="sw" id="swVoUp"></span></div>
     <div class="row"><span style="min-width:96px;font-size:12px">Down bars</span><span class="sw" id="swVoDn"></span></div>
     <div class="row" style="justify-content:flex-end"><button class="tbtn" id="voCancel">Close</button><button class="tbtn primary" id="voOk">OK</button></div>
-  </div>
-</div>
-<div id="sortModal" style="position:fixed;inset:0;background:rgba(6,9,15,.85);z-index:130;display:none;align-items:center;justify-content:center">
-  <div class="sortsheet">
-    <h2>Sort by</h2>
-    <div class="sortrow" data-field="symbol"><span>Symbol</span><span class="sortarr"></span></div>
-    <div class="sortrow" data-field="price"><span>Price</span><span class="sortarr"></span></div>
-    <div class="sortrow" data-field="changePct"><span>% Change</span><span class="sortarr"></span></div>
-    <button class="sortdone" id="sortDoneBtn">Done</button>
   </div>
 </div>
 <div id="vwapModal" style="position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:120;display:none;align-items:center;justify-content:center">
@@ -5414,11 +5436,30 @@ function renderPane(p){
         const col=h>=0?(rising?M.histC[0]:M.histC[1]):(rising?M.histC[2]:M.histC[3]);
         return{time:d.time,value:+h.toFixed(2),color:col};
       });
-      p.macdHist.applyOptions({visible:!!M.histOn});
+      // RSI's own scale never moves (its own LOCK below, fixed 0-100) no matter how far you pan
+      // or zoom — MACD had no such lock, so its axis was recomputing from whichever bars
+      // happened to be VISIBLE on every pan/zoom, making the whole pane rescale/jump as you
+      // scrolled (reproduced live: panning to a calm stretch collapsed the axis from 1.00..-2.00
+      // down to 0.10..-0.20 in one drag). MACD has no natural universal constant the way RSI's
+      // 0-100 does, so this locks it to the full LOADED series' own min/max instead — zero is
+      // forced into the range too, so the zero reference line can never be pushed off it by an
+      // all-positive or all-negative stretch. Still perfectly stable across any pan/zoom within
+      // that data, exactly like RSI, just computed per symbol/timeframe/settings instead of a
+      // hardcoded constant. Only the ENABLED series contribute, same "hidden stops counting"
+      // convention this file already uses everywhere else (see the block comment above).
+      const macdAllVals=[];
+      if(M.histOn)histArr.forEach(v=>{if(v!=null)macdAllVals.push(v);});
+      if(M.macdOn)macdArr.forEach(v=>{if(v!=null)macdAllVals.push(v);});
+      if(M.sigOn)sigArr.forEach(v=>{if(v!=null)macdAllVals.push(v);});
+      let macdLo=macdAllVals.length?Math.min(0,...macdAllVals):-1;
+      let macdHi=macdAllVals.length?Math.max(0,...macdAllVals):1;
+      if(macdLo===macdHi){macdLo-=1;macdHi+=1;}   // flat-data guard — never a zero-height range
+      const MACD_LOCK=()=>({priceRange:{minValue:macdLo,maxValue:macdHi}});
+      p.macdHist.applyOptions({visible:!!M.histOn,autoscaleInfoProvider:MACD_LOCK});
       p.macdHist.setData(M.histOn?histPts:[]);
-      p.macdLine.applyOptions({visible:!!M.macdOn,color:M.macdC,lineWidth:M.macdW,lineStyle:lwcStyle(M.macdSt)});
+      p.macdLine.applyOptions({visible:!!M.macdOn,color:M.macdC,lineWidth:M.macdW,lineStyle:lwcStyle(M.macdSt),autoscaleInfoProvider:MACD_LOCK});
       p.macdLine.setData(M.macdOn?padSeries(data,macdArr):[]);
-      p.sigLine.applyOptions({visible:!!M.sigOn,color:M.sigC,lineWidth:M.sigW,lineStyle:lwcStyle(M.sigSt)});
+      p.sigLine.applyOptions({visible:!!M.sigOn,color:M.sigC,lineWidth:M.sigW,lineStyle:lwcStyle(M.sigSt),autoscaleInfoProvider:MACD_LOCK});
       p.sigLine.setData(M.sigOn?padSeries(data,sigArr):[]);
       try{p.macdZeroLine.applyOptions({color:M.zeroC});}catch(e){}
       // CONFIRMED tail for paneTick's own live one-step recursion (or, for the SMA case, a
@@ -9648,7 +9689,11 @@ function wlSparkSvg(sym){
   const d=scanData[sym];
   const src=d.sparkline;
   const prev=d.prevClose;
-  const W=100,H=40,PLOT_TOP=15,PLOT_BOT=36,DOT_Y=6;
+  // PLOT_TOP/PLOT_BOT are symmetric around H/2 (10 and 30, both 10px from the 20 midline) on
+  // purpose - they weren't before (15/36, centered on 25.5), which put the actual visible line
+  // noticeably BELOW the row's own vertical middle even though the <svg> box itself was correctly
+  // centered by .wlrow's flexbox - the box was centered, its content wasn't.
+  const W=100,H=40,PLOT_TOP=10,PLOT_BOT=30,DOT_Y=4;
   const dots=[18,39,60,81].map(x=>`<circle cx="${x}" cy="${DOT_Y}" r="1.3"/>`).join('');
   if(!src||!src.length||!(prev>0)){
     return`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><g class="wlspdots">${dots}</g></svg>`;
@@ -9704,29 +9749,49 @@ function watchlistRender(){
   const host=$('#watchRows');if(host)host.innerHTML=rows;
   const st=$('#watchStatus');
   if(st)st.textContent=syms.some(s=>scanData[s].last!=null)?'':'not loaded yet';
-  wlUpdateSortSheetUI();
+  wlUpdateSortMenuUI();
 }
-function wlUpdateSortSheetUI(){
-  $$('#sortModal .sortrow').forEach(row=>{
+function wlUpdateSortMenuUI(){
+  $$('#sortMenu .sortrow').forEach(row=>{
     const active=row.dataset.field===wlSort.field;
     const arr=row.querySelector('.sortarr');
     arr.innerHTML=active?(wlSort.dir==='asc'?WL_ARROW_UP:WL_ARROW_DOWN):'';
     row.classList.toggle('active',active);
   });
 }
+// #sortMenu now lives as a top-level sibling, not inside #watchMenu (see its own HTML comment)
+// so it has no ancestor coordinate space to anchor against in CSS alone - pinned instead to
+// #watchSortBtn's own live position every time it opens.
+function wlPositionSortMenu(){
+  const r=$('#watchSortBtn').getBoundingClientRect();
+  const menu=$('#sortMenu');
+  menu.style.top=(r.bottom+6)+'px';
+  menu.style.right=(innerWidth-r.right)+'px';
+}
 $('#watchBtn').addEventListener('click',()=>scanCatchUpIfStale());
 $('#watchSortBtn').addEventListener('click',e=>{
   e.stopPropagation();
-  $('#sortModal').style.display='flex';
-  wlUpdateSortSheetUI();
+  const menu=$('#sortMenu');
+  const willOpen=!menu.classList.contains('open');
+  menu.classList.toggle('open',willOpen);
+  if(willOpen){wlPositionSortMenu();wlUpdateSortMenuUI();}
 });
-$('#sortDoneBtn').addEventListener('click',()=>{$('#sortModal').style.display='none';});
-$('#sortModal').addEventListener('click',e=>{if(e.target.id==='sortModal')$('#sortModal').style.display='none';});
-$$('#sortModal .sortrow').forEach(row=>row.addEventListener('click',()=>{
+// Scoped to #sortMenu/#watchSortBtn specifically, not the shared closeTfMenus()/.tfdrop
+// machinery: that closes EVERY .tfdrop at once, including the outer Watchlist panel this used
+// to live inside — opening (or clicking inside) Sort would have closed the whole Watchlist
+// dropdown out from under it. The GLOBAL .tfdrop outside-click handler below (the one that
+// drives every other dropdown in this file) also needs its own exemption for the same reason,
+// now that #sortMenu is no longer a descendant of .watchdrop for it to already ignore.
+addEventListener('mousedown',e=>{
+  if(!e.target.closest('#sortMenu')&&e.target.id!=='watchSortBtn')$('#sortMenu').classList.remove('open');
+});
+addEventListener('keydown',e=>{if(e.key==='Escape')$('#sortMenu').classList.remove('open');});
+$$('#sortMenu .sortrow').forEach(row=>row.addEventListener('click',()=>{
   const f=row.dataset.field;
   if(wlSort.field===f)wlSort.dir=wlSort.dir==='asc'?'desc':'asc';
   else{wlSort.field=f;wlSort.dir='asc';}
   watchlistRender();
+  $('#sortMenu').classList.remove('open');
 }));
 watchlistRender();   // paint the "not loaded yet" placeholder rows immediately, before any fetch
 
@@ -10695,7 +10760,12 @@ $$('.tfbtn').forEach(b=>b.onclick=e=>{
   closeTfMenus();
   if(willOpen)drop.classList.add('open');
 });
-addEventListener('mousedown',e=>{if(!e.target.closest('.tfdrop'))closeTfMenus();});
+// #sortMenu is deliberately NOT inside .watchdrop/.tfdrop any more (see its own HTML comment —
+// it has to sit outside .watchmenu's transform/overflow entirely to actually overlay instead of
+// being clipped), so without this exemption, clicking anything inside it — including selecting a
+// sort row — would read as "outside every .tfdrop" and close the whole Watchlist panel it opened
+// from underneath it.
+addEventListener('mousedown',e=>{if(!e.target.closest('.tfdrop')&&!e.target.closest('#sortMenu'))closeTfMenus();});
 // Scanner keeps refreshing continuously in the background every 5 minutes regardless of whether
 // this dropdown is open (see scanRefreshSlow/scanScheduleBoundary), so this is just a belt-and-
 // braces top-up for the one gap that survives that: a backgrounded browser TAB can throttle
