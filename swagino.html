@@ -6834,6 +6834,20 @@ async function startStream(){
         // different filter key: this is what makes GEX react to live bid/ask instead of
         // waiting on the 2-minute REST backstop.
         handleGexQuoteTick(d);
+      }else if((d.type==='trade'||d.type==='quote')&&altState[1]&&altState[1].sym&&d.symbol===altState[1].sym){
+        // Pane 2's own underlying symbol (while unlinked) — mirrors wsWantSym's own trade/quote
+        // handling just above, but ONLY keeps gex2Spot current for the gamma math below. Does
+        // NOT touch Pane 2's own candles/bars — that's refreshAlt()'s own 15s REST poll, still,
+        // by design (a full live candle stream for an unlinked alt pane is a separate, much
+        // bigger change nothing here asked for). Quote fallback matches wsWantSym's own reasoning
+        // — trades can be sparse outside RTH even for a liquid symbol.
+        const px2=d.type==='trade'?+d.price:((+d.bid+ +d.ask)/2);
+        const bid2=+d.bid,ask2=+d.ask;
+        if(d.type==='trade'){if(isFinite(px2)&&px2>0)gex2Spot=px2;}
+        else if(isFinite(bid2)&&isFinite(ask2)&&bid2>0&&ask2>0)gex2Spot=(bid2+ask2)/2;
+      }else if(d.type==='quote'&&gex2Contracts.has(d.symbol)){
+        // Pane 2's own option contract quote tick — same idea as gexContracts above, own board.
+        handleGex2QuoteTick(d);
       }
     });
   };
@@ -8893,16 +8907,17 @@ function gexRedrawSeg(host,key,tagEl,plotW,st){
   mk(x1+5,Math.max(0,plotW-(x1+5)));
 }
 let gexTimer=null,gexBusy=false,gexLastT=0,gexNextT=0,gexSrc='',_gexSwapT0=0;
-// Pane 2's own GEX board state (see computeChainGex2()) — deliberately NOT the same
-// streaming/contracts machinery as the main board above: Pane 2 (while unlinked) is already
-// architecturally REST-poll-only for its own price data (see refreshAlt() — no WebSocket
-// subscription for an alt-pane symbol at all), so there is no live tick stream to hang per-
-// contract deltas off in the first place. Its board is a plain periodic snapshot, same idea as
-// the Watchlist Scanner's own per-symbol GEX summary (computeChainGex can't be reused directly
-// for a different symbol without clobbering this exact state — see the Scanner section's own
-// comment on that). gex2Board is Pane 2's LS.gex equivalent — kept in memory only, never
-// persisted, since nothing needs it to survive a reload.
-let gex2Busy=false,gex2LastT=0,gex2NextT=0,gex2Src='',gex2Board=null;
+// Pane 2's own GEX board state (see computeChainGex2()). Used to be a plain periodic snapshot —
+// no streaming, no per-contract deltas — because Pane 2's underlying symbol had no WebSocket
+// subscription at all (REST-poll-only, see refreshAlt()). Per explicit request, Pane 2's GEX now
+// gets the exact same live-tick treatment as Pane 1's: its own contracts (gex2Contracts) ride the
+// SAME already-open connection wsWantSym's trades use (see gexResubscribe()'s widened symbol
+// list), and its own underlying symbol is now subscribed too (quote ticks only — gex2Spot, kept
+// current for the gamma math below; still no candle-level live stream for Pane 2's own chart,
+// which is a separate, much bigger architectural change nothing here asked for). gex2Board is
+// Pane 2's LS.gex equivalent — kept in memory only, never persisted, since nothing needs it to
+// survive a reload.
+let gex2Busy=false,gex2LastT=0,gex2NextT=0,gex2Src='',gex2Board=null,gex2Spot=null;
 // STREAMING GEX: gexContracts maps each OCC symbol currently on the board (both the ±4% level
 // window and the wider ±20% heatmap window) to its own {strike,isPut,oi,ex,bid,ask,lastVal,
 // inStrikeWindow} — populated wholesale by a successful computeChainGex() bootstrap, then kept
@@ -8913,6 +8928,10 @@ let gex2Busy=false,gex2LastT=0,gex2NextT=0,gex2Src='',gex2Board=null;
 // uses for VWAP/Keltner/the ribbon. gexWsSymbols/gexStreamSid let a later bootstrap (the periodic
 // backstop) push an updated subscription onto the SAME already-open connection.
 let gexContracts=new Map(),gexByStrike={},gexByExp={},gexWsSymbols=[],gexStreamSid=null,gexRerenderTimer=null;
+// Pane 2's own mirror of the block above — same shapes, same O(1)-per-tick delta idiom, same
+// single shared WebSocket connection (never a second one), just committing into gex2Board/
+// #gexStatus2 instead (see handleGex2QuoteTick/scheduleGex2Rerender near handleGexQuoteTick).
+let gex2Contracts=new Map(),gex2ByStrike={},gex2ByExp={},gex2WsSymbols=[],gex2RerenderTimer=null;
 // §6 guardrail thresholds. FLAG: these are CHOSEN values, not derived — tune to taste.
 const GEX_SPOT_OFF_PCT=0.25;              // warn if streamed spot is >0.25% off the fresh quote
 /* ---------- GEX heatmap (strike x expiration grid, GEXstream layout) ---------- */
@@ -9092,7 +9111,15 @@ const GEX_IV_FAIL_PCT=0.5;   // FLAG: CHOSEN, not derived — reject the board i
 // either way, same as before this existed.
 function gexResubscribe(){
   if(!ws||ws.readyState!==WebSocket.OPEN||!gexStreamSid)return;
-  try{ws.send(JSON.stringify({symbols:[wsWantSym,...gexWsSymbols],sessionid:gexStreamSid,linebreak:true,filter:['trade','quote']}));}catch(e){}
+  // Pane 2's own underlying symbol + its own option contracts ride this SAME subscription while
+  // unlinked — per explicit request, its GEX board gets the same live-tick treatment Pane 1's
+  // always has, not the REST-poll-only snapshot it used to be (see gex2Contracts' own comment).
+  // Tradier's list is the FULL desired subscription each time (not additive — see comment above),
+  // so every symbol either board needs has to be in THIS one array, or the other board silently
+  // loses coverage the instant this resends.
+  const alt=(cfg.paneN>=2&&cfg.link===false)?altState[1]:null;
+  const altSym=(alt&&alt.sym&&alt.sym!==cfg.sym)?[alt.sym]:[];
+  try{ws.send(JSON.stringify({symbols:[wsWantSym,...altSym,...gexWsSymbols,...gex2WsSymbols],sessionid:gexStreamSid,linebreak:true,filter:['trade','quote']}));}catch(e){}
 }
 // One option contract's own live quote tick. Reruns exactly the same exclusion rules as the
 // full-chain bootstrap below (no two-sided market / mid outside no-arbitrage bounds / IV solver
@@ -9140,6 +9167,50 @@ function scheduleGexRerender(){
     gexHeat={exps:gexHeat?gexHeat.exps:[],byExp:gexByExp,spot:lastPx,t:Date.now()};
     parseGexRows(rows,'live stream');
     renderGexHeat();
+  },1000);
+}
+// Pane 2's own live quote tick — identical math/exclusion rules to handleGexQuoteTick above, just
+// against gex2Contracts/gex2ByStrike/gex2ByExp/gex2Spot instead of the shared board's own state.
+// gex2Spot (not lastPx) is Pane 2's best current price: updated live by its own underlying
+// symbol's quote ticks (see the WS message handler) now that gexResubscribe() subscribes to it,
+// falling back to whatever computeChainGex2()'s last REST bootstrap saw if no tick has landed yet.
+function handleGex2QuoteTick(d){
+  if(gex2Busy)return;
+  const c=gex2Contracts.get(d.symbol);if(!c)return;
+  const bid=+d.bid,ask=+d.ask;
+  if(isFinite(bid))c.bid=bid;if(isFinite(ask))c.ask=ask;
+  if(!(gex2Spot>0))return;
+  const rfrPct=+cfg.gexRfr;if(!isFinite(rfrPct))return;
+  const r=rfrPct/100,spot=gex2Spot;
+  const T=yearsToExpiry(c.ex);if(!(T>0))return;
+  let val=0;
+  if(c.bid>0&&c.ask>0&&c.bid<=c.ask){
+    const mid=(c.bid+c.ask)/2;
+    const bnd=bsBounds(c.isPut,spot,c.strike,T,r,GEX_DIV_YIELD);
+    if(mid>bnd.lo&&mid<bnd.hi){
+      const sigma=solveIV(c.isPut,spot,c.strike,T,r,GEX_DIV_YIELD,mid);
+      if(sigma!=null){
+        const g=bsGamma(spot,c.strike,T,r,GEX_DIV_YIELD,sigma);
+        if(isFinite(g))val=gexContract(g,c.oi,spot,c.isPut);
+      }
+    }
+  }
+  const delta=val-(c.lastVal||0);
+  if(delta===0)return;
+  if(c.inStrikeWindow)gex2ByStrike[c.strike]=(gex2ByStrike[c.strike]||0)+delta;
+  gex2ByExp[c.ex]=gex2ByExp[c.ex]||{};gex2ByExp[c.ex][c.strike]=(gex2ByExp[c.ex][c.strike]||0)+delta;
+  c.lastVal=val;
+  scheduleGex2Rerender();
+}
+function scheduleGex2Rerender(){
+  if(gex2RerenderTimer)return;
+  gex2RerenderTimer=setTimeout(()=>{
+    gex2RerenderTimer=null;
+    const rows=Object.keys(gex2ByStrike).map(k=>({strike:+k,val:gex2ByStrike[k]}));
+    if(!rows.length)return;
+    gex2Heat={exps:gex2Heat?gex2Heat.exps:[],byExp:gex2ByExp,spot:gex2Spot,t:Date.now()};
+    parseGexRows(rows,'live stream',true,gex2Spot);
+    renderGexHeat(true);
   },1000);
 }
 async function computeChainGex(){
@@ -9314,7 +9385,7 @@ async function computeChainGex2(){
     const today=nowET().ymd;
     const front=exps.filter(d=>d>=today).slice(0,1);
     if(!front.length)throw new Error('no expirations returned — options entitlement?');
-    const byStrike={},byExp={};let gcount=0;
+    const byStrike={},byExp={};const contracts=new Map();let gcount=0;
     let exNoMid=0,exOi=0,exArb=0,exNoConverge=0,exGamma=0,ivAttempts=0;
     const HEAT_PCT=0.20;
     for(const ex of front){
@@ -9341,7 +9412,12 @@ async function computeChainGex2(){
         if(!isFinite(g)){exGamma++;return;}
         const gex=gexContract(g,oi,spot,isPut);
         byExp[ex][k]=(byExp[ex][k]||0)+gex;
-        if(dist<=0.04){byStrike[k]=(byStrike[k]||0)+gex;gcount++;}
+        const inStrikeWindow=dist<=0.04;
+        if(inStrikeWindow){byStrike[k]=(byStrike[k]||0)+gex;gcount++;}
+        // Same live-tick registry as computeChainGex()'s own contracts Map — this is what lets
+        // handleGex2QuoteTick patch this ONE contract's contribution on its next quote instead
+        // of waiting for the next 2-minute bootstrap.
+        contracts.set(o.symbol,{strike:k,isPut,oi,ex,bid,ask,lastVal:gex,inStrikeWindow});
       });
     }
     if(exNoMid||exOi||exArb||exNoConverge||exGamma)
@@ -9355,10 +9431,17 @@ async function computeChainGex2(){
     if(!rows.length)throw new Error('chain returned no strikes with a solvable IV+OI in the ±4% window');
     const totalAbs=rows.reduce((s,r)=>s+Math.abs(r.val),0);
     if(!(totalAbs>0))throw new Error('gamma is zero across every strike in range — board rejected');
+    // COMMIT into the PERSISTENT gex2* state (not the local byStrike/byExp above) — this is what
+    // handleGex2QuoteTick's per-tick deltas patch between bootstraps, same "commit only after
+    // every guardrail passed" discipline as computeChainGex()'s own gexByStrike/gexByExp commit.
+    gex2ByStrike=byStrike;gex2ByExp=byExp;gex2Contracts=contracts;gex2WsSymbols=[...contracts.keys()];
+    gex2Spot=spot;
     gex2Heat={exps:front.slice(),byExp,spot,t:Date.now()};
     parseGexRows(rows,'chain · '+front.length+' exp · '+gcount+' contracts · r='+rfrPct.toFixed(2)+'%',true,spot);
     renderGexHeat(true);
-    log('Pane 2 GEX computed — '+sym2+', '+ivAttempts+' IV solves attempted','warn');
+    gexResubscribe();   // pushes Pane 2's own symbol + fresh contract set onto the shared WebSocket
+    log('Pane 2 GEX computed — '+sym2+', gamma solved locally from live bid/ask, '
+      +ivAttempts+' IV solves attempted, '+contracts.size+' contracts now streaming live','warn');
   }catch(e){
     log('Pane 2 GEX failed: '+e.message,'short');
   }finally{
@@ -9993,9 +10076,9 @@ function gexAutoTick(){
     if(Date.now()>=gexNextT&&!gexBusy){gexNextT=Date.now()+GEX_REFRESH_MS;computeChainGex();}
   }
   // Pane 2's own board — same open/close bookkeeping and due-time check, reusing this SAME 1s
-  // ticker rather than a second timer (see the comment on gex2Busy's declaration for why Pane 2
-  // has no live-tick path to begin with). Gated on Pane 2 actually being unlinked right now; when
-  // it isn't, gex2Board is already empty and this is a cheap no-op.
+  // ticker rather than a second timer (its own live-tick path, same as Pane 1's, is driven by the
+  // shared WebSocket — see gex2Contracts' own comment). Gated on Pane 2 actually being unlinked
+  // right now; when it isn't, gex2Board is already empty and this is a cheap no-op.
   if(cfg.paneN>=2&&cfg.link===false&&altState[1]&&altState[1].sym){
     if(gex2WasOpen===true&&!open){
       gex2Heat=null;gex2Board=null;gex2LastT=0;gex2Src='';gex2NextT=0;
@@ -10482,6 +10565,11 @@ async function applyPaneSym(paneIdx){
       }
     }catch(e){log(`Pane ${paneIdx+1} load failed: `+e.message,'short');toast(`Pane ${paneIdx+1}`,e.message,'short');}
   }
+  // Pane 1's popout can now roam across both columns while linked (see its own boundsSel) — link
+  // state just changed, so it needs to re-clamp against its new bounds immediately, not wait for
+  // the next window resize. try/catch: sidePop1 is declared further down the file and this can in
+  // principle run before that line has executed.
+  if(paneIdx===1)try{sidePop1.applyPos();}catch(e){}
   saveCfg();
 }
 // Pane 2's popout appears the moment it gets its own ticker, and disappears the moment it's
@@ -10505,6 +10593,11 @@ function hidePane2Levels(){
 }
 function teardownPane2Levels(){
   levels2=[];gex2Heat=null;gex2Board=null;gex2LastT=0;gex2Src='';gex2NextT=0;gex2Busy=false;
+  // Drop Pane 2's own live-tick registry too, and push the now-narrower symbol list onto the
+  // shared WebSocket — otherwise it would keep listening for a symbol/contracts nobody shows
+  // any more until the page reloads.
+  gex2Contracts=new Map();gex2ByStrike={};gex2ByExp={};gex2WsSymbols=[];gex2Spot=null;
+  gexResubscribe();
   const p=panes[1];
   if(p){drawLevelsOn(p,[]);positionLvlTags(p);deoverlapLabels($('#tips1'));drawLevelSegments(p);}
   renderGexLevels([],[panes[1]].filter(Boolean),true);
@@ -11065,7 +11158,12 @@ function setPaneN(n){
     }
   });
   alignPaneClusters();
-  setTimeout(()=>{panes.forEach(pp=>{if(pp&&pp.sizeAll)pp.sizeAll();});alignPaneClusters();},60);
+  // Pane 1's popout bounds depend on paneN (see its own boundsSel) — re-clamp against the new
+  // column widths once the layout above has actually settled, same 60ms the sizeAll pass below
+  // already waits for that same reason. try/catch: sidePop1 is declared further down the file and
+  // this can in principle run before that line has executed.
+  setTimeout(()=>{panes.forEach(pp=>{if(pp&&pp.sizeAll)pp.sizeAll();});alignPaneClusters();
+    try{sidePop1.applyPos();}catch(e){}},60);
 }
 $$('.layopt').forEach(b=>b.onclick=()=>{setPaneN(+b.dataset.n);closeTfMenus();});
 // Pins each pane's own ticker/timeframe/chart-type cluster to sit directly above ITS chart
@@ -11274,10 +11372,15 @@ function initSidePopout(o){
   // the column's width/position only exist while the 2-chart layout is actually active) but only
   // once per gesture (see each pointerdown below), never per drag-frame. Returns null — "use the
   // full viewport" in clampSideXY — for the main popout (no boundsSel) or if the target isn't
-  // currently visible.
+  // currently visible. boundsSel may be a function instead of a fixed string — the main popout's
+  // own uses one (see its instantiation below) since ITS bounds depend on live link state: the
+  // two charts are the SAME ticker while linked, so there is nothing of Pane 2's own to protect
+  // and it can roam over both columns; the instant they're unlinked, Pane 2 has its own board
+  // again and the confinement to just #pw0 has to come back.
   function hBounds(){
-    if(!o.boundsSel)return null;
-    const el=$(o.boundsSel);if(!el)return null;
+    const sel=typeof o.boundsSel==='function'?o.boundsSel():o.boundsSel;
+    if(!sel)return null;
+    const el=$(sel);if(!el)return null;
     const r=el.getBoundingClientRect();
     return r.width>0?{left:r.left,right:r.right}:null;
   }
@@ -11504,12 +11607,14 @@ function initSidePopout(o){
 const sidePop1=initSidePopout({sideSel:'#side',btnSel:'#sbBtn',headSel:'#sideHead',iconSel:'#sbIcon',
   cfgX:'sideX',cfgY:'sideY',cfgW:'sideW',cfgH:'sideH',cfgHidden:'sb',
   showTitle:'Show side panel',hideTitle:'Hide side panel',mobileToggle:true,
-  // Confines this popout to Pane 1's own chart column (#pw0) — same reasoning and mechanism as
-  // Pane 2's own boundsSel below: in 2-pane layout it can never be dragged or resized over onto
-  // Pane 2's column. #pw0 is never display:none (unlike #pw1), so in 1-pane layout — where it
-  // spans the chart column's full width — this is functionally the same unrestricted range the
-  // popout always had; the constraint only actually bites once a second pane exists to cross into.
-  boundsSel:'#pw0',
+  // Confined to Pane 1's own chart column (#pw0) ONLY while a second, genuinely INDEPENDENT
+  // pane is on screen — i.e. 2-pane layout AND unlinked, the one case where Pane 2 has its own
+  // board to protect (see Pane 2's own boundsSel below). Linked (both panes the same ticker) or
+  // single-pane, there's nothing of Pane 2's to cross into, so this spans #panerow instead — both
+  // columns — per explicit request. #pw0 is never display:none (unlike #pw1), so in 1-pane
+  // layout #panerow and #pw0 are the same width anyway; the distinction only actually matters
+  // once a second, unlinked pane exists.
+  boundsSel:()=>(cfg.paneN>=2&&cfg.link===false)?'#pw0':'#panerow',
   onResize:()=>{if(gexHeat)renderGexHeat();}});
 // Pane 2's own popout — created lazily by setPaneN()/applyPaneSym() the first time it is
 // actually needed, same lazy-creation spirit as makePane() for pane 2's chart itself, but the
