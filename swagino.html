@@ -5860,19 +5860,30 @@ function positionRbArrows(p){
 }
 /* Instant tooltip for chart overlays. A native title= attribute has a ~1s browser hover delay,
    so hovering a BOS/CHoCH gave no immediate explanation. This drives the shared #tipbox with ZERO
-   delay, placed to the LEFT of the element (break labels hug the right price axis). */
-let _tipHideT=0;
+   delay, placed to the LEFT of the element (break labels hug the right price axis).
+   _tipOwner tracks whichever element currently owns the open tip — positionStruct() (the one
+   place all of these elements get wiped-and-rebuilt from scratch on every redraw, up to once a
+   second or on any pan/zoom) checks this before it removes anything: if the element the mouse is
+   CURRENTLY over is about to be destroyed, DOM removal never fires that element's own mouseleave,
+   so nothing was left to close the tip — it just sat there, stuck, until the user happened to
+   hover a DIFFERENT tipAttach'd element later and got a real mouseenter/mouseleave cycle again.
+   See positionStruct()'s own pre-wipe check for the other half of this fix. */
+let _tipHideT=0,_tipOwner=null;
 function tipAttach(el,html){
   el.addEventListener('mouseenter',()=>{
     const box=$('#tipbox');if(!box)return;
     clearTimeout(_tipHideT);
+    _tipOwner=el;
     box.innerHTML=html;box.style.display='block';
     const r=el.getBoundingClientRect(),b=box.getBoundingClientRect();
     let x=r.left-b.width-10;if(x<8)x=Math.min(innerWidth-b.width-8,r.right+10);
     let y=Math.max(8,Math.min(r.top+r.height/2-b.height/2,innerHeight-b.height-8));
     box.style.left=Math.round(x)+'px';box.style.top=Math.round(y)+'px';
   });
-  el.addEventListener('mouseleave',()=>{_tipHideT=setTimeout(()=>{const box=$('#tipbox');if(box)box.style.display='none';},60);});
+  el.addEventListener('mouseleave',()=>{
+    if(_tipOwner===el)_tipOwner=null;
+    _tipHideT=setTimeout(()=>{const box=$('#tipbox');if(box)box.style.display='none';},60);
+  });
 }
 /* Plain-language tooltip for someone new to trading: what just happened, in one short
    sentence, then what it means for the outcome, in one more. Same shape for every combination
@@ -5987,6 +5998,14 @@ function positionBreaks(p){
 }
 function positionStruct(p){
   const host=$('#tips'+p.idx);if(!host)return;
+  // The element the tooltip is currently open FOR is about to be wiped below — its own
+  // mouseleave will never fire (DOM removal doesn't trigger it), so close the tip right now
+  // instead of leaving it stuck open with nothing left to close it. See tipAttach's own comment.
+  if(_tipOwner&&host.contains(_tipOwner)){
+    clearTimeout(_tipHideT);
+    const box=$('#tipbox');if(box)box.style.display='none';
+    _tipOwner=null;
+  }
   host.querySelectorAll('.patlab,.swlab,.swdot,.brklab,.brkwick,.brkmark').forEach(e=>e.remove());
   if(!cfg['struct'+p.idx])return;
   positionBreaks(p);
