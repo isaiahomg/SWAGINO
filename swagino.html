@@ -10013,10 +10013,14 @@ function wlSparkSvg(sym){
   const W=100,H=40,PLOT_TOP=10,PLOT_BOT=30,DOT_Y=4;
   const dots=[18,39,60,81].map(x=>`<circle cx="${x}" cy="${DOT_Y}" r="1.3"/>`).join('');
   // Under 2 real samples (page just loaded, first poll hasn't landed yet) or no prevClose to
-  // anchor a direction/reference line against — genuinely nothing to plot yet.
+  // anchor a direction/reference line against — genuinely nothing to plot yet. Deliberately NOT
+  // cached (no d._sparkAt/d._sparkSvg write) — this state only exists for the first few seconds
+  // after load, and caching it would freeze the placeholder in place for the full 5-minute
+  // window even after real data starts arriving moments later. Confirmed live: this is exactly
+  // what happened before this fix — d.liveSeries had real samples but the row kept showing the
+  // "not enough data" dots because the FIRST call (before any samples existed) had cached them.
   if(!src||src.length<2||!(prev>0)){
-    d._sparkAt=now;
-    return d._sparkSvg=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><g class="wlspdots">${dots}</g></svg>`;
+    return`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><g class="wlspdots">${dots}</g></svg>`;
   }
   const all=src.concat([prev]);
   let lo=Math.min(...all),hi=Math.max(...all);
