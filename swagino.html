@@ -449,27 +449,19 @@ input[type=checkbox]{accent-color:var(--pivot)}
      "Top-LEFT corner, not top-right" comment in applyPos()) never updated this, so the genie
      shrink/grow kept animating toward the button's old side of the panel instead of its new one. */
   transform-origin:23px 19px}
-.sideHead{position:relative;z-index:2;cursor:move;overflow:hidden;max-height:44px;padding:8px 8px 4px;opacity:1;
-  /* padding dropped from the transition list — it was animating in lockstep with max-height for
-     no visual gain (overflow:hidden already clips the content the instant max-height starts
-     shrinking) while still being a second layout-triggering property reflowing every frame.
-     max-height and opacity now share the exact same duration/curve — they used to run on
-     different curves (max-height had a springy overshoot past 0, opacity a plain linear-ish
-     ease), so the two visibly drifted out of sync with each other for part of the animation,
-     which read as sloppy/buggy even when neither one was glitching on its own. A single shared
-     standard ease-out keeps them moving together the whole way. */
-  transition:max-height .26s cubic-bezier(.4,0,.2,1),opacity .26s cubic-bezier(.4,0,.2,1)}
-/* Physical-presence tab bar: shrinks out of the way scrolling down through a pane's content,
-   springs back the moment you scroll up - see the scroll listener below (in the popout factory),
-   which now needs to travel a real distance before flipping this, not just see one event of
-   opposite sign - see that listener's own comment for why. */
-.sideHead.collapsed{max-height:0;padding:0 8px;opacity:0}
+/* Frozen, Excel-freeze-panes style: always visible at its natural height, never animates in or
+   out of view. Used to shrink toward nothing while scrolling down through a pane's content and
+   spring back on scroll up (a JS listener toggled a .collapsed class that animated max-height/
+   opacity/padding) — removed entirely per explicit request after repeated attempts to smooth
+   that animation (hysteresis on the scroll listener, unifying the transition curves, rAF-
+   coalescing the handler) still wasn't clean enough. .sideHead was already a separate flex item
+   from .pane, never actually inside its scroll container, so simply never touching it while
+   .pane scrolls is enough on its own to keep it perfectly still — nothing left to glitch. */
+.sideHead{position:relative;z-index:2;cursor:move;overflow:hidden;max-height:44px;padding:8px 8px 4px}
 /* Pane 2's popout carries its own "PANE 2" title above the Levels/GEX tabs (Pane 1's #sideHead
-   is untouched — this only ever targets #sideHead2 by id) — its expanded max-height needs room
-   for that extra row on top of the base 44px the shared .sideHead rule above already budgets for
-   the tab row alone. :not(.collapsed) keeps this from outranking .sideHead.collapsed's max-height:
-   0 while scrolled (an #id selector alone would always win on specificity regardless of state). */
-#sideHead2:not(.collapsed){max-height:78px}
+   is untouched — this only ever targets #sideHead2 by id) — needs room for that extra row on top
+   of the base 44px the shared .sideHead rule above already budgets for the tab row alone. */
+#sideHead2{max-height:78px}
 .side2title{text-align:center;line-height:1}
 .side2title .panetag{margin-left:0}
 .sideRsz{position:absolute;width:16px;height:16px;z-index:3;background:transparent}
@@ -11467,50 +11459,11 @@ function initSidePopout(o){
     h.addEventListener('pointerup',stop);
     h.addEventListener('pointercancel',stop);
   });
-  // Tab row's own "physical presence": collapses toward nothing scrolling down through a pane's
-  // content, re-expands the instant you scroll back up. One capture-phase listener on side
-  // catches scroll from whichever .pane is currently visible (scroll doesn't bubble, so this has
-  // to listen during capture rather than delegate normally).
-  //
-  // DIR_HYSTERESIS: trackpad/inertia scrolling delivers a stream of small scroll events whose
-  // sign can flip from one event to the next even while the user is moving steadily in one
-  // direction (momentum micro-jitter, sub-pixel rounding). The old version flipped the
-  // .collapsed class on every single event with the "wrong" sign — each flip is a REAL state
-  // change, so each one restarts the .32s max-height transition, fighting the one still running
-  // from the flip before it. That's the reported glitch, and it reads worse the smaller the
-  // popout is: the header's up-to-44px collapse is a much bigger fraction of a small panel's
-  // total height, so every interrupted reflow is more of the visible area moving at once.
-  // Fixed by requiring a real, sustained run of scrollTop movement in a direction — not just one
-  // event's sign — before actually toggling. dirStart resets to the CURRENT position the instant
-  // the raw per-event direction changes, so jitter (which keeps flipping the raw sign back and
-  // forth) never accumulates enough distance to cross the threshold and never touches the class.
-  // rAF-coalesced for the same reason the resize handles' own ResizeObserver is (see its comment
-  // further down): a fast trackpad scroll can fire this listener many times inside a single
-  // paint frame, and evaluating/mutating classList synchronously on every one of them competes
-  // with the browser's own scroll-commit work for that frame instead of just running once,
-  // cleanly, before the next paint — one more source of the reported jank on top of the
-  // hysteresis fix below. Only the LATEST scrollTop by the time the frame runs matters; any
-  // events coalesced away were never going to change the outcome anyway.
-  if(head){
-    const DIR_HYSTERESIS=10;
-    let lastScroll=0,lastDir=null,dirStart=0,raf=0,pendingEl=null;
-    const evaluate=()=>{
-      raf=0;
-      const t=pendingEl.scrollTop;
-      if(t<=4){head.classList.remove('collapsed');lastScroll=t;lastDir=null;return;}
-      const rawDir=t>lastScroll?'down':(t<lastScroll?'up':lastDir);
-      lastScroll=t;
-      if(rawDir!==lastDir){dirStart=t;lastDir=rawDir;}
-      if(Math.abs(t-dirStart)<DIR_HYSTERESIS)return;
-      if(rawDir==='down')head.classList.add('collapsed');
-      else head.classList.remove('collapsed');
-    };
-    side.addEventListener('scroll',e=>{
-      if(e.target.scrollTop===undefined)return;
-      pendingEl=e.target;
-      if(!raf)raf=requestAnimationFrame(evaluate);
-    },true);
-  }
+  // Tab row used to collapse toward nothing scrolling down through a pane's content and spring
+  // back on scroll up (a JS scroll listener toggling a .collapsed class, animated via CSS) —
+  // removed per explicit request; see .sideHead's own CSS comment for why. It's frozen now: a
+  // plain flex item that was never actually inside .pane's own scroll container, so it already
+  // stays put on its own with nothing here touching it while .pane scrolls underneath it.
   // The GEX heatmap's column width and the tab pill's width/position both depend on side's own
   // rendered box size (see renderGexHeat()'s wrap.clientWidth read and moveTabPill()'s
   // offsetWidth/offsetLeft read) — a ResizeObserver on side itself refits both regardless of WHY
