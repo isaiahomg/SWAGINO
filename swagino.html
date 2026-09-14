@@ -5496,30 +5496,15 @@ function renderPane(p){
         const col=h>=0?(rising?M.histC[0]:M.histC[1]):(rising?M.histC[2]:M.histC[3]);
         return{time:d.time,value:+h.toFixed(2),color:col};
       });
-      // RSI's own scale never moves (its own LOCK below, fixed 0-100) no matter how far you pan
-      // or zoom — MACD had no such lock, so its axis was recomputing from whichever bars
-      // happened to be VISIBLE on every pan/zoom, making the whole pane rescale/jump as you
-      // scrolled (reproduced live: panning to a calm stretch collapsed the axis from 1.00..-2.00
-      // down to 0.10..-0.20 in one drag). MACD has no natural universal constant the way RSI's
-      // 0-100 does, so this locks it to the full LOADED series' own min/max instead — zero is
-      // forced into the range too, so the zero reference line can never be pushed off it by an
-      // all-positive or all-negative stretch. Still perfectly stable across any pan/zoom within
-      // that data, exactly like RSI, just computed per symbol/timeframe/settings instead of a
-      // hardcoded constant. Only the ENABLED series contribute, same "hidden stops counting"
-      // convention this file already uses everywhere else (see the block comment above).
-      const macdAllVals=[];
-      if(M.histOn)histArr.forEach(v=>{if(v!=null)macdAllVals.push(v);});
-      if(M.macdOn)macdArr.forEach(v=>{if(v!=null)macdAllVals.push(v);});
-      if(M.sigOn)sigArr.forEach(v=>{if(v!=null)macdAllVals.push(v);});
-      let macdLo=macdAllVals.length?Math.min(0,...macdAllVals):-1;
-      let macdHi=macdAllVals.length?Math.max(0,...macdAllVals):1;
-      if(macdLo===macdHi){macdLo-=1;macdHi+=1;}   // flat-data guard — never a zero-height range
-      const MACD_LOCK=()=>({priceRange:{minValue:macdLo,maxValue:macdHi}});
-      p.macdHist.applyOptions({visible:!!M.histOn,autoscaleInfoProvider:MACD_LOCK});
+      // MACD's axis auto-scales to whichever bars are currently visible, same as any default LWC
+      // pane (and unlike RSI's own fixed 0-100 LOCK below) — a prior pass locked it to the full
+      // loaded series' own min/max for cross-pan/zoom stability, but that's reverted per request:
+      // the pane is meant to rescale as you pan/zoom, not hold a fixed range.
+      p.macdHist.applyOptions({visible:!!M.histOn});
       p.macdHist.setData(M.histOn?histPts:[]);
-      p.macdLine.applyOptions({visible:!!M.macdOn,color:M.macdC,lineWidth:M.macdW,lineStyle:lwcStyle(M.macdSt),autoscaleInfoProvider:MACD_LOCK});
+      p.macdLine.applyOptions({visible:!!M.macdOn,color:M.macdC,lineWidth:M.macdW,lineStyle:lwcStyle(M.macdSt)});
       p.macdLine.setData(M.macdOn?padSeries(data,macdArr):[]);
-      p.sigLine.applyOptions({visible:!!M.sigOn,color:M.sigC,lineWidth:M.sigW,lineStyle:lwcStyle(M.sigSt),autoscaleInfoProvider:MACD_LOCK});
+      p.sigLine.applyOptions({visible:!!M.sigOn,color:M.sigC,lineWidth:M.sigW,lineStyle:lwcStyle(M.sigSt)});
       p.sigLine.setData(M.sigOn?padSeries(data,sigArr):[]);
       try{p.macdZeroLine.applyOptions({color:M.zeroC});}catch(e){}
       // CONFIRMED tail for paneTick's own live one-step recursion (or, for the SMA case, a
