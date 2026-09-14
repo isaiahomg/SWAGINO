@@ -5237,6 +5237,20 @@ function ensureChartType(p){
   p.rbFastConv=makeRibbonLine(p.chart);p.rbSlowConv=makeRibbonLine(p.chart);
   p.vwLines=[makeRibbonLine(p.chart),makeRibbonLine(p.chart),makeRibbonLine(p.chart)];
   p.kcLines=[makeRibbonLine(p.chart),makeRibbonLine(p.chart)];
+  // makeRibbonLine() sets no color at all — every one of the lines just recreated above starts
+  // out at lightweight-charts' own default line color (a blue) with zero data, until something
+  // calls .applyOptions({color:...}) + .setData(...) on it again. renderVwap() always does that
+  // unconditionally on every render, so VWAP self-heals the same frame. renderRibbon() and
+  // renderKc() do NOT — both skip their own re-render (see p._rbRenderCache/p._kcRenderCache)
+  // whenever their inputs happen to be reference-equal to last time, which has nothing to do with
+  // whether their SERIES OBJECTS just got swapped out from under that cache. When that skip fires
+  // on the very next render after a chart-type toggle, the freshly-recreated ribbon/KC lines never
+  // get their real color or data — they just sit there blue, until some LATER live tick's own
+  // incremental .update() finally touches them, at which point only the few points since then
+  // exist, rendering as a short, wrongly-blue stub instead of a real line. Clearing both caches
+  // here forces the very next renderRibbon()/renderKc() call to do a real, full repaint instead
+  // of trusting a cache that describes series objects which no longer exist.
+  p._rbRenderCache=null;p._kcRenderCache=null;
   p._chartType=want;
 }
 // Push p._lastBars (built fresh by renderPane, and possibly rewritten by renderRibbon's Candle
@@ -9977,8 +9991,19 @@ function wlSortedSyms(){
 // correct mapping, not an approximation. No smoothing/averaging — every sample is plotted exactly
 // as polled, so a genuine spike or reversal in the real tape shows up as a genuine sharp corner
 // in the path, never rounded off.
+// Repainted at most once every 5 minutes, not on every 5s quote poll — per explicit request,
+// trading the "shape updates the instant a new sample lands" behavior for less DOM/SVG churn
+// (watchlistRender() rebuilds every row's markup on every poll; regenerating 9 sparkline SVG
+// strings 60x more often than this bought nothing visible most of the time). The DATA collection
+// itself is untouched — scanFetchQuotes() still samples every 5s into d.liveSeries in the
+// background regardless, so the shape shown is always a real, unfabricated slice of the actual
+// rolling buffer at whatever moment it was last painted, just painted less often. The price/
+// %change pill beside it is a separate part of the row template and keeps updating every poll.
+const WL_SPARK_REPAINT_MS=300000;
 function wlSparkSvg(sym){
   const d=scanData[sym];
+  const now=Date.now();
+  if(d._sparkAt!=null&&now-d._sparkAt<WL_SPARK_REPAINT_MS&&d._sparkSvg!=null)return d._sparkSvg;
   const src=d.liveSeries;
   const prev=d.prevClose;
   // PLOT_TOP/PLOT_BOT are symmetric around H/2 (10 and 30, both 10px from the 20 midline) on
@@ -9990,7 +10015,8 @@ function wlSparkSvg(sym){
   // Under 2 real samples (page just loaded, first poll hasn't landed yet) or no prevClose to
   // anchor a direction/reference line against — genuinely nothing to plot yet.
   if(!src||src.length<2||!(prev>0)){
-    return`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><g class="wlspdots">${dots}</g></svg>`;
+    d._sparkAt=now;
+    return d._sparkSvg=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><g class="wlspdots">${dots}</g></svg>`;
   }
   const all=src.concat([prev]);
   let lo=Math.min(...all),hi=Math.max(...all);
@@ -10006,7 +10032,8 @@ function wlSparkSvg(sym){
   const prevY=y(prev).toFixed(2);
   // No endpoint dot, no glow, no fill — a bare polyline plus the one reference line that carries
   // real meaning (prevClose), per explicit request.
-  return`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+  d._sparkAt=now;
+  return d._sparkSvg=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
     <line class="wlspref" x1="4" y1="${prevY}" x2="${W-4}" y2="${prevY}"/>
     <polyline points="${line}" fill="none" stroke="${col}" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
   </svg>`;
