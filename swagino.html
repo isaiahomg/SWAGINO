@@ -442,13 +442,14 @@ input[type=checkbox]{accent-color:var(--pivot)}
    radius actually clip the tab row and content instead of just rounding the outer shadow. */
 .side{position:fixed;left:0;top:0;display:flex;flex-direction:column;min-height:0;overflow:hidden;
   border-radius:28px;z-index:55;will-change:transform;
-  /* Must track #sbBtn's own corner exactly, in coordinates local to THIS element (23px = the
-     btn's 12px inset from .side's own left edge + half its 22px width; 19px = its inset from the
-     top). This was still calc(100% - 23px) - a right-edge anchor - left over from when the
-     button lived at the panel's top-right; moving the button to the top-left (see #sbBtn's own
-     "Top-LEFT corner, not top-right" comment in applyPos()) never updated this, so the genie
-     shrink/grow kept animating toward the button's old side of the panel instead of its new one. */
-  transform-origin:23px 19px}
+  /* Must track #sbBtn's own corner exactly, in coordinates local to THIS element: 30px = the
+     btn's 19px inset from .side's own edge (same on both axes now — see applyPos()'s own comment
+     on why it was 12/19, uneven, and why that's fixed) + half its 22px width/height. This was
+     still calc(100% - 23px) - a right-edge anchor - left over from when the button lived at the
+     panel's top-right; moving the button to the top-left (see #sbBtn's own "Top-LEFT corner, not
+     top-right" comment in applyPos()) never updated this, so the genie shrink/grow kept animating
+     toward the button's old side of the panel instead of its new one. */
+  transform-origin:30px 30px}
 /* Frozen, Excel-freeze-panes style: always visible at its natural height, never animates in or
    out of view. Used to shrink toward nothing while scrolling down through a pane's content and
    spring back on scroll up (a JS listener toggled a .collapsed class that animated max-height/
@@ -1603,8 +1604,10 @@ table.lv td{padding:6px 10px}
    whole row right by CSS padding (rather than moving the button off-panel entirely, which would
    just land it over live chart content instead) keeps every button's own offsetLeft — and so the
    pill's tracked position — correctly in sync automatically, no JS change needed. Applies to both
-   #side and #side2 (same .tabs class, same button/gutter relationship in each). */
-.tabs{padding-left:38px}
+   #side and #side2 (same .tabs class, same button/gutter relationship in each). 45px = the
+   button's 19px inset (see applyPos()'s own comment — same on both axes now) + its 22px width
+   + 4px clearance. */
+.tabs{padding-left:45px}
 .tabs button{flex:1;position:relative;z-index:1;display:flex;align-items:center;justify-content:center;
   gap:5px;border-bottom:none;border-radius:9px;padding:7px 0;transition:color .18s ease}
 .tabs button.on{border-bottom:none}
@@ -11437,11 +11440,14 @@ function initSidePopout(o){
     side.style.pointerEvents=hidden?'none':'auto';
     side.style.transition=dragCount>0?'none':'transform .16s ease, opacity .16s ease';
     // Top-LEFT corner, not top-right: the tab row's own reserved gutter (.tabs padding-left, see
-    // its own comment) is sized to this exact 12px inset, so the button never sits on top of a
-    // tab or the sliding .tabpill highlight the way a bare top-right placement did. y+19 (not the
-    // tab row's own +12) clears .sideRsz-tl, the invisible 16px resize hit-zone in the panel's
-    // literal corner, which a +12 offset would otherwise still overlap by a few px.
-    btn.style.transform=`translate3d(${x+12}px,${y+19}px,0)`;
+    // its own comment) is sized to this exact 19px inset, so the button never sits on top of a
+    // tab or the sliding .tabpill highlight the way a bare top-right placement did. Same 19px on
+    // BOTH axes now — was 12/19 (uneven: x picked to clear the tab row, y picked to clear
+    // .sideRsz-tl, the invisible 16px resize hit-zone in the panel's literal corner), which put
+    // the button visibly off-center in the rounded corner instead of evenly seated in it. Raising
+    // x to match y (rather than lowering y to match x) keeps the resize corner's hit-zone fully
+    // clear on both axes, same as before — no overlap traded away for the symmetry.
+    btn.style.transform=`translate3d(${x+19}px,${y+19}px,0)`;
   }
   function setHidden(hidden){
     cfg[o.cfgHidden]=hidden?0:1;saveCfg();
