@@ -9616,14 +9616,18 @@ let scanSlowBusy=false,scanLastFullAt=0;
 
 // Watchlist sparkline's own rolling window — a genuinely live price-action trace, not a
 // resample of 5-min bars. scanFetchQuotes() below is the actual live cadence available for
-// these 9 symbols (one batched REST poll every 5s — there's no per-symbol WebSocket tick stream
-// for the Watchlist the way the main chart's own symbol gets); each poll's real last price is
-// appended here and the oldest sample drops once the buffer is full, so the trace is always
-// exactly this many of the most recent REAL samples — nothing simulated, nothing smoothed.
-// FLAG: 180 (=15 minutes at 5s/sample) is a chosen window size, not derived from anything; the
-// row fills up from a shorter trace right after page load/market open and behaves as a true
-// sliding window once it reaches this length.
-const WL_LIVE_MAXPTS=180;
+// these 9 symbols (one batched REST poll every SCAN_QUOTE_MS — there's no per-symbol WebSocket
+// tick stream for the Watchlist the way the main chart's own symbol gets); each poll's real last
+// price is appended here and the oldest sample drops once the buffer is full, so the trace is
+// always exactly this many of the most recent REAL samples — nothing simulated, nothing smoothed.
+// SCAN_QUOTE_MS=2000 matches cfg.quoteS's own 2s floor (see the POLL-DEFAULTS comment above) —
+// the fastest cadence already trusted elsewhere in this file for this exact Tradier quotes
+// endpoint, just applied to a 9-symbol batch instead of one. WL_LIVE_MAXPTS is derived from it,
+// not a bare literal, so the sparkline keeps covering the same real 15-minute window regardless
+// of how fast this polls; the row fills up from a shorter trace right after page load/market
+// open and behaves as a true sliding window once it reaches full length.
+const SCAN_QUOTE_MS=2000;
+const WL_LIVE_MAXPTS=Math.round(15*60*1000/SCAN_QUOTE_MS);
 async function scanFetchQuotes(){
   if(!LS.k)return;   // not connected yet — nothing to fetch, and avoids spamming an auth-error log
   try{
@@ -10122,7 +10126,7 @@ watchlistRender();   // paint the "not loaded yet" placeholder rows immediately,
 async function scanTick(){
   await scanFetchQuotes();
 }
-setInterval(scanTick,5000);
+setInterval(scanTick,SCAN_QUOTE_MS);
 
 // Boundary-aligned scheduler for the slow tier (bars/GEX/news). The old version was a bare
 // setInterval(scanRefreshSlow,300000) registered once at page-load/script-eval time — its
@@ -10135,21 +10139,25 @@ setInterval(scanTick,5000);
 // Chart tab, say) and the slow tier went stale for the rest of the session — reloading the page
 // was the only thing that re-armed it. That IS the "scanner doesn't refresh without a reload" bug.
 //
-// Fixed with a self-rescheduling setTimeout that recomputes its delay to the NEXT real 5-minute
-// ET boundary from the wall clock (via nowET()) every single time it fires, so it can never
-// accumulate drift the way a repeating interval does. Exactly one timer handle is ever pending
-// (cleared before every reschedule), so it can never duplicate or fire twice for one boundary. A
-// +250ms pad lets the exchange's own bar for the bucket that just closed actually exist before
-// scanFetchBars asks for it. It reschedules unconditionally, on schedule, forever, and now runs
-// the actual fetch unconditionally too (gated only on LS.k inside scanRefreshSlow() itself) —
-// Scanner lives in a topbar dropdown that is closed most of the time, so gating on visibility
-// the way this used to would mean the slow tier almost never ran; "last full refresh" is meant to
-// always be at most 5 minutes old, whether or not anyone has the dropdown open right now.
+// Fixed with a self-rescheduling setTimeout that recomputes its delay to the NEXT real wall-clock
+// SCAN_SLOW_BOUNDARY_SEC-second mark (via nowET()) every single time it fires, so it can never
+// accumulate drift the way a repeating interval does. Cadence is 3 minutes per the user's own
+// request, not tied to the bars' own 5-minute candle length — a plain wall-clock boundary
+// (:00/:03/:06... ET) still keeps every refresh landing on a clean, predictable mark instead of
+// drifting. Exactly one timer handle is ever pending (cleared before every reschedule), so it can
+// never duplicate or fire twice for one boundary. A +250ms pad lets the exchange's own data for
+// the bucket that just closed actually exist before scanFetchBars asks for it. It reschedules
+// unconditionally, on schedule, forever, and now runs the actual fetch unconditionally too (gated
+// only on LS.k inside scanRefreshSlow() itself) — Scanner lives in a topbar dropdown that is
+// closed most of the time, so gating on visibility the way this used to would mean the slow tier
+// almost never ran; "last full refresh" is meant to always be at most SCAN_SLOW_BOUNDARY_SEC
+// seconds old, whether or not anyone has the dropdown open right now.
+const SCAN_SLOW_BOUNDARY_SEC=180;
 let _scanBoundaryTimer=null;
 function scanMsToNextBoundary(){
   const t=nowET();
   const secIntoDay=t.h*3600+t.m*60+(+t.hms.slice(6,8));
-  return(300-(secIntoDay%300))*1000;
+  return(SCAN_SLOW_BOUNDARY_SEC-(secIntoDay%SCAN_SLOW_BOUNDARY_SEC))*1000;
 }
 function scanScheduleBoundary(){
   clearTimeout(_scanBoundaryTimer);
@@ -10162,13 +10170,13 @@ scanScheduleBoundary();
 // The boundary timer above now runs continuously regardless of the Scanner dropdown's open/closed
 // state, so this is just a top-up for the one gap that survives: a backgrounded browser TAB can
 // have setTimeout itself throttled well past its due time (see the visibilitychange hook below,
-// and the click wiring on #scanBtn). Without this, data could still sit stale past 5 minutes the
+// and the click wiring on #scanBtn). Without this, data could still sit stale past 3 minutes the
 // moment someone returns to a long-backgrounded tab. Same principle the main chart's own
 // resyncOnReturn() already uses — the moment that makes the tab relevant again triggers the
 // catch-up directly instead of waiting for the next scheduled boundary.
 function scanCatchUpIfStale(){
   if(!LS.k)return;
-  if(!scanLastFullAt||Date.now()-scanLastFullAt>=300000)scanRefreshSlow();
+  if(!scanLastFullAt||Date.now()-scanLastFullAt>=SCAN_SLOW_BOUNDARY_SEC*1000)scanRefreshSlow();
 }
 scanRender();   // paint the "not loaded yet" placeholder rows immediately, before any fetch
 
