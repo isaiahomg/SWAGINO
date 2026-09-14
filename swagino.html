@@ -781,9 +781,26 @@ input:disabled,select:disabled{opacity:.45;cursor:not-allowed}
 #ctxMenu .ci .lbl{flex:1}
 #ctxMenu .ci .kbd{color:#ffffff;font-size:11px;letter-spacing:.02em}
 
+/* Same glass material as the popout (.side): translucent fill + backdrop-filter blur, a thin
+   light-catching border, an inset top/bottom highlight, and text-shadow so the text stays legible
+   over whatever's behind it now that the background isn't a flat opaque chip any more. Shadow and
+   radius are scaled down from .side's own — those numbers were calibrated for a floating panel
+   hundreds of pixels tall; applied as-is to a ~20px text chip they'd read as an oversized glow
+   around a tiny pill. border-radius half again past the chip's own rendered height keeps it a
+   true capsule regardless of exact text length. */
 .satyinfo{pointer-events:none;position:absolute;bottom:6px;left:9px;z-index:8;
-  font:500 10.5px/1.35 var(--disp);color:var(--axistext);background:var(--chartbg);
-  border-radius:5px;padding:3px 8px;
+  font:500 10.5px/1.35 var(--disp);color:var(--axistext);
+  text-shadow:0 1px 2px rgba(0,0,0,.65);
+  background:rgba(20,21,25,.3);
+  backdrop-filter:blur(3px) saturate(1.3) brightness(1.03);
+  -webkit-backdrop-filter:blur(3px) saturate(1.3) brightness(1.03);
+  border:1px solid rgba(255,255,255,.14);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.35),
+    inset 0 -1px 0 rgba(255,255,255,.05),
+    0 8px 24px rgba(0,0,0,.4),
+    0 2px 8px rgba(0,0,0,.3);
+  border-radius:12px;padding:3px 10px;
   white-space:nowrap;width:max-content}
 /* ---- Saty ATR Levels ----
    Was TradingView's three-tab Inputs / Style / Visibility dialog, which made it the odd one
@@ -3376,6 +3393,12 @@ function makePane(idx){
   try{vchart.priceScale('right').applyOptions({scaleMargins:{top:0.12,bottom:0}});}catch(e){}
   try{vchart.applyOptions({crosshair:{horzLine:{visible:false,labelVisible:true}}});}catch(e){}
   const rchart=LightweightCharts.createChart(rEl,chartOpts(Object.assign({timeScale:{visible:false},rightPriceScale:{borderColor:'transparent',scaleMargins:{top:0.05,bottom:0.05}}},STATIC_SCALE)));
+  // Re-added per explicit request: RSI's pane should always show the full 0-100 range, not
+  // auto-zoom into whatever band the visible bars happen to occupy (a calm stretch could auto-fit
+  // to, say, 45-65, hiding how far price actually sits from overbought/oversold). Every series on
+  // this chart carries it, so the shared price scale they all sit on can never end up anywhere
+  // else — same TradingView-style lock this pane always had, before an earlier pass removed it.
+  const RSI_LOCK=()=>({priceRange:{minValue:0,maxValue:100}});
   const NOFILL='rgba(0,0,0,0)';
   // fill(rsiUpperBand, rsiLowerBand, ...) — a flat band between 70 and 30. Drawn as a
   // baseline series holding a constant 70 with its base at 30, so the shaded region is
@@ -3384,24 +3407,27 @@ function makePane(idx){
     topFillColor1:cfg.rsi.fillC,topFillColor2:cfg.rsi.fillC,
     bottomFillColor1:NOFILL,bottomFillColor2:NOFILL,
     topLineColor:NOFILL,bottomLineColor:NOFILL,lineWidth:1,
-    priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
+    priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false,
+    autoscaleInfoProvider:RSI_LOCK});
   // fill(rsiPlot, midLinePlot, 100, 70, green) — opaque at 100, transparent at 70.
   const rsiOB=rchart.addBaselineSeries({baseValue:{type:'price',price:70},
     topFillColor1:cfg.rsi.obC,topFillColor2:fadeOut(cfg.rsi.obC),
     bottomFillColor1:NOFILL,bottomFillColor2:NOFILL,
     topLineColor:NOFILL,bottomLineColor:NOFILL,lineWidth:1,
-    priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
+    priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false,
+    autoscaleInfoProvider:RSI_LOCK});
   // fill(rsiPlot, midLinePlot, 30, 0, red) — transparent at 30, opaque at 0.
   const rsiOS=rchart.addBaselineSeries({baseValue:{type:'price',price:30},
     topFillColor1:NOFILL,topFillColor2:NOFILL,
     bottomFillColor1:fadeOut(cfg.rsi.osC),bottomFillColor2:cfg.rsi.osC,
     topLineColor:NOFILL,bottomLineColor:NOFILL,lineWidth:1,
-    priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
+    priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false,
+    autoscaleInfoProvider:RSI_LOCK});
   const mkBB=()=>rchart.addLineSeries({color:cfg.rsi.bbC,lineWidth:1,priceLineVisible:false,
-    lastValueVisible:false,crosshairMarkerVisible:false});
+    lastValueVisible:false,crosshairMarkerVisible:false,autoscaleInfoProvider:RSI_LOCK});
   const rsiBBu=mkBB(),rsiBBl=mkBB();
-  const rsiMa=rchart.addLineSeries({color:cfg.rsi.maC,lineWidth:cfg.rsi.maW,priceLineVisible:false,lastValueVisible:true,crosshairMarkerVisible:false});
-  const rsi=rchart.addLineSeries({color:cfg.ind.rsi.c,lineWidth:cfg.ind.rsi.w,priceLineVisible:false,crosshairMarkerVisible:false});
+  const rsiMa=rchart.addLineSeries({color:cfg.rsi.maC,lineWidth:cfg.rsi.maW,priceLineVisible:false,lastValueVisible:true,crosshairMarkerVisible:false,autoscaleInfoProvider:RSI_LOCK});
+  const rsi=rchart.addLineSeries({color:cfg.ind.rsi.c,lineWidth:cfg.ind.rsi.w,priceLineVisible:false,crosshairMarkerVisible:false,autoscaleInfoProvider:RSI_LOCK});
   // MACD: TradingView's own built-in "Moving Average Convergence Divergence" (Pine v6),
   // ported verbatim — see cfg.macd's own comment for the exact source and colour mapping.
   // Its own subpane/chart, below RSI, with the same independent-scale treatment as the RSI
@@ -5482,7 +5508,11 @@ function renderPane(p){
       divs.slice(-20).forEach(d=>{
         const sr=p.rchart.addLineSeries({color:d.side==='bull'?BULL:BEAR,lineWidth:2,
           lineStyle:d.kind==='hidden'?LightweightCharts.LineStyle.Dashed:LightweightCharts.LineStyle.Solid,
-          priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
+          priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false,
+          // Same 0-100 lock every other series on this pane carries now — without it, this one
+          // series would fight the rest of the chart back toward auto-scaling the instant a
+          // divergence marker is on screen.
+          autoscaleInfoProvider:()=>({priceRange:{minValue:0,maxValue:100}})});
         sr.setData([{time:data[d.from].time,value:+d.fromVal.toFixed(2)},
                     {time:data[d.pivot].time,value:+d.val.toFixed(2)}]);
         p.rsiDivLines.push(sr);
