@@ -452,8 +452,13 @@ input[type=checkbox]{accent-color:var(--pivot)}
 .sideHead{position:relative;z-index:2;cursor:move;overflow:hidden;max-height:44px;padding:8px 8px 4px;opacity:1;
   /* padding dropped from the transition list — it was animating in lockstep with max-height for
      no visual gain (overflow:hidden already clips the content the instant max-height starts
-     shrinking) while still being a second layout-triggering property reflowing every frame. */
-  transition:max-height .32s cubic-bezier(.22,1,.36,1),opacity .32s ease}
+     shrinking) while still being a second layout-triggering property reflowing every frame.
+     max-height and opacity now share the exact same duration/curve — they used to run on
+     different curves (max-height had a springy overshoot past 0, opacity a plain linear-ish
+     ease), so the two visibly drifted out of sync with each other for part of the animation,
+     which read as sloppy/buggy even when neither one was glitching on its own. A single shared
+     standard ease-out keeps them moving together the whole way. */
+  transition:max-height .26s cubic-bezier(.4,0,.2,1),opacity .26s cubic-bezier(.4,0,.2,1)}
 /* Physical-presence tab bar: shrinks out of the way scrolling down through a pane's content,
    springs back the moment you scroll up - see the scroll listener below (in the popout factory),
    which now needs to travel a real distance before flipping this, not just see one event of
@@ -11479,12 +11484,19 @@ function initSidePopout(o){
   // event's sign — before actually toggling. dirStart resets to the CURRENT position the instant
   // the raw per-event direction changes, so jitter (which keeps flipping the raw sign back and
   // forth) never accumulates enough distance to cross the threshold and never touches the class.
+  // rAF-coalesced for the same reason the resize handles' own ResizeObserver is (see its comment
+  // further down): a fast trackpad scroll can fire this listener many times inside a single
+  // paint frame, and evaluating/mutating classList synchronously on every one of them competes
+  // with the browser's own scroll-commit work for that frame instead of just running once,
+  // cleanly, before the next paint — one more source of the reported jank on top of the
+  // hysteresis fix below. Only the LATEST scrollTop by the time the frame runs matters; any
+  // events coalesced away were never going to change the outcome anyway.
   if(head){
     const DIR_HYSTERESIS=10;
-    let lastScroll=0,lastDir=null,dirStart=0;
-    side.addEventListener('scroll',e=>{
-      const t=e.target.scrollTop;
-      if(t===undefined)return;
+    let lastScroll=0,lastDir=null,dirStart=0,raf=0,pendingEl=null;
+    const evaluate=()=>{
+      raf=0;
+      const t=pendingEl.scrollTop;
       if(t<=4){head.classList.remove('collapsed');lastScroll=t;lastDir=null;return;}
       const rawDir=t>lastScroll?'down':(t<lastScroll?'up':lastDir);
       lastScroll=t;
@@ -11492,6 +11504,11 @@ function initSidePopout(o){
       if(Math.abs(t-dirStart)<DIR_HYSTERESIS)return;
       if(rawDir==='down')head.classList.add('collapsed');
       else head.classList.remove('collapsed');
+    };
+    side.addEventListener('scroll',e=>{
+      if(e.target.scrollTop===undefined)return;
+      pendingEl=e.target;
+      if(!raf)raf=requestAnimationFrame(evaluate);
     },true);
   }
   // The GEX heatmap's column width and the tab pill's width/position both depend on side's own
