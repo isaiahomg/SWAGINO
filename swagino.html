@@ -1037,6 +1037,17 @@ input[type=checkbox]{accent-color:var(--accent)}
     inset 0 -1px 0 rgba(255,255,255,.05),
     0 24px 70px rgba(0,0,0,.55),
     0 4px 18px rgba(0,0,0,.35)}
+/* backdrop-filter has to re-sample whatever's behind the panel on every single frame the panel
+   moves or resizes over — the chart canvas, GEX heatmap, live price lines, all of it — and that
+   resampling cost is what actually drives the "dragging the popout is laggy" complaint, not the
+   drag math itself (applyPos() measured under 0.3ms per pointermove live, with two live GEX
+   streams running — it was never the bottleneck). Standard fix for exactly this: drop the blur
+   for the duration of the gesture and fall back to a plainer, more opaque solid tint that reads
+   close enough at a glance while actually moving, then restore the real glass the instant the
+   gesture ends (dragCount back to 0 — see applyPos()'s own dragging class toggle, same signal
+   its transition:none already uses). */
+.side.dragging{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
+  background:rgba(18,19,23,.88)!important}
 /* #sbBtn used to just sit in the topbar's icon row (.setupIconBtn styling). It now floats free
    at the popout's own top-left corner (position set by applySidePos(), same as .side) - just
    the bare glyph, no box/border/background of its own at rest (a light hover tint is the only
@@ -11439,6 +11450,10 @@ function initSidePopout(o){
     side.style.opacity=hidden?'0':'1';
     side.style.pointerEvents=hidden?'none':'auto';
     side.style.transition=dragCount>0?'none':'transform .16s ease, opacity .16s ease';
+    // Suspends backdrop-filter for the gesture's duration — see .side.dragging's own comment for
+    // why. Same dragCount signal the transition line above already gates on, so the two can never
+    // disagree about whether a gesture is currently live.
+    side.classList.toggle('dragging',dragCount>0);
     // Top-LEFT corner, not top-right: the tab row's own reserved gutter (.tabs padding-left, see
     // its own comment) is sized to this exact 19px inset, so the button never sits on top of a
     // tab or the sliding .tabpill highlight the way a bare top-right placement did. Same 19px on
