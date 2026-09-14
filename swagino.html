@@ -11381,6 +11381,18 @@ function initSidePopout(o){
   // that follows pointerup either way still fires, so this is what tells the onclick handler
   // below "that was a drag just now, not a click" and to skip the toggle once.
   let btnDragged=false;
+  // Shared across all three gesture types below (header drag, button drag, resize) — only one can
+  // ever be live at a time on a given popout, so one variable is enough. Fast/erratic mouse
+  // movement can fire pointermove far more often than the screen repaints (well past 60/sec on a
+  // real mouse); each raw handler below still updates cfg[o.cfgX/Y/W/H] synchronously (cheap, pure
+  // math — always reflects the true latest pointer position), but the actual applyPos() call —
+  // which reads layout via hBounds()'s getBoundingClientRect() and writes several styles — is
+  // coalesced to at most once per animation frame instead of once per raw event. Without this, a
+  // burst of events between two paints each paid that cost redundantly for a position the user
+  // never even saw rendered.
+  let posRaf=0;
+  const schedulePos=()=>{if(!posRaf)posRaf=requestAnimationFrame(()=>{posRaf=0;applyPos();});};
+  const cancelSchedulePos=()=>{if(posRaf){cancelAnimationFrame(posRaf);posRaf=0;}};
   // Pane 2's popout is confined to Pane 2's own column (o.boundsSel='#pw1') so it can never be
   // dragged or resized over onto Pane 1's — measured fresh (not cached across the session, since
   // the column's width/position only exist while the 2-chart layout is actually active) but only
@@ -11499,14 +11511,14 @@ function initSidePopout(o){
     const mv=e2=>{
       const pos=clampSideXY(sX+(e2.clientX-sx),sY+(e2.clientY-sy),cfg[o.cfgW],cfg[o.cfgH],gb);
       cfg[o.cfgX]=Math.round(pos.x);cfg[o.cfgY]=Math.round(pos.y);
-      applyPos();
+      schedulePos();
     };
     const stop=()=>{
       dragCount=Math.max(0,dragCount-1);
       document.body.style.userSelect='';
       head.removeEventListener('pointermove',mv);
       head.removeEventListener('pointerup',stop);head.removeEventListener('pointercancel',stop);
-      applyPos();saveCfg();
+      cancelSchedulePos();applyPos();saveCfg();
     };
     head.addEventListener('pointermove',mv);
     head.addEventListener('pointerup',stop);head.addEventListener('pointercancel',stop);
@@ -11533,7 +11545,7 @@ function initSidePopout(o){
       }
       const pos=clampSideXY(sX+dx,sY+dy,cfg[o.cfgW],cfg[o.cfgH],gb);
       cfg[o.cfgX]=Math.round(pos.x);cfg[o.cfgY]=Math.round(pos.y);
-      applyPos();
+      schedulePos();
     });
     const stop=e=>{
       if(!live)return;live=false;
@@ -11541,7 +11553,7 @@ function initSidePopout(o){
       if(!dragged)return;                        // a plain click - let the onclick handler run
       dragged=false;dragCount=Math.max(0,dragCount-1);
       document.body.style.userSelect='';
-      applyPos();saveCfg();
+      cancelSchedulePos();applyPos();saveCfg();
       // pointercancel means the gesture was aborted rather than completed - no click event
       // follows it to consume btnDragged (onclick only fires after a real pointerup), so it has
       // to be cleared right here or it would silently swallow the NEXT legitimate click.
@@ -11593,13 +11605,13 @@ function initSidePopout(o){
       // though its width/height are already within their own limits.
       const pos=clampSideXY(x,y,w,ht,gb);
       cfg[o.cfgX]=Math.round(pos.x);cfg[o.cfgY]=Math.round(pos.y);cfg[o.cfgW]=Math.round(w);cfg[o.cfgH]=Math.round(ht);
-      applyPos();
+      schedulePos();
     });
     const stop=e=>{
       if(!live)return;live=false;dragCount=Math.max(0,dragCount-1);
       document.body.style.userSelect='';document.body.style.cursor='';
       try{h.releasePointerCapture(e.pointerId);}catch(_){}
-      applyPos();saveCfg();
+      cancelSchedulePos();applyPos();saveCfg();
     };
     h.addEventListener('pointerup',stop);
     h.addEventListener('pointercancel',stop);
