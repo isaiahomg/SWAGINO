@@ -3330,13 +3330,10 @@ function makePane(idx){
      that can drift out of alignment. */
   // chartOpts()'s own handleScale (axisPressedMouseMove.price:true, etc) is deliberate for the
   // MAIN price chart - see its own comment - but Volume/RSI/MACD all inherited it too, unchanged,
-  // with nothing actually overriding it. RSI's autoscaleInfoProvider LOCK below only overrides
-  // the AUTOSCALE computation, not the axis-drag gesture itself, so a manual drag can still throw
-  // its 0-100 range off (reproduced live: dragged RSI's own axis and watched it read -50 to 150)
-  // - Volume and MACD, with no lock at all, are just as draggable. None of the three were ever
-  // meant to be user-adjustable (unlike the main chart), so this turns the price-axis drag/
-  // double-click-reset gestures off for all three subpane charts below, leaving the time axis
-  // (panning/zooming, kept in sync with the main chart via linkCharts) untouched.
+  // with nothing actually overriding it. None of the three were ever meant to be user-adjustable
+  // (unlike the main chart), so this turns the price-axis drag/double-click-reset gestures off
+  // for all three subpane charts below, leaving the time axis (panning/zooming, kept in sync
+  // with the main chart via linkCharts) untouched.
   const STATIC_SCALE={handleScale:{axisPressedMouseMove:{time:true,price:false},mouseWheel:true,pinch:true,
     axisDoubleClickReset:{time:true,price:false}}};
   const vchart=LightweightCharts.createChart(vEl,chartOpts(Object.assign({timeScale:{visible:false},rightPriceScale:{borderColor:'transparent',scaleMargins:{top:0.12,bottom:0}}},STATIC_SCALE)));
@@ -3344,7 +3341,6 @@ function makePane(idx){
   try{vchart.priceScale('right').applyOptions({scaleMargins:{top:0.12,bottom:0}});}catch(e){}
   try{vchart.applyOptions({crosshair:{horzLine:{visible:false,labelVisible:true}}});}catch(e){}
   const rchart=LightweightCharts.createChart(rEl,chartOpts(Object.assign({timeScale:{visible:false},rightPriceScale:{borderColor:'transparent',scaleMargins:{top:0.05,bottom:0.05}}},STATIC_SCALE)));
-  const LOCK=()=>({priceRange:{minValue:0,maxValue:100}}); // RSI scale locked 0–100, TradingView-style
   const NOFILL='rgba(0,0,0,0)';
   // fill(rsiUpperBand, rsiLowerBand, ...) — a flat band between 70 and 30. Drawn as a
   // baseline series holding a constant 70 with its base at 30, so the shaded region is
@@ -3353,27 +3349,24 @@ function makePane(idx){
     topFillColor1:cfg.rsi.fillC,topFillColor2:cfg.rsi.fillC,
     bottomFillColor1:NOFILL,bottomFillColor2:NOFILL,
     topLineColor:NOFILL,bottomLineColor:NOFILL,lineWidth:1,
-    priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false,
-    autoscaleInfoProvider:LOCK});
+    priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
   // fill(rsiPlot, midLinePlot, 100, 70, green) — opaque at 100, transparent at 70.
   const rsiOB=rchart.addBaselineSeries({baseValue:{type:'price',price:70},
     topFillColor1:cfg.rsi.obC,topFillColor2:fadeOut(cfg.rsi.obC),
     bottomFillColor1:NOFILL,bottomFillColor2:NOFILL,
     topLineColor:NOFILL,bottomLineColor:NOFILL,lineWidth:1,
-    priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false,
-    autoscaleInfoProvider:LOCK});
+    priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
   // fill(rsiPlot, midLinePlot, 30, 0, red) — transparent at 30, opaque at 0.
   const rsiOS=rchart.addBaselineSeries({baseValue:{type:'price',price:30},
     topFillColor1:NOFILL,topFillColor2:NOFILL,
     bottomFillColor1:fadeOut(cfg.rsi.osC),bottomFillColor2:cfg.rsi.osC,
     topLineColor:NOFILL,bottomLineColor:NOFILL,lineWidth:1,
-    priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false,
-    autoscaleInfoProvider:LOCK});
+    priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
   const mkBB=()=>rchart.addLineSeries({color:cfg.rsi.bbC,lineWidth:1,priceLineVisible:false,
-    lastValueVisible:false,crosshairMarkerVisible:false,autoscaleInfoProvider:LOCK});
+    lastValueVisible:false,crosshairMarkerVisible:false});
   const rsiBBu=mkBB(),rsiBBl=mkBB();
-  const rsiMa=rchart.addLineSeries({color:cfg.rsi.maC,lineWidth:cfg.rsi.maW,priceLineVisible:false,lastValueVisible:true,crosshairMarkerVisible:false,autoscaleInfoProvider:LOCK});
-  const rsi=rchart.addLineSeries({color:cfg.ind.rsi.c,lineWidth:cfg.ind.rsi.w,priceLineVisible:false,crosshairMarkerVisible:false,autoscaleInfoProvider:LOCK});
+  const rsiMa=rchart.addLineSeries({color:cfg.rsi.maC,lineWidth:cfg.rsi.maW,priceLineVisible:false,lastValueVisible:true,crosshairMarkerVisible:false});
+  const rsi=rchart.addLineSeries({color:cfg.ind.rsi.c,lineWidth:cfg.ind.rsi.w,priceLineVisible:false,crosshairMarkerVisible:false});
   // MACD: TradingView's own built-in "Moving Average Convergence Divergence" (Pine v6),
   // ported verbatim — see cfg.macd's own comment for the exact source and colour mapping.
   // Its own subpane/chart, below RSI, with the same independent-scale treatment as the RSI
@@ -5454,8 +5447,7 @@ function renderPane(p){
       divs.slice(-20).forEach(d=>{
         const sr=p.rchart.addLineSeries({color:d.side==='bull'?BULL:BEAR,lineWidth:2,
           lineStyle:d.kind==='hidden'?LightweightCharts.LineStyle.Dashed:LightweightCharts.LineStyle.Solid,
-          priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false,
-          autoscaleInfoProvider:()=>({priceRange:{minValue:0,maxValue:100}})});
+          priceLineVisible:false,lastValueVisible:false,crosshairMarkerVisible:false});
         sr.setData([{time:data[d.from].time,value:+d.fromVal.toFixed(2)},
                     {time:data[d.pivot].time,value:+d.val.toFixed(2)}]);
         p.rsiDivLines.push(sr);
@@ -5496,10 +5488,10 @@ function renderPane(p){
         const col=h>=0?(rising?M.histC[0]:M.histC[1]):(rising?M.histC[2]:M.histC[3]);
         return{time:d.time,value:+h.toFixed(2),color:col};
       });
-      // MACD's axis auto-scales to whichever bars are currently visible, same as any default LWC
-      // pane (and unlike RSI's own fixed 0-100 LOCK below) — a prior pass locked it to the full
-      // loaded series' own min/max for cross-pan/zoom stability, but that's reverted per request:
-      // the pane is meant to rescale as you pan/zoom, not hold a fixed range.
+      // MACD's axis auto-scales to whichever bars are currently visible, same as RSI's below and
+      // any default LWC pane — a prior pass locked it to the full loaded series' own min/max for
+      // cross-pan/zoom stability, but that's reverted per request: the pane is meant to rescale
+      // as you pan/zoom, not hold a fixed range.
       p.macdHist.applyOptions({visible:!!M.histOn});
       p.macdHist.setData(M.histOn?histPts:[]);
       p.macdLine.applyOptions({visible:!!M.macdOn,color:M.macdC,lineWidth:M.macdW,lineStyle:lwcStyle(M.macdSt)});
