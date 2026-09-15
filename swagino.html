@@ -8500,7 +8500,14 @@ function openSatyStyler(anchorEl,key){
   const line=satyRowColor(r,C);
   openStyler(anchorEl,{
     color:line,
-    tc:cur.tc||line,                                   // tc defaults to the line colour, as satyBuildStyle does
+    // tc must default to the SAME neutral fallback drawSatyOn/positionSatyLabels actually render
+    // (o.tc||'var(--axistext)' — see there), not the line colour. Defaulting to `line` here used
+    // to bake the line's THEN-current colour into c.sty[key].tc the moment you edited the LINE
+    // colour alone (Style tab, never touching Text): the callback below always writes tc back
+    // unconditionally, so the label text silently flipped from axistext to that stale colour on
+    // the very first line-only edit — confirmed live, this is the "text colour changes on its own"
+    // bug. var(--axistext) here means an unedited Text tab is always a true no-op.
+    tc:cur.tc||'var(--axistext)',
     width:Math.max(1,+(cur.w||C.levelSize)||1),
     style:cur.st||(r.kind==='mid'?'dotted':'solid'),   // same per-kind default drawSatyOn uses
     textSize:cur.size
@@ -12297,11 +12304,14 @@ function satyBuildStyle(){
     // Same picker every other level swatch uses, opened WITH a text colour (state.tc) so the
     // Style / Text tabs appear — Style edits the line colour, Text edits the label-name colour,
     // exactly like the Levels-table swatch. showLine stays false: thickness and line style are the
-    // row's own w/s selects, not the popup's. tc defaults to the line colour until the user picks
-    // one on the Text tab (matches lvlStyleOf's tc:s.tc||color fallback).
+    // row's own w/s selects, not the popup's. tc defaults to 'var(--axistext)' — the SAME neutral
+    // fallback drawSatyOn/positionSatyLabels actually render when tc is unset (matches
+    // lvlStyleOf's own tc:s.tc||'var(--axistext)' fallback) — not the line colour: that used to
+    // bake the line's current colour into tc the moment a line-only edit's callback wrote it back
+    // unconditionally, flipping the on-chart label text away from axistext with no Text-tab edit.
     sw.onclick=e=>{e.stopPropagation();
       const cur=satyC().sty[r.key]||{},line=satyRowColor(r,satyC());
-      openStyler(sw,{color:line,tc:cur.tc||line,textSize:cur.size},false,st=>{
+      openStyler(sw,{color:line,tc:cur.tc||'var(--axistext)',textSize:cur.size},false,st=>{
         sw.style.background=st.color;
         const c=satyC();c.sty[r.key]=Object.assign({},c.sty[r.key],{color:st.color,tc:st.tc,size:st.textSize});satyRedraw();});};
     wsel.onchange=()=>put('w',+wsel.value);
