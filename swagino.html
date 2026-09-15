@@ -9878,10 +9878,30 @@ async function scanFetchQuotes(){
     const now=Date.now();
     qs.forEach(q=>{
       const d=scanData[q.symbol];if(!d)return;
-      d.last=+q.last;d.change=+q.change;d.changePct=+q.change_percentage;
+      // Same staleness guard as loadQuote() above: `last` is the last TRADE, and before this
+      // session's first print (pre/post-market on a name that hasn't traded yet) it's still
+      // frozen on the PREVIOUS session's close — Tradier's own change/change_percentage ride
+      // along with it, silently reporting a flat $0/0.00% Gap % while bid/ask have already moved.
+      // Confirmed live pre-market 2026-09-15 08:15 ET: all 9 scanner symbols had a trade_date
+      // ~16h old (yesterday's 4pm print) with last===prevclose and change=0 for every single one,
+      // while bid/ask had already diverged by up to ~1% (MSFT: last 505.41 vs bid/ask ~500.6/
+      // 500.8) — visibly confirmed side by side against the main ticker (which already has this
+      // same fallback) showing a live, moving price while this card sat frozen. Fall back to the
+      // bid/ask midpoint exactly like loadQuote does, and self-compute change/% off prevclose
+      // instead of trusting Tradier's own (equally stale) fields.
+      const td=+q.trade_date;
+      const tradeFresh=isFinite(td)&&td>0&&td/1000>=Math.floor(Math.floor(now/1000)/300)*300;
+      const bid=+q.bid,ask=+q.ask,prevClose=+q.prevclose;
+      const mid=(isFinite(bid)&&isFinite(ask)&&bid>0&&ask>0)?(bid+ask)/2:null;
+      d.last=(!tradeFresh&&mid!=null)?mid:+q.last;
+      if(!tradeFresh&&mid!=null&&prevClose>0){
+        d.change=d.last-prevClose;d.changePct=d.change/prevClose*100;
+      }else{
+        d.change=+q.change;d.changePct=+q.change_percentage;
+      }
       d.volume=+q.volume;d.avgVolume=+q.average_volume;
       d.rvol=(d.avgVolume>0&&isFinite(d.volume))?d.volume/d.avgVolume:null;
-      d.prevClose=+q.prevclose;d.bid=+q.bid;d.ask=+q.ask;
+      d.prevClose=prevClose;d.bid=bid;d.ask=ask;
       d.quoteAt=now;d.quoteOk=true;
       if(isFinite(d.last)){
         if(!d.liveSeries)d.liveSeries=[];
