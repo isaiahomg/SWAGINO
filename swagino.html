@@ -1665,13 +1665,18 @@ table.lv td{padding:6px 10px}
    45px on the right purely to keep the tabs visually centered against it) for #sbBtn/#sbBtn2,
    back when the hide/show toggle floated as a small icon button over the panel's own top-left
    corner. #sbBtn is now a full-height capsule handle sitting INSIDE whichever edge of the panel
-   it docks to (see applyPos()'s own dockLeft comment) — vertically clear of this row entirely
-   (TOP_CLEAR there keeps it below the whole header), but close enough horizontally that the tab
-   labels read as crowded right up against it, on request. 26px on BOTH sides (not just whichever
-   edge the handle happens to be docked to — the handle can be on either one, and this row's own
-   layout can't reflow around it) gives breathing room on the side that matters without needing to
-   know which side that is. */
-.tabs{padding-left:26px;padding-right:26px}
+   it docks to (see applyPos()'s own dockLeft comment). 26px wasn't enough — confirmed live, a
+   real but small 17px gap between the handle's own edge and the active tab's pill that still
+   read as crowded — so this is now 40px. This is also what actually keeps the handle and the
+   tab-pill highlight from ever sharing an x-range at all (checked live: handle right edge sits
+   at panel-x+18, "Levels"'/"GEX"'s own pill starts at panel-x+40-ish — comfortable clearance on
+   either dock side), which is what lets applyPos() give the handle a much shorter, symmetric
+   top/bottom clearance instead of a whole extra top allowance sized for clearing the header
+   itself — see its own EDGE_INSET/TOP_CLEAR comment. 40px on BOTH sides (not just whichever edge
+   the handle happens to be docked to — the handle can be on either one, and this row's own
+   layout can't reflow around it) gives that clearance on the side that matters without needing
+   to know which side that is. */
+.tabs{padding-left:40px;padding-right:40px}
 .tabs button{flex:1;position:relative;z-index:1;display:flex;align-items:center;justify-content:center;
   gap:5px;border-bottom:none;border-radius:9px;padding:7px 0;transition:color .18s ease}
 .tabs button.on{border-bottom:none}
@@ -11753,23 +11758,20 @@ function initSidePopout(o){
     side.style.pointerEvents=hidden?'none':'auto';
     side.style.transition=dragCount>0?'none':'transform .16s ease, opacity .16s ease';
     // The handle sits INSIDE the panel's own rounded edge, not protruding past it — EDGE_INSET
-    // clears it from the panel's true left/right boundary. Vertical clearance is asymmetric:
-    // TOP_CLEAR has to clear the WHOLE 44px header/tab row (.sideHead's own max-height), not just
-    // the panel's corner radius — a plain corner-radius-sized clearance (20px) left the handle's
-    // top ~24px genuinely UNDER the active tab's own sliding highlight pill (.tabpill,
-    // rgba(10,132,255,.16)), confirmed live via getBoundingClientRect on both: the pill's own box
-    // (y 61-93 at the time) and the handle's (y 68-661) overlapped by a real 5x25px rectangle,
-    // the highlight visibly bleeding across the handle's rounded top end. BOTTOM_CLEAR only has to
-    // clear the panel's plain 28px corner radius (verified separately: at 20px down from a 28px
-    // corner the curve has only encroached ~1px past the flat edge, comfortably inside
-    // EDGE_INSET's own 8px), so it stays much smaller.
-    // It still never hides or slides away with the panel — parked at the same x/y regardless of
-    // `hidden`, exactly the "always there to click" contract the old corner button always had —
-    // but now carries the SAME transform transition as the panel (see slideT above), plus its own
-    // separate, snappier opacity transition for hover (.12s — listed here explicitly since
-    // setting .transition inline for transform alone would otherwise silently drop the CSS rule's
-    // opacity transition instead of merging with it).
-    const EDGE_INSET=8,TOP_CLEAR=48,BOTTOM_CLEAR=20;
+    // clears it from the panel's true left/right boundary. TOP_CLEAR/BOTTOM_CLEAR are symmetric
+    // now (both sized only for the panel's own 28px corner radius — at 16px down from a 28px
+    // corner the curve has only encroached ~2.7px past the flat edge, comfortably inside
+    // EDGE_INSET's own 8px), on request — extending the handle up as close to the header as the
+    // corner itself allows, rather than clearing the WHOLE header the way an earlier pass did.
+    // That earlier pass (TOP_CLEAR=48) was covering for a DIFFERENT gap: at the time, .tabs had
+    // only its base 4px padding, so the active tab's own sliding highlight pill started almost
+    // flush with the panel edge — close enough to the handle's own column that a 20px-only top
+    // clearance put the handle's top ~24px genuinely under the pill's colour. .tabs's own 40px
+    // padding (see its CSS rule's comment) is the actual fix for that now: with the tab row itself
+    // pushed well clear of both edges, the handle and the pill no longer share ANY x-range at all
+    // (verified live), so there is nothing left for a tall top clearance to protect against; a plain
+    // corner-radius-sized gap is enough on both ends.
+    const EDGE_INSET=8,TOP_CLEAR=16,BOTTOM_CLEAR=16;
     btn.style.width=SIDE_HANDLE_W+'px';btn.style.height=Math.max(20,h-TOP_CLEAR-BOTTOM_CLEAR)+'px';
     btn.style.transform=`translate3d(${dockLeft?x+EDGE_INSET:x+w-SIDE_HANDLE_W-EDGE_INSET}px,${y+TOP_CLEAR}px,0)`;
     btn.style.transition=dragCount>0?'none':`transform .3s ${SLIDE_EASE}, opacity .12s ease`;
