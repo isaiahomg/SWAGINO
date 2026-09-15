@@ -5,9 +5,14 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# The app is a single self-contained HTML file plus the proxy, favicon, and local fonts.
+# The app is swagino.html plus the proxy, favicon, and local fonts/vendor/assets. vendor/ (the
+# charting library) and assets/ (icon images) were split out of swagino.html itself 2026-09-15 to
+# shrink it and let the browser cache them separately across app edits — proxy.py's existing
+# generic static-file serving needs no changes to serve them, just these extra COPYs.
 COPY proxy.py swagino.html favicon.ico ./
 COPY fonts/ ./fonts/
+COPY vendor/ ./vendor/
+COPY assets/ ./assets/
 
 # Run as an unprivileged user, never root. Port 8787 is > 1024 so no privilege is needed to bind.
 RUN useradd -r -u 10001 swagino && chown -R swagino /app
