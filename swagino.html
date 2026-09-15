@@ -155,7 +155,11 @@ input[type=checkbox]{accent-color:var(--pivot)}
    mirroring the compress icon horizontally would NOT turn it into a correct expand icon (a
    diagonal converging-arrows shape reflects into another converging-arrows shape, not a
    diverging one) - so instead of a transform, the SVG carries both full icons as sibling <g>
-   groups and this just swaps which one is visible, same idiom as .eye's .eo/.ec swap above. */
+   groups and this just swaps which one is visible, same idiom as .eye's .eo/.ec swap above.
+   This SVG only actually renders at phone width now — the desktop capsule handle (see #sbBtn's
+   own CSS comment further down) hides it and needs no glyph of its own — but the .flip toggle in
+   setHidden() still runs unconditionally either way, so it stays correct the instant a resize
+   crosses the breakpoint rather than needing its own sync-on-crossing logic. */
 #sbIcon .sbexpand,#sbIcon2 .sbexpand{display:none}
 #sbIcon.flip .sbexpand,#sbIcon2.flip .sbexpand{display:inline}
 #sbIcon.flip .sbcompress,#sbIcon2.flip .sbcompress{display:none}
@@ -443,15 +447,7 @@ input[type=checkbox]{accent-color:var(--pivot)}
    layout reflow, see the "no lag" note on applySidePos(). overflow:hidden is what makes the 28px
    radius actually clip the tab row and content instead of just rounding the outer shadow. */
 .side{position:fixed;left:0;top:0;display:flex;flex-direction:column;min-height:0;overflow:hidden;
-  border-radius:28px;z-index:55;will-change:transform;
-  /* Must track #sbBtn's own corner exactly, in coordinates local to THIS element: 30px = the
-     btn's 19px inset from .side's own edge (same on both axes now — see applyPos()'s own comment
-     on why it was 12/19, uneven, and why that's fixed) + half its 22px width/height. This was
-     still calc(100% - 23px) - a right-edge anchor - left over from when the button lived at the
-     panel's top-right; moving the button to the top-left (see #sbBtn's own "Top-LEFT corner, not
-     top-right" comment in applyPos()) never updated this, so the genie shrink/grow kept animating
-     toward the button's old side of the panel instead of its new one. */
-  transform-origin:30px 30px}
+  border-radius:28px;z-index:55;will-change:transform}
 /* Frozen, Excel-freeze-panes style: always visible at its natural height, never animates in or
    out of view. Used to shrink toward nothing while scrolling down through a pane's content and
    spring back on scroll up (a JS listener toggled a .collapsed class that animated max-height/
@@ -959,12 +955,15 @@ body.tab-hidden .tbheart,body.tab-hidden .tbjet,body.tab-hidden .bspin{animation
     transform:none!important;opacity:1!important;pointer-events:auto!important;
     border-radius:0!important;border-left:none!important;z-index:20;
     background:var(--panel2)!important}
-  #sbBtn.sbFloat{left:auto!important;top:8px!important;right:8px!important;transform:none!important}
-  /* The desktop-only left gutter above (.tabs{padding-left:38px}) exists purely to clear #sbBtn's
-     own top-left corner position on the panel — irrelevant here, since on mobile the panel is a
-     full-screen overlay and the button pins to the real viewport corner instead, untouched by
-     this breakpoint. Restore the plain, symmetric tab row rather than leave an unused gutter. */
-  .tabs{padding-left:4px}
+  /* Reverts the desktop edge-capsule back to a small corner icon button — there's no panel edge
+     to run a capsule along once .side is a full-screen overlay, and no drag-to-move gesture to
+     preserve either (a full-screen sheet has nowhere to be dragged to). */
+  #sbBtn.sbFloat{left:auto!important;top:8px!important;right:8px!important;transform:none!important;
+    width:22px!important;height:22px!important;border-radius:7px!important;
+    background:none!important;opacity:1!important;cursor:pointer!important;
+    display:flex!important;align-items:center;justify-content:center}
+  #sbBtn.sbFloat:hover{background:rgba(255,255,255,.10)!important}
+  #sbBtn.sbFloat svg{display:block!important;width:16px!important;height:16px!important}
   #toasts{right:12px}
   .toast{min-width:0;max-width:calc(100vw - 24px)}
   .tbpix{display:none}
@@ -1071,25 +1070,38 @@ input[type=checkbox]{accent-color:var(--accent)}
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,.07),
     inset 0 -1px 0 rgba(255,255,255,.05)}
-/* #sbBtn used to just sit in the topbar's icon row (.setupIconBtn styling). It now floats free
-   at the popout's own top-left corner (position set by applySidePos(), same as .side) - just
-   the bare glyph, no box/border/background of its own at rest (a light hover tint is the only
-   feedback, same "no chip, just the glyph" language .setupIconBtn's siblings already use), so it
-   reads as part of the panel's own chrome rather than a separate control glued on top of it.
-   display:flex centering is load-bearing, not decorative: a bare &lt;button&gt; has its own default
-   line-height/padding that left the icon measurably off-center inside the 22x22 box before this. */
+/* #sbBtn used to just sit in the topbar's icon row (.setupIconBtn styling), then floated free as
+   a small glyph-in-a-square pinned to the popout's own top-left corner. It's now a solid vertical
+   capsule running the full height of whichever edge of the panel faces the nearer side of the
+   screen (position/size/edge all computed live in applyPos() — see its own dockLeft comment) - the
+   button itself IS the shape, background:currentColor with no inner glyph, rather than an icon
+   sitting inside a box. cursor:grab because it doubles as a drag-the-whole-panel handle, same as
+   the old corner button did (see the pointerdown wiring in initSidePopout).
+   Dropping .setupIconBtn (see the old comment this replaced) silently dropped its
+   color:var(--axistext) too - this was the one topbar icon that stopped following the user's Axis
+   Text Color setting while its Layout/Alerts/Settings siblings kept tracking it. Restated here
+   explicitly, since background:currentColor now depends directly on it. */
 #sbBtn.sbFloat,#sbBtn2.sbFloat{position:fixed;left:0;top:0;z-index:56;width:22px;height:22px;
-  display:flex!important;align-items:center;justify-content:center;
-  padding:0!important;margin:0;border-radius:7px!important;
-  background:none!important;border:none!important;box-shadow:none!important;
-  cursor:pointer;
-  /* Dropping .setupIconBtn (see the comment above it) silently dropped its color:var(--axistext)
-     too - #sbIcon's stroke="currentColor" then fell back to the fixed var(--text), so this was
-     the one topbar icon that stopped following the user's Axis Text Color setting while its
-     Layout/Alerts/Settings siblings kept tracking it. Restated here explicitly. */
-  color:var(--axistext)}
-#sbBtn.sbFloat:hover,#sbBtn2.sbFloat:hover{background:rgba(255,255,255,.10)!important}
-#sbBtn.sbFloat svg,#sbBtn2.sbFloat svg{width:16px!important;height:16px!important}
+  display:flex!important;
+  padding:0!important;margin:0;
+  /* NOT !important, deliberately — the mobile media query above (source order: BEFORE this rule)
+     needs its own border-radius:7px!important to win at that breakpoint, and since it's already
+     !important, this one can't also be without the two fighting a same-importance tie that source
+     order alone would hand to whichever rule happens to come last in the file (this one) — wrong
+     at mobile widths regardless of which somehow "wins". Leaving this one plain lets the mobile
+     rule's !important always beat it outright when that media query is active, independent of
+     ordering; nothing else in this stylesheet targets #sbBtn.sbFloat's border-radius, so there is
+     nothing else this plain declaration needs to outrank at desktop widths either. */
+  border-radius:999px;
+  background:currentColor;border:none!important;box-shadow:none!important;
+  cursor:grab;color:var(--axistext);
+  opacity:.45;transition:opacity .12s ease}
+#sbBtn.sbFloat:hover,#sbBtn2.sbFloat:hover{opacity:.85}
+#sbBtn.sbFloat:active,#sbBtn2.sbFloat:active{cursor:grabbing}
+/* The old expand/collapse arrows glyph is desktop-dead weight now (the capsule shape itself is
+   the whole affordance) but stays wired up for the mobile corner-button fallback just below,
+   where there's no panel edge to run a capsule along. */
+#sbBtn.sbFloat svg,#sbBtn2.sbFloat svg{display:none}
 /* ── buttons ── */
 .tbtn{
   background:var(--panel2); color:var(--text); border:none;
@@ -1631,23 +1643,13 @@ table.lv td{padding:6px 10px}
    match whichever button is .on; the transform+width transition is what makes it glide and
    resize between tabs instead of an underline jumping. */
 .tabs{position:relative;border-bottom:none;padding:4px;gap:2px}
-/* Reserves a gutter on the left of the tab row for #sbBtn/#sbBtn2 (the hide/show toggle), which
-   floats independently over the panel's top-left corner — see applyPos() below. Without this the
-   tab row (flex:1 buttons filling the header edge-to-edge) ran right underneath the button and
-   its sliding .tabpill highlight, on whichever side the button happened to float. Shifting the
-   whole row right by CSS padding (rather than moving the button off-panel entirely, which would
-   just land it over live chart content instead) keeps every button's own offsetLeft — and so the
-   pill's tracked position — correctly in sync automatically, no JS change needed. Applies to both
-   #side and #side2 (same .tabs class, same button/gutter relationship in each). 45px = the
-   button's 19px inset (see applyPos()'s own comment — same on both axes now) + its 22px width
-   + 4px clearance.
-   padding-RIGHT matches it — nothing occupies that side, it exists purely so the tab buttons sit
-   centered as a group within the row instead of skewed toward the right edge (the one-sided left
-   gutter left "Levels"/"GEX" visibly off-center — reported live, the icon wasn't literally
-   overlapping either tab, just eating unbalanced space next to them). Moving the icon itself
-   elsewhere would need to eat into the header's already-tight height for no better result than
-   this: a matching empty gutter reads identically to the eye as "the tabs are centered". */
-.tabs{padding-left:45px;padding-right:45px}
+/* This used to reserve an off-center 45px gutter on the left of the tab row (plus a matching
+   45px on the right purely to keep the tabs visually centered against it) for #sbBtn/#sbBtn2,
+   back when the hide/show toggle floated as a small icon button over the panel's own top-left
+   corner. #sbBtn is now a full-height capsule handle running along the OUTSIDE of whichever edge
+   of the panel it docks to (see applyPos()'s own dockLeft comment) — it never overlaps the header
+   on either side any more, on either edge, so there is nothing left for either gutter to clear.
+   The base .tabs rule above (padding:4px) is what actually governs this row's padding now. */
 .tabs button{flex:1;position:relative;z-index:1;display:flex;align-items:center;justify-content:center;
   gap:5px;border-bottom:none;border-radius:9px;padding:7px 0;transition:color .18s ease}
 .tabs button.on{border-bottom:none}
@@ -11576,15 +11578,20 @@ $$('.setsec').forEach(h=>{
 $('#setupBtn').onclick=openSetup;
 /* ── Side panel: floating, draggable, resizable, glass popout ──────────────────────────────
    Position/size persist in cfg.sideX/Y/W/H, visibility in the existing cfg.sb flag. Every one
-   of those renders onto .side (and onto #sbBtn, which now floats at the panel's own corner
-   instead of sitting in the topbar) as an inline transform, never left/top — transform is
-   compositor-only, so a drag or resize never forces a layout reflow on every pointer-move.
-   That distinction was measured, not assumed: this exact panel was first built as a standalone
-   design prototype, and left/top-driven dragging there visibly lagged behind the cursor while
-   switching to transform fixed it outright — ported straight through rather than re-learned.
+   of those renders onto .side (and onto #sbBtn, a full-height vertical capsule handle running
+   down whichever edge of the panel faces the nearer side of the screen — see applyPos()'s own
+   dockLeft comment) as an inline transform, never left/top — transform is compositor-only, so a
+   drag or resize never forces a layout reflow on every pointer-move. That distinction was
+   measured, not assumed: this exact panel was first built as a standalone design prototype, and
+   left/top-driven dragging there visibly lagged behind the cursor while switching to transform
+   fixed it outright — ported straight through rather than re-learned.
    Below 700px none of this runs; sideIsMobile() gates it back to the existing full-screen
    .mobopen overlay, which was already the right shape for a touch screen and is untouched. */
 const SIDE_MINW=300,SIDE_MAXW=640,SIDE_MINH=260,SIDE_MAXH=760;
+// Must match #sbBtn.sbFloat/#sbBtn2.sbFloat's own desktop `width` in CSS — kept as a JS constant
+// (not read back from the DOM) because applyPos() needs it for the handle's OWN x position math
+// below, the same way SIDE_MINW/SIDE_MINH above are shared constants rather than re-measured.
+const SIDE_HANDLE_W=10;
 function sideIsMobile(){return matchMedia('(max-width:700px)').matches;}
 // The popout must never be dragged/resized so it leaves the viewport or rides up over the
 // topbar — measured (not guessed) so it tracks the topbar's REAL rendered height, and cached
@@ -11623,7 +11630,7 @@ function initSidePopout(o){
   // their own pointerdown and decrement on their own end, so if two gestures somehow overlap (a
   // touch-capable desktop-width device with one pointer on the header and another on a corner),
   // the first one finishing can't zero this out from under the other still-live gesture — which
-  // would re-enable the .4s genie transition mid-drag and reintroduce the exact "panel lags
+  // would re-enable the slide/fade transition mid-drag and reintroduce the exact "panel lags
   // behind the cursor" bug transform-based positioning was built to avoid in the first place.
   let dragCount=0;
   // Set whenever a pointerdown-on-btn actually moved past the drag threshold — the click event
@@ -11668,7 +11675,7 @@ function initSidePopout(o){
       // them here rather than just losing to a flat display:none regardless of their value.
       side.style.transform='';side.style.width='';side.style.height='';side.style.transition='';
       side.style.opacity='';side.style.pointerEvents='';
-      btn.style.transform='';
+      btn.style.transform='';btn.style.width='';btn.style.height='';
       return;
     }
     const vw=innerWidth,vh=innerHeight,bx=hBounds();
@@ -11697,36 +11704,52 @@ function initSidePopout(o){
       }
     }
     const hidden=cfg[o.cfgHidden]===0;
-    const x=Math.round(cfg[o.cfgX]),y=Math.round(cfg[o.cfgY]);
-    side.style.width=cfg[o.cfgW]+'px';side.style.height=cfg[o.cfgH]+'px';
-    // Two rounds of a bespoke "genie into the button" effect (shrink-to-.04, then a rotate, then
-    // an overshoot ease) all read as gimmicky rather than polished. Dropped that whole approach in
-    // favor of reusing the app's OWN already-proven popover recipe verbatim - the exact numbers
-    // .tfmenu/.ctmenu/.scanmenu use (translate 8px, scale .97, plain ease, .16s) - just applied to
-    // a floating panel instead of an anchored popover. Same restrained motion the user already
-    // has around dropdowns everywhere else, not a new one invented for this one button.
+    const x=Math.round(cfg[o.cfgX]),y=Math.round(cfg[o.cfgY]),w=cfg[o.cfgW],h=cfg[o.cfgH];
+    side.style.width=w+'px';side.style.height=h+'px';
+    // Which half of the panel's own confined bounds (or the viewport, unconfined) its CENTER
+    // currently sits in decides both which edge the handle docks to and which direction hiding
+    // slides the panel — a panel living in the right half slides further right, off past the
+    // right edge, with its handle on the panel's own right edge; a panel in the left half mirrors
+    // this to the left. That match is what keeps the handle from ending up stranded in open canvas
+    // once the panel is gone: it's parked exactly where the panel now sits, just offscreen.
+    // Recomputed every call (cheap arithmetic), same as maxW/clampedH above, not cached — the
+    // panel can move between calls (drag, a symmetric-layout column resize) and this must never
+    // go stale.
+    const boundsLeft=bx?bx.left:0,boundsRight=bx?bx.right:vw;
+    const dockLeft=(x+w/2)<(boundsLeft+boundsRight)/2;
+    // Replaced the old shrink-toward-the-corner-button fade (translate 8px, scale .97) with an
+    // actual slide, on request — past the REAL edge of its bounds (viewport, or Pane 2's own
+    // confined column), not just "one panel-width from wherever it currently sits": a panel the
+    // user has dragged to the middle of a wide screen is nowhere near either edge, so sliding it
+    // only its own width would just relocate it to another fully on-screen spot instead of
+    // actually leaving view — confirmed live, exactly that on a 1435px-wide window. Anchoring the
+    // slide target to boundsLeft/boundsRight (the same box every other clamp in this function
+    // already respects) guarantees full clearance regardless of where the panel started. A little
+    // extra SLIDE_CLEAR past that edge so no 1px sliver is still peeking onscreen; cubic-bezier
+    // eases out fast then settles, reading as a drawer sliding shut rather than the plain-ease
+    // genie-fade this replaced.
+    const SLIDE_CLEAR=16;
     side.style.transform=hidden
-      ?`translate3d(${x}px,${y+8}px,0) scale(.97)`
-      :`translate3d(${x}px,${y}px,0) scale(1)`;
+      ?`translate3d(${dockLeft?boundsLeft-w-SLIDE_CLEAR:boundsRight+SLIDE_CLEAR}px,${y}px,0)`
+      :`translate3d(${x}px,${y}px,0)`;
     side.style.opacity=hidden?'0':'1';
     side.style.pointerEvents=hidden?'none':'auto';
-    side.style.transition=dragCount>0?'none':'transform .16s ease, opacity .16s ease';
-    // Top-LEFT corner, not top-right: the tab row's own reserved gutter (.tabs padding-left, see
-    // its own comment) is sized to this exact 19px inset, so the button never sits on top of a
-    // tab or the sliding .tabpill highlight the way a bare top-right placement did. Same 19px on
-    // BOTH axes now — was 12/19 (uneven: x picked to clear the tab row, y picked to clear
-    // .sideRsz-tl, the invisible 16px resize hit-zone in the panel's literal corner), which put
-    // the button visibly off-center in the rounded corner instead of evenly seated in it. Raising
-    // x to match y (rather than lowering y to match x) keeps the resize corner's hit-zone fully
-    // clear on both axes, same as before — no overlap traded away for the symmetry.
-    btn.style.transform=`translate3d(${x+19}px,${y+19}px,0)`;
+    side.style.transition=dragCount>0?'none':'transform .22s cubic-bezier(.2,.8,.2,1), opacity .18s ease';
+    // The handle itself never hides or slides away with the panel — it stays parked at the SAME
+    // x/y regardless of `hidden`, exactly the "always there to click" contract the old corner
+    // button already had (its own transform never depended on `hidden` either), just generalized
+    // from one fixed corner to a full-height edge that can now be on either side of the panel.
+    btn.style.width=SIDE_HANDLE_W+'px';btn.style.height=h+'px';
+    btn.style.transform=`translate3d(${dockLeft?x-SIDE_HANDLE_W:x+w}px,${y}px,0)`;
   }
   function setHidden(hidden){
     cfg[o.cfgHidden]=hidden?0:1;saveCfg();
     btn.title=hidden?o.showTitle:o.hideTitle;
     const icon=$(o.iconSel);if(icon)icon.classList.toggle('flip',hidden);
     applyPos();
-    // side is scaled to ~0 while hidden, so the tab buttons measure 0 until it is shown again
+    // Deferred one frame so this reads the tab buttons' rects AFTER the just-applied transform
+    // actually lands (opacity/pointer-events flip synchronously above, but the slide itself is a
+    // transitioned transform) rather than mid-transition.
     if(!hidden)requestAnimationFrame(()=>moveTabPill(side));
   }
   btn.onclick=()=>{
