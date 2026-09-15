@@ -969,6 +969,16 @@ body.tab-hidden .tbheart,body.tab-hidden .tbjet,body.tab-hidden .bspin{animation
     color:var(--axistext)}
   #sbBtn.sbFloat:hover{background:rgba(255,255,255,.10)!important}
   #sbBtn.sbFloat svg{display:block!important;width:16px!important;height:16px!important}
+  /* The desktop .tabs rule's 26px side padding (breathing room around the edge-docked handle,
+     see its own comment) is dead weight here — mobile has no edge handle at all, just the small
+     pinned corner button above, so this would only crowd the tab row's actual labels for nothing.
+     !important, deliberately: this media-query rule sits EARLIER in the file than the desktop
+     26px rule it needs to beat, and neither selector is more specific than the other, so without
+     !important the plain "last one in source order wins" tie-break would hand it to the desktop
+     rule regardless of which media query is actually active — the exact bug #sbBtn.sbFloat's own
+     border-radius hit earlier for the same reason. The desktop rule stays plain (not !important)
+     specifically so this can always beat it outright, independent of ordering. */
+  .tabs{padding-left:4px!important;padding-right:4px!important}
   #toasts{right:12px}
   .toast{min-width:0;max-width:calc(100vw - 24px)}
   .tbpix{display:none}
@@ -1082,9 +1092,10 @@ input[type=checkbox]{accent-color:var(--accent)}
    button itself IS the shape, with no inner glyph, rather than an icon sitting inside a box.
    cursor:grab because it doubles as a drag-the-whole-panel handle, same as the old corner button
    did (see the pointerdown wiring in initSidePopout).
-   Colour is var(--panel2) - the same flat dark grey .scancard (Scanner's own cards) already use,
-   on request - not background:currentColor/var(--axistext) any more, so this one specific icon no
-   longer tracks the user's Axis Text Color setting; that was a deliberate ask, not an oversight. */
+   Colour started at var(--panel2) - the same flat dark grey .scancard (Scanner's own cards) use -
+   then nudged one step lighter to var(--line) on request ("a tiny bit lighter"); not
+   background:currentColor/var(--axistext) any more, so this one specific icon no longer tracks
+   the user's Axis Text Color setting - that was a deliberate ask, not an oversight. */
 #sbBtn.sbFloat,#sbBtn2.sbFloat{position:fixed;left:0;top:0;z-index:56;width:22px;height:22px;
   display:flex!important;
   padding:0!important;margin:0;
@@ -1097,7 +1108,7 @@ input[type=checkbox]{accent-color:var(--accent)}
      ordering; nothing else in this stylesheet targets #sbBtn.sbFloat's border-radius, so there is
      nothing else this plain declaration needs to outrank at desktop widths either. */
   border-radius:999px;
-  background:var(--panel2);border:none!important;box-shadow:none!important;
+  background:var(--line);border:none!important;box-shadow:none!important;
   cursor:grab;
   transition:background .12s ease}
 /* Lightens toward --line2 (the same step .tbtn's own hover already uses) instead of an opacity
@@ -1653,10 +1664,14 @@ table.lv td{padding:6px 10px}
 /* This used to reserve an off-center 45px gutter on the left of the tab row (plus a matching
    45px on the right purely to keep the tabs visually centered against it) for #sbBtn/#sbBtn2,
    back when the hide/show toggle floated as a small icon button over the panel's own top-left
-   corner. #sbBtn is now a full-height capsule handle running along the OUTSIDE of whichever edge
-   of the panel it docks to (see applyPos()'s own dockLeft comment) — it never overlaps the header
-   on either side any more, on either edge, so there is nothing left for either gutter to clear.
-   The base .tabs rule above (padding:4px) is what actually governs this row's padding now. */
+   corner. #sbBtn is now a full-height capsule handle sitting INSIDE whichever edge of the panel
+   it docks to (see applyPos()'s own dockLeft comment) — vertically clear of this row entirely
+   (TOP_CLEAR there keeps it below the whole header), but close enough horizontally that the tab
+   labels read as crowded right up against it, on request. 26px on BOTH sides (not just whichever
+   edge the handle happens to be docked to — the handle can be on either one, and this row's own
+   layout can't reflow around it) gives breathing room on the side that matters without needing to
+   know which side that is. */
+.tabs{padding-left:26px;padding-right:26px}
 .tabs button{flex:1;position:relative;z-index:1;display:flex;align-items:center;justify-content:center;
   gap:5px;border-bottom:none;border-radius:9px;padding:7px 0;transition:color .18s ease}
 .tabs button.on{border-bottom:none}
@@ -11714,46 +11729,29 @@ function initSidePopout(o){
     const x=Math.round(cfg[o.cfgX]),y=Math.round(cfg[o.cfgY]),w=cfg[o.cfgW],h=cfg[o.cfgH];
     side.style.width=w+'px';side.style.height=h+'px';
     // Which half of the panel's own confined bounds (or the viewport, unconfined) its CENTER
-    // currently sits in decides both which edge the handle docks to and which direction hiding
-    // slides the panel — a panel living in the right half slides further right, off past the
-    // right edge, with its handle on the panel's own right edge; a panel in the left half mirrors
-    // this to the left. That match is what keeps the handle from ending up stranded in open canvas
-    // once the panel is gone: it's parked exactly where the panel now sits, just offscreen.
-    // Recomputed every call (cheap arithmetic), same as maxW/clampedH above, not cached — the
-    // panel can move between calls (drag, a symmetric-layout column resize) and this must never
-    // go stale.
+    // currently sits in decides which edge the handle docks to — a panel living in the right half
+    // gets its handle on the panel's own right edge; a panel in the left half mirrors this to the
+    // left. Also drives the hide/show shrink's own transform-origin below, so "genie into the
+    // button" points at wherever the handle actually is. Recomputed every call (cheap arithmetic),
+    // same as maxW/clampedH above, not cached — the panel can move between calls (drag, a
+    // symmetric-layout column resize) and this must never go stale.
     const boundsLeft=bx?bx.left:0,boundsRight=bx?bx.right:vw;
     const dockLeft=(x+w/2)<(boundsLeft+boundsRight)/2;
-    // Replaced the old shrink-toward-the-corner-button fade (translate 8px, scale .97) with an
-    // actual slide, on request — past the REAL edge of its bounds (viewport, or Pane 2's own
-    // confined column), not just "one panel-width from wherever it currently sits": a panel the
-    // user has dragged to the middle of a wide screen is nowhere near either edge, so sliding it
-    // only its own width would just relocate it to another fully on-screen spot instead of
-    // actually leaving view — confirmed live, exactly that on a 1435px-wide window. Anchoring the
-    // slide target to boundsLeft/boundsRight (the same box every other clamp in this function
-    // already respects) guarantees full clearance regardless of where the panel started.
-    const SLIDE_CLEAR=16;
-    // One shared easing/duration for the panel's slide AND the handle's own reposition (below) —
-    // on request, so a dockLeft flip (the panel dragged across the midpoint of its bounds) glides
-    // the handle to its new edge in the same motion as the panel's own slide, instead of the
-    // handle instantly snapping there while the panel glides.
-    // No opacity fade any more, on request — "slide" was meant literally: the panel stays fully
-    // opaque and just moves, like scrolling a carousel item off/onto screen, rather than fading
-    // while it moves (a fade read as still genie-ish even with the scale gone). transform is now
-    // the only thing this transitions.
-    const SLIDE_EASE='cubic-bezier(.4,0,.2,1)';
-    const slideT=dragCount>0?'none':`transform .3s ${SLIDE_EASE}`;
+    // Slide (both the "past its own width" version and the later pure-transform/no-fade version)
+    // read as "ugly" on request — reverted to the original shrink-toward-the-button fade: translate
+    // 8px, scale .97, opacity fade, .16s plain ease, the exact numbers .tfmenu/.ctmenu/.scanmenu
+    // already use elsewhere in this file. transform-origin now tracks the handle's OWN edge
+    // (dockLeft) instead of a fixed top-left corner the way the very first version of this did —
+    // the handle itself can dock to either side of the panel now, and "genie into the button" only
+    // reads correctly when the shrink actually points at wherever the button currently is.
+    const SLIDE_EASE='cubic-bezier(.4,0,.2,1)';   // still used below, for the handle's OWN reposition transition only
+    side.style.transformOrigin=(dockLeft?30:w-30)+'px 30px';
     side.style.transform=hidden
-      ?`translate3d(${dockLeft?boundsLeft-w-SLIDE_CLEAR:boundsRight+SLIDE_CLEAR}px,${y}px,0)`
-      :`translate3d(${x}px,${y}px,0)`;
-    // Always fully opaque now (no fade — see the slideT comment above); pointer-events is what
-    // actually keeps a hidden-but-still-technically-onscreen-during-transit panel from intercepting
-    // clicks. Set unconditionally rather than left alone, so a panel some earlier build of this
-    // code left at opacity:0 can never get stuck invisible after showing — this is the only place
-    // .side's opacity is ever written now.
-    side.style.opacity='1';
+      ?`translate3d(${x}px,${y+8}px,0) scale(.97)`
+      :`translate3d(${x}px,${y}px,0) scale(1)`;
+    side.style.opacity=hidden?'0':'1';
     side.style.pointerEvents=hidden?'none':'auto';
-    side.style.transition=slideT;
+    side.style.transition=dragCount>0?'none':'transform .16s ease, opacity .16s ease';
     // The handle sits INSIDE the panel's own rounded edge, not protruding past it — EDGE_INSET
     // clears it from the panel's true left/right boundary. Vertical clearance is asymmetric:
     // TOP_CLEAR has to clear the WHOLE 44px header/tab row (.sideHead's own max-height), not just
