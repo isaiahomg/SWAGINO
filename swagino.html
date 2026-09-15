@@ -3576,6 +3576,26 @@ function makePane(idx){
   // breaking the crosshair sync FROM the volume/RSI panels back onto the price pane (the failure is
   // swallowed by this function's own try/catch, so it would otherwise fail with no visible error).
   crossSync(pane,[{chart:chart,get series(){return pane.candles;},key:'close'},{chart:vchart,series:vol,key:'vol'},{chart:rchart,series:rsi,key:'rsi'},{chart:mchart,series:macdLine,key:'macd'}]);
+  // The cursor's own native price readout (the axis label the crosshair draws at the cursor's Y,
+  // enabled via handleScale/crosshair above) is painted INSIDE the chart's <canvas> — every one
+  // of our OWN axis badges (.axpx-lvl/.axpx-saty/GEX's own, all sharing the .axpx base class) is
+  // a plain HTML div in the .tips overlay sitting on top of that canvas (position:absolute always
+  // paints above a plain static canvas, regardless of any z-index value — nothing was ever
+  // deliberately "pushing" one or the other, our badges just always won that pixel by default).
+  // On request the cursor's own label should always be the thing you see there instead — hides
+  // whichever of THIS pane's own axis badges the crosshair's Y currently sits within, rather than
+  // repositioning/pushing anything: purely a visibility toggle, re-evaluated on every crosshair
+  // move (cheap - a handful of badges, checked against one Y value) and cleared the moment the
+  // cursor leaves the pane so nothing is left permanently hidden.
+  const AXPX_HIDE_DIST=9;   // roughly half a badge's own rendered height
+  chart.subscribeCrosshairMove(param=>{
+    const host=$('#tips'+idx);if(!host)return;
+    const y=param&&param.point?param.point.y:null;
+    host.querySelectorAll('.axpx').forEach(b=>{
+      const by=parseFloat(b.style.top);
+      b.style.visibility=(y!=null&&!isNaN(by)&&Math.abs(by-y)<AXPX_HIDE_DIST)?'hidden':'';
+    });
+  });
   trackOverlays(pane);
   applyRsiBands(pane);
   // The HTML overlays (session shading, EMA tags, structure labels, the countdown) are
