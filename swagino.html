@@ -5890,10 +5890,13 @@ function lvSeg(host,y,gaps,plotW,L){
   };
   // `gaps` is every label sitting on this row (sorted left to right) — not just this line's own —
   // so the line steps around ALL of them: two colliding labels slide apart HORIZONTALLY onto the
-  // SAME row (deoverlapLabels never moves a label off its own price), so a line that only cleared
-  // its own label would still run straight through whichever neighbour just slid in next to it.
+  // SAME row (deoverlapLabels/deoverlapLevelLabels never move a label off its own price), so a
+  // line that only cleared its own label would still run straight through whichever neighbour
+  // just slid in next to it. Each gap carries its own pad: a LEVEL label (gp.lvl) breaks the line
+  // flush against its exact rendered edges (0px — pixel-perfect, matches deoverlapLevelLabels()'
+  // own zero-gap placement); any other family (Saty) keeps the original 5px breathing room.
   let cursor=0;
-  gaps.forEach(gp=>{ bar(cursor,Math.max(cursor,gp.x0-5)); cursor=Math.max(cursor,gp.x1+5); });
+  gaps.forEach(gp=>{ const pad=gp.lvl?0:5; bar(cursor,Math.max(cursor,gp.x0-pad)); cursor=Math.max(cursor,gp.x1+pad); });
   bar(cursor,plotW);
 }
 // Every level / Saty / structure-break / alert line, drawn AFTER deoverlapLabels so each line's
@@ -5917,12 +5920,14 @@ function drawLevelSegments(p){
   host.querySelectorAll('.lvltag,.satylab').forEach(lbl=>{
     const L=lbl.__line;if(!L||lbl.style.display==='none')return;
     const r=lbl.getBoundingClientRect();                 // READ (batched — no writes between them)
-    items.push({L,x0:r.left-hr.left,x1:r.right-hr.left});
+    items.push({L,x0:r.left-hr.left,x1:r.right-hr.left,lvl:lbl.classList.contains('lvltag')});
   });
   // A row is any set of labels within one label-height of each other's y (matches the row test
-  // deoverlapLabels itself uses), regardless of which family each one belongs to.
+  // deoverlapLabels/deoverlapLevelLabels themselves use), regardless of which family each one
+  // belongs to. `lvl` rides along per gap so lvSeg can give a level label's own edges 0px pad
+  // (pixel-perfect) while leaving any other family's gap at its original size.
   items.forEach(it=>{
-    const gaps=items.filter(o=>Math.abs(o.L.y-it.L.y)<13).map(o=>({x0:o.x0,x1:o.x1})).sort((a,b)=>a.x0-b.x0);
+    const gaps=items.filter(o=>Math.abs(o.L.y-it.L.y)<13).map(o=>({x0:o.x0,x1:o.x1,lvl:o.lvl})).sort((a,b)=>a.x0-b.x0);
     lvSeg(host,it.L.y,gaps,plotW,it.L);
   });   // WRITE
 }
@@ -6471,14 +6476,15 @@ function positionTips(p){
   if(p.idx===1&&cfg.link===false&&gex2Board)renderGexLevels(gex2Board.levels,[p],true);
   positionAxisChrome(p);
   deoverlapLabels($('#tips'+p.idx));
+  deoverlapLevelLabels($('#tips'+p.idx));
   drawLevelSegments(p);
 }
 /* Two labels at two different prices can still land on top of each other — the EMA 9 and
-   EMA 20 tags whenever the fast and slow lines converge, a swing label sitting on a
-   level tag, and so on. Each label knows the y it WANTS (data-y, written by whoever
-   positioned it), so this pass always resolves from the anchor and never from last frame's
-   nudge: it is idempotent, which is what lets it run on every frame of a drag without the
-   labels creeping away from their lines.
+   EMA 20 tags whenever the fast and slow lines converge, a swing label sitting on a Saty
+   rung, and so on. Each label knows the y it WANTS (data-y, written by whoever positioned
+   it), so this pass always resolves from the anchor and never from last frame's nudge: it
+   is idempotent, which is what lets it run on every frame of a drag without the labels
+   creeping away from their lines.
 
    Labels that collide are separated HORIZONTALLY: the one behind slides left along its own
    line until it clears the one in front. A label's y is what ties it to its price, so moving
@@ -6486,14 +6492,19 @@ function positionTips(p){
    line it belongs to. If it would run off the left edge it goes right instead.
 
    One batched read pass, then one batched write pass. Interleaving them would force a
-   layout per label and that is exactly the lag this is supposed to avoid. */
+   layout per label and that is exactly the lag this is supposed to avoid.
+
+   .lvltag (level labels) is deliberately NOT in this list any more — see
+   deoverlapLevelLabels() just below, its own dedicated pass. Swing/Saty/BOS-CHoCH labels
+   only ever collide against each other here now: a level label can no longer trigger,
+   participate in, or reposition any of them, and none of them can do that to a level label. */
 function deoverlapLabels(host){
   if(!host)return;
   const els=[];
   /* .tip is deliberately NOT in this list. An EMA tag only means anything sitting beside
      its own line, and de-overlapping slid it away whenever two averages converged - which
      is exactly when you most need to see which is which. They are allowed to overlap. */
-  host.querySelectorAll('.swlab,.satylab,.brklab,.lvltag').forEach(e=>{
+  host.querySelectorAll('.swlab,.satylab,.brklab').forEach(e=>{
     if(e.style.display==='none'||e.dataset.y==null)return;
     els.push(e);
   });
@@ -6514,6 +6525,50 @@ function deoverlapLabels(host){
       const left=hit.x-b.w-6;
       x=left>=2?left:hit.x+hit.w+6;
       if(x+b.w>paneW-2)x=Math.max(2,hit.x-b.w-6);
+    }
+    b.x=x;placed.push(b);
+  });
+  box.forEach(b=>{
+    // right-anchored labels keep their anchor; everything else is placed from the left
+    if(b.e.style.right)b.e.style.right=Math.max(0,paneW-b.x-b.w)+'px';
+    else b.e.style.left=b.x+'px';
+  });
+}
+/* Level labels' (.lvltag) OWN collision pass — fully separate from deoverlapLabels() above so
+   swing/Saty/BOS-CHoCH labels can never be involved on either side of a level-label collision.
+   Same horizontal-only, left-preferred-else-right, re-anchored-every-frame contract (see the
+   comment on deoverlapLabels() — it applies here too; positionLvlTags() resets every .lvltag's
+   style.right to its true anchor immediately before this runs on every call site, so there is
+   nothing to accumulate drift from frame to frame).
+   The one real difference: the hit-test here is the labels' exact rendered rectangles, no
+   synthetic buffer — two level labels are only pushed apart when they would genuinely overlap
+   on screen, and the resulting placement sits them edge-to-edge (0px), not with an arbitrary
+   gap — pixel-perfect in both the detection and the result, matching drawLevelSegments()'s own
+   zero-gap treatment of level-label line breaks just below. */
+function deoverlapLevelLabels(host){
+  if(!host)return;
+  const els=[];
+  host.querySelectorAll('.lvltag').forEach(e=>{
+    if(e.style.display==='none'||e.dataset.y==null)return;
+    els.push(e);
+  });
+  if(els.length<2)return;
+  const box=els.map(e=>({e,y:+e.dataset.y,h:e.offsetHeight||13,
+                         x:e.offsetLeft,w:e.offsetWidth||36}));
+  const paneW=host.clientWidth||600;
+  box.sort((a,b)=>b.x-a.x);                       // right-most keeps its place
+  const placed=[];
+  box.forEach(b=>{
+    let x=b.x;
+    for(let guard=0;guard<24;guard++){
+      const hit=placed.find(o=>{
+        if(Math.abs(o.y-b.y)>=(o.h+b.h)/2)return false;     // different rows never clash
+        return !(x+b.w<=o.x||x>=o.x+o.w);                   // exact rect overlap, no buffer
+      });
+      if(!hit)break;
+      const left=hit.x-b.w;
+      x=left>=2?left:hit.x+hit.w;
+      if(x+b.w>paneW-2)x=Math.max(2,hit.x-b.w);
     }
     b.x=x;placed.push(b);
   });
@@ -7548,7 +7603,7 @@ function drawLevels(){visPanes().forEach(p=>{
   // with cfg.sym's `levels`, or the two would race to clear/redraw the same price lines.
   if(p.idx===1&&cfg.link===false)return;
   drawLevelsOn(p);positionLvlTags(p);
-  deoverlapLabels($('#tips'+p.idx));drawLevelSegments(p);});drawAlertLines();
+  deoverlapLabels($('#tips'+p.idx));deoverlapLevelLabels($('#tips'+p.idx));drawLevelSegments(p);});drawAlertLines();
   // GEX is excluded from drawLevelsOn's own pass (see there) and normally kept current by
   // parseGexRows calling this directly whenever GEX's OWN data changes. Also reconciling it here
   // is what makes an UNRELATED redraw trigger — the category toggle (setCat), a symbol switch,
@@ -8682,7 +8737,7 @@ let levels2At=0;
 function redrawPane2Levels(){
   const p=panes[1];if(!p)return;
   drawLevelsOn(p,levels2);positionLvlTags(p);
-  deoverlapLabels($('#tips1'));drawLevelSegments(p);
+  deoverlapLabels($('#tips1'));deoverlapLevelLabels($('#tips1'));drawLevelSegments(p);
 }
 // Live "computed HH:MM · Ns ago" stamp, ticked once a second so it is obvious at a glance
 // whether the ladder is current or the feed has stalled.
@@ -10735,7 +10790,7 @@ function teardownPane2Levels(){
   gex2Contracts=new Map();gex2ByStrike={};gex2ByExp={};gex2WsSymbols=[];gex2Spot=null;
   gexResubscribe();
   const p=panes[1];
-  if(p){drawLevelsOn(p,[]);positionLvlTags(p);deoverlapLabels($('#tips1'));drawLevelSegments(p);}
+  if(p){drawLevelsOn(p,[]);positionLvlTags(p);deoverlapLabels($('#tips1'));deoverlapLevelLabels($('#tips1'));drawLevelSegments(p);}
   renderGexLevels([],[panes[1]].filter(Boolean),true);
   $('#lvlTable2').innerHTML='';$('#gexSummary2').innerHTML='';renderGexHeat(true);gexStatus(true);
   hidePane2Levels();
