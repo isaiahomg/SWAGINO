@@ -8898,12 +8898,17 @@ function renderLevelTable2(){
 // line and segment on the board — see emitPreview()'s own comment for why this exists. Visual-only:
 // does not touch lvlSty or call drawLevels()/redrawPane2Levels() — openLevelStyler's own cb, below,
 // is what actually persists the edit, on release.
+// GEX levels share this exact same styler/key (renderGexLevels' tagEl.onclick also calls
+// openLevelStyler) but render through their OWN entirely separate pipeline (gexRedrawSeg, keyed
+// off data-gexkey, not data-key/data-ownerkey — see renderGexLevels' own comment on why) so both
+// attribute forms are matched here too, or dragging a GEX level's color would silently preview
+// only its table-swatch row and leave the actual on-chart tag/badge/line frozen until release.
 function previewLevelColor(key,color,tc){
   document.querySelectorAll('.lvsw[data-key="'+key+'"]').forEach(e=>e.style.background=color);
-  document.querySelectorAll('.lvltag[data-key="'+key+'"]').forEach(e=>{
+  document.querySelectorAll('.lvltag[data-key="'+key+'"],.lvltag[data-gexkey="'+key+'"]').forEach(e=>{
     e.style.color=tc;if(e.__line)e.__line.color=color;});
-  document.querySelectorAll('.axpx-lvl[data-lvlkey="'+key+'"]').forEach(e=>e.style.background=color);
-  document.querySelectorAll('.lvseg[data-ownerkey="'+key+'"]').forEach(e=>e.style.borderTopColor=color);
+  document.querySelectorAll('.axpx-lvl[data-lvlkey="'+key+'"],.axpx-lvl[data-gexkey="'+key+'"]').forEach(e=>e.style.background=color);
+  document.querySelectorAll('.lvseg[data-ownerkey="'+key+'"],.lvseg[data-gexkey="'+key+'"]').forEach(e=>e.style.borderTopColor=color);
 }
 function openLevelStyler(anchorEl,key,alt){
   const src=alt?levels2:levels;
