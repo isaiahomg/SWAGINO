@@ -5922,13 +5922,17 @@ function drawLevelSegments(p){
   host.querySelectorAll('.lvltag,.satylab').forEach(lbl=>{
     const L=lbl.__line;if(!L||lbl.style.display==='none')return;
     const r=lbl.getBoundingClientRect();                 // READ (batched — no writes between them)
-    items.push({L,x0:r.left-hr.left,x1:r.right-hr.left});
+    items.push({L,x0:r.left-hr.left,x1:r.right-hr.left,lvl:lbl.classList.contains('lvltag')});
   });
-  // A row is any set of labels within one label-height of each other's y (matches the row test
-  // deoverlapLabels/deoverlapLevelLabels themselves use), regardless of which family each one
-  // belongs to — lvSeg's own LVL_GAP_PAD applies the same pixel-tight gap to all of them alike.
+  // A row is any set of SAME-FAMILY labels within one label-height of each other's y (matches the
+  // row test deoverlapLabels/deoverlapLevelLabels themselves use) — cross-family clearance was
+  // removed on request: a level label's line no longer steps around a nearby Saty label (or vice
+  // versa), only around another label of its OWN family, since only same-family labels are ever
+  // horizontally repositioned relative to each other (deoverlapLabels and deoverlapLevelLabels are
+  // fully separate passes — see their own comments). A level line and a Saty line can now sit
+  // close together without either one detouring around the other's text.
   items.forEach(it=>{
-    const gaps=items.filter(o=>Math.abs(o.L.y-it.L.y)<13).map(o=>({x0:o.x0,x1:o.x1})).sort((a,b)=>a.x0-b.x0);
+    const gaps=items.filter(o=>o.lvl===it.lvl&&Math.abs(o.L.y-it.L.y)<13).map(o=>({x0:o.x0,x1:o.x1})).sort((a,b)=>a.x0-b.x0);
     lvSeg(host,it.L.y,gaps,plotW,it.L);
   });   // WRITE
 }
