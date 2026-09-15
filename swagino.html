@@ -11733,15 +11733,23 @@ function initSidePopout(o){
     const hidden=cfg[o.cfgHidden]===0;
     const x=Math.round(cfg[o.cfgX]),y=Math.round(cfg[o.cfgY]),w=cfg[o.cfgW],h=cfg[o.cfgH];
     side.style.width=w+'px';side.style.height=h+'px';
-    // Which half of the panel's own confined bounds (or the viewport, unconfined) its CENTER
-    // currently sits in decides which edge the handle docks to — a panel living in the right half
-    // gets its handle on the panel's own right edge; a panel in the left half mirrors this to the
-    // left. Also drives the hide/show shrink's own transform-origin below, so "genie into the
-    // button" points at wherever the handle actually is. Recomputed every call (cheap arithmetic),
-    // same as maxW/clampedH above, not cached — the panel can move between calls (drag, a
-    // symmetric-layout column resize) and this must never go stale.
     const boundsLeft=bx?bx.left:0,boundsRight=bx?bx.right:vw;
-    const dockLeft=(x+w/2)<(boundsLeft+boundsRight)/2;
+    // Defaults to the panel's LEFT edge always, on request — no longer flips just because the
+    // panel's CENTER crosses the midpoint of its bounds, which read as arbitrary (dragging one
+    // pixel past that line flipped the handle to the other edge for no real reason). Only actually
+    // moves to the right edge if the left edge would be obstructed: pushed outside this popout's
+    // own confined bounds. In practice this only has any teeth for Pane 2's popout (boundsSel
+    // confines it to its own column) — the main popout has no confinement at all (bx is null,
+    // boundsLeft is always 0), and clampSideXY already guarantees the panel's own x can never go
+    // below boundsLeft, so a left-docked handle (inset EDGE_INSET further right than that) can
+    // never actually be pushed past it either. The check still runs rather than being hardcoded to
+    // true, so it stays correct if that guarantee ever changes. Also drives the hide/show shrink's
+    // own transform-origin below, so "genie into the button" points at wherever the handle actually
+    // is. Recomputed every call (cheap arithmetic), same as maxW/clampedH above, not cached — the
+    // panel can move between calls (drag, a symmetric-layout column resize) and this must never go
+    // stale.
+    const EDGE_INSET=8;
+    const dockLeft=(x+EDGE_INSET)>=boundsLeft;
     // Slide (both the "past its own width" version and the later pure-transform/no-fade version)
     // read as "ugly" on request — reverted to the original shrink-toward-the-button fade: translate
     // 8px, scale .97, opacity fade, .16s plain ease, the exact numbers .tfmenu/.ctmenu/.scanmenu
@@ -11771,7 +11779,7 @@ function initSidePopout(o){
     // pushed well clear of both edges, the handle and the pill no longer share ANY x-range at all
     // (verified live), so there is nothing left for a tall top clearance to protect against; a plain
     // corner-radius-sized gap is enough on both ends.
-    const EDGE_INSET=8,TOP_CLEAR=16,BOTTOM_CLEAR=16;
+    const TOP_CLEAR=16,BOTTOM_CLEAR=16;
     btn.style.width=SIDE_HANDLE_W+'px';btn.style.height=Math.max(20,h-TOP_CLEAR-BOTTOM_CLEAR)+'px';
     btn.style.transform=`translate3d(${dockLeft?x+EDGE_INSET:x+w-SIDE_HANDLE_W-EDGE_INSET}px,${y+TOP_CLEAR}px,0)`;
     btn.style.transition=dragCount>0?'none':`transform .3s ${SLIDE_EASE}, opacity .12s ease`;
