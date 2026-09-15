@@ -10661,6 +10661,59 @@ function log(msg,cls){
 /* ---------- loaders ---------- */
 function mapTsRow(r){const t=+r.timestamp;const p=etParts(new Date(t*1000));
   return{t,o:+r.open,h:+r.high,l:+r.low,c:+r.close,v:+r.volume||0,etYmd:p.ymd,etMin:p.h*60+p.m,etHm:p.hm};}
+// A single erroneous/outlier trade occasionally lands inside one of Tradier's own 5m/15m bars
+// during thin extended-hours tape and gets taken as that bar's high or low verbatim, even
+// though almost none of the bar's real volume traded anywhere near it — this app used to trust
+// Tradier's high/low unconditionally, so that stray print became a permanent, wrong-looking
+// wick on the chart. Tradier's own vwap field (returned on every timesales row but discarded by
+// mapTsRow until now) is the tell: on a genuine bad print the real volume-weighted price sits
+// tight against the OPPOSITE end of the bar from the spike. Confirmed live across 10 days / 9
+// symbols (2026-09-15): QQQ 9/10 08:20 (high 716.83 vs vwap 710.97, body ~710.6-711.1), QQQ
+// 9/14 08:25 (high 715.42 vs vwap 703.58, body ~703.4-703.7 — the exact "one long candle not at
+// the correct price while the live price was actively moving" symptom reported live), AMZN 9/8
+// 08:15, NVDA 9/14 08:25 — all thin-tape premarket prints with unremarkable bar volume.
+// Genuine large moves must NOT be touched: the 4pm closing-auction prints on NVDA 9/11 and META
+// 9/10 (real, legitimate multi-million-share events) have the same lopsided-vwap shape but 30-44x
+// the LOCAL median volume for that time of day — volRatio below is what tells a stray print
+// (unremarkable volume) apart from real price discovery (volume far above the local norm), not
+// the vwap shape alone. Only ever clips a bar's high/low, and only down to a bound still at or
+// beyond that same bar's own open/close — a candle's open and close are each a real single
+// trade by definition, so this can never clip past them (confirmed: SPY 9/15's 04:00 bar has
+// its suspect value sitting exactly AT its own open, not a mid-bar wick, and is correctly left
+// untouched by this floor rather than second-guessing a real print).
+function cleanBadPrintRows(rows){
+  const n=rows.length;
+  const R=rows.map(r=>{const h=+r.high,l=+r.low;return isFinite(h)&&isFinite(l)?h-l:0;});
+  const V=rows.map(r=>+r.volume||0);
+  for(let i=0;i<n;i++){
+    const range=R[i];if(!(range>0))continue;
+    const o=+rows[i].open,h=+rows[i].high,l=+rows[i].low,c=+rows[i].close,vwap=+rows[i].vwap;
+    if(!isFinite(vwap))continue;
+    const rwin=R.slice(Math.max(0,i-15),i).concat(R.slice(i+1,i+16));
+    if(rwin.length<10)continue;
+    const srw=[...rwin].sort((a,b)=>a-b),medianR=srw[Math.floor(srw.length/2)];
+    if(!(medianR>0)||!(range>Math.max(8*medianR,o*0.001)))continue;
+    const vwapPos=(vwap-l)/range;
+    if(!(vwapPos<0.15||vwapPos>0.85))continue;
+    const vwin=V.slice(Math.max(0,i-15),i).concat(V.slice(i+1,i+16));
+    const svw=[...vwin].sort((a,b)=>a-b),medianV=svw[Math.floor(svw.length/2)];
+    if(!(medianV>0)||V[i]/medianV>10)continue;   // real price discovery carries volume far above the local norm — leave it alone
+    if(vwapPos<0.15){
+      const clipped=Math.max(vwap+2*medianR,o,c);
+      if(clipped<h){
+        log('Bad print filtered — '+(rows[i].time||rows[i].timestamp)+' high '+h.toFixed(2)+' (vwap '+vwap.toFixed(2)+', '+V[i].toLocaleString()+' vol) clipped to '+clipped.toFixed(2),'warn');
+        rows[i].high=clipped;
+      }
+    }else{
+      const clipped=Math.min(vwap-2*medianR,o,c);
+      if(clipped>l){
+        log('Bad print filtered — '+(rows[i].time||rows[i].timestamp)+' low '+l.toFixed(2)+' (vwap '+vwap.toFixed(2)+', '+V[i].toLocaleString()+' vol) clipped to '+clipped.toFixed(2),'warn');
+        rows[i].low=clipped;
+      }
+    }
+  }
+  return rows;
+}
 // Re-pull the dailies when the session date moves on. Cheap (one request, ~1200 rows) and
 // it only fires on the first tick of a new trading day, so it costs nothing intraday.
 let dailyYmd=null;
@@ -10771,6 +10824,7 @@ async function fetchTsRange(interval,startD,endD,sym){
   }
   // LOCAL-DIAG-ONLY
   const rows=Array.isArray(data)?data:data?[data]:[];
+  cleanBadPrintRows(rows);
   const mapped=rows.map(mapTsRow);
   // LOCAL-DIAG-ONLY
   if(diagOn())mapped.forEach(r=>diagLog('POST_MAP',{interval,t:r.t,o:r.o,h:r.h,l:r.l,c:r.c,v:r.v,etYmd:r.etYmd,etMin:r.etMin,etHm:r.etHm}));
