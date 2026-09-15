@@ -961,7 +961,12 @@ body.tab-hidden .tbheart,body.tab-hidden .tbjet,body.tab-hidden .bspin{animation
   #sbBtn.sbFloat{left:auto!important;top:8px!important;right:8px!important;transform:none!important;
     width:22px!important;height:22px!important;border-radius:7px!important;
     background:none!important;opacity:1!important;cursor:pointer!important;
-    display:flex!important;align-items:center;justify-content:center}
+    display:flex!important;align-items:center;justify-content:center;
+    /* The desktop base rule no longer sets `color` at all (it doesn't need currentColor once its
+       background is a fixed var(--panel2) instead of background:currentColor) - restated here
+       explicitly because the arrows SVG below still needs it for stroke="currentColor" to follow
+       the user's Axis Text Color setting the way it always has on mobile. */
+    color:var(--axistext)}
   #sbBtn.sbFloat:hover{background:rgba(255,255,255,.10)!important}
   #sbBtn.sbFloat svg{display:block!important;width:16px!important;height:16px!important}
   #toasts{right:12px}
@@ -1074,13 +1079,12 @@ input[type=checkbox]{accent-color:var(--accent)}
    a small glyph-in-a-square pinned to the popout's own top-left corner. It's now a solid vertical
    capsule running the full height of whichever edge of the panel faces the nearer side of the
    screen (position/size/edge all computed live in applyPos() — see its own dockLeft comment) - the
-   button itself IS the shape, background:currentColor with no inner glyph, rather than an icon
-   sitting inside a box. cursor:grab because it doubles as a drag-the-whole-panel handle, same as
-   the old corner button did (see the pointerdown wiring in initSidePopout).
-   Dropping .setupIconBtn (see the old comment this replaced) silently dropped its
-   color:var(--axistext) too - this was the one topbar icon that stopped following the user's Axis
-   Text Color setting while its Layout/Alerts/Settings siblings kept tracking it. Restated here
-   explicitly, since background:currentColor now depends directly on it. */
+   button itself IS the shape, with no inner glyph, rather than an icon sitting inside a box.
+   cursor:grab because it doubles as a drag-the-whole-panel handle, same as the old corner button
+   did (see the pointerdown wiring in initSidePopout).
+   Colour is var(--panel2) - the same flat dark grey .scancard (Scanner's own cards) already use,
+   on request - not background:currentColor/var(--axistext) any more, so this one specific icon no
+   longer tracks the user's Axis Text Color setting; that was a deliberate ask, not an oversight. */
 #sbBtn.sbFloat,#sbBtn2.sbFloat{position:fixed;left:0;top:0;z-index:56;width:22px;height:22px;
   display:flex!important;
   padding:0!important;margin:0;
@@ -1093,13 +1097,13 @@ input[type=checkbox]{accent-color:var(--accent)}
      ordering; nothing else in this stylesheet targets #sbBtn.sbFloat's border-radius, so there is
      nothing else this plain declaration needs to outrank at desktop widths either. */
   border-radius:999px;
-  background:currentColor;border:none!important;box-shadow:none!important;
-  cursor:grab;color:var(--axistext);
-  opacity:.45;transition:opacity .12s ease}
-/* Dimmed on request — the first pass (.45 -> .85 on hover) read as a bright flash, not a subtle
-   highlight; a smaller step up keeps the hover feedback noticeable without it overpowering the
-   capsule's own resting look. */
-#sbBtn.sbFloat:hover,#sbBtn2.sbFloat:hover{opacity:.6}
+  background:var(--panel2);border:none!important;box-shadow:none!important;
+  cursor:grab;
+  transition:background .12s ease}
+/* Lightens toward --line2 (the same step .tbtn's own hover already uses) instead of an opacity
+   change — opacity would fade a flat dark-grey shape toward whatever's behind it rather than
+   giving it a clear "lit up" feedback state the way an actual lighter shade does. */
+#sbBtn.sbFloat:hover,#sbBtn2.sbFloat:hover{background:var(--line2)}
 #sbBtn.sbFloat:active,#sbBtn2.sbFloat:active{cursor:grabbing}
 /* The old expand/collapse arrows glyph is desktop-dead weight now (the capsule shape itself is
    the whole affordance) but stays wired up for the mobile corner-button fallback just below,
@@ -11732,32 +11736,44 @@ function initSidePopout(o){
     // One shared easing/duration for the panel's slide AND the handle's own reposition (below) —
     // on request, so a dockLeft flip (the panel dragged across the midpoint of its bounds) glides
     // the handle to its new edge in the same motion as the panel's own slide, instead of the
-    // handle instantly snapping there while the panel glides. Standard Material "ease" curve
-    // (.4,0,.2,1) over a single .3s, replacing the old .22s-transform/.18s-opacity split cubic-
-    // bezier — that mismatch (two different curves finishing at two different moments) is what
-    // read as not-quite-clean; one curve, one duration, on both properties reads as one motion.
+    // handle instantly snapping there while the panel glides.
+    // No opacity fade any more, on request — "slide" was meant literally: the panel stays fully
+    // opaque and just moves, like scrolling a carousel item off/onto screen, rather than fading
+    // while it moves (a fade read as still genie-ish even with the scale gone). transform is now
+    // the only thing this transitions.
     const SLIDE_EASE='cubic-bezier(.4,0,.2,1)';
-    const slideT=dragCount>0?'none':`transform .3s ${SLIDE_EASE}, opacity .3s ${SLIDE_EASE}`;
+    const slideT=dragCount>0?'none':`transform .3s ${SLIDE_EASE}`;
     side.style.transform=hidden
       ?`translate3d(${dockLeft?boundsLeft-w-SLIDE_CLEAR:boundsRight+SLIDE_CLEAR}px,${y}px,0)`
       :`translate3d(${x}px,${y}px,0)`;
-    side.style.opacity=hidden?'0':'1';
+    // Always fully opaque now (no fade — see the slideT comment above); pointer-events is what
+    // actually keeps a hidden-but-still-technically-onscreen-during-transit panel from intercepting
+    // clicks. Set unconditionally rather than left alone, so a panel some earlier build of this
+    // code left at opacity:0 can never get stuck invisible after showing — this is the only place
+    // .side's opacity is ever written now.
+    side.style.opacity='1';
     side.style.pointerEvents=hidden?'none':'auto';
     side.style.transition=slideT;
-    // The handle now sits INSIDE the panel's own rounded edge instead of protruding past it —
-    // EDGE_INSET clears it from the panel's true left/right boundary, CORNER_CLEAR keeps its top
-    // and bottom short of the panel's 28px corner radius so it never visually clips the curve
-    // (at 20px down from a 28px-radius corner the curve has only encroached ~1px past the flat
-    // edge — comfortably inside EDGE_INSET's own 8px, so this is real clearance, not a guess).
+    // The handle sits INSIDE the panel's own rounded edge, not protruding past it — EDGE_INSET
+    // clears it from the panel's true left/right boundary. Vertical clearance is asymmetric:
+    // TOP_CLEAR has to clear the WHOLE 44px header/tab row (.sideHead's own max-height), not just
+    // the panel's corner radius — a plain corner-radius-sized clearance (20px) left the handle's
+    // top ~24px genuinely UNDER the active tab's own sliding highlight pill (.tabpill,
+    // rgba(10,132,255,.16)), confirmed live via getBoundingClientRect on both: the pill's own box
+    // (y 61-93 at the time) and the handle's (y 68-661) overlapped by a real 5x25px rectangle,
+    // the highlight visibly bleeding across the handle's rounded top end. BOTTOM_CLEAR only has to
+    // clear the panel's plain 28px corner radius (verified separately: at 20px down from a 28px
+    // corner the curve has only encroached ~1px past the flat edge, comfortably inside
+    // EDGE_INSET's own 8px), so it stays much smaller.
     // It still never hides or slides away with the panel — parked at the same x/y regardless of
     // `hidden`, exactly the "always there to click" contract the old corner button always had —
-    // but now carries the SAME transform transition as the panel (see slideT above), just with
-    // its own snappier opacity timing for hover (.12s, from the CSS rule — listed here explicitly
-    // since setting .transition inline for transform would otherwise silently drop that CSS
-    // transition for opacity too, not merge with it).
-    const EDGE_INSET=8,CORNER_CLEAR=20;
-    btn.style.width=SIDE_HANDLE_W+'px';btn.style.height=Math.max(20,h-CORNER_CLEAR*2)+'px';
-    btn.style.transform=`translate3d(${dockLeft?x+EDGE_INSET:x+w-SIDE_HANDLE_W-EDGE_INSET}px,${y+CORNER_CLEAR}px,0)`;
+    // but now carries the SAME transform transition as the panel (see slideT above), plus its own
+    // separate, snappier opacity transition for hover (.12s — listed here explicitly since
+    // setting .transition inline for transform alone would otherwise silently drop the CSS rule's
+    // opacity transition instead of merging with it).
+    const EDGE_INSET=8,TOP_CLEAR=48,BOTTOM_CLEAR=20;
+    btn.style.width=SIDE_HANDLE_W+'px';btn.style.height=Math.max(20,h-TOP_CLEAR-BOTTOM_CLEAR)+'px';
+    btn.style.transform=`translate3d(${dockLeft?x+EDGE_INSET:x+w-SIDE_HANDLE_W-EDGE_INSET}px,${y+TOP_CLEAR}px,0)`;
     btn.style.transition=dragCount>0?'none':`transform .3s ${SLIDE_EASE}, opacity .12s ease`;
   }
   function setHidden(hidden){
