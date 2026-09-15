@@ -3229,7 +3229,7 @@ function visPanes(){return panes.filter(p=>p&&p.idx<cfg.paneN);}
 // DIFFERENT unlinked ticker than pane 1's own.
 let altState={1:{sym:'',data:{bars5:[],bars15:[],daily:[]},timer:null}};
 let levels=[];
-let quoteTimer=null,barTimer=null,prevClosePx=null,lastPx=null,lastPxAt=0;
+let quoteTimer=null,barTimer=null,prevClosePx=null,lastPx=null,lastPxAt=0,lastPaneTickAt=0;
 let ws=null,wsAlive=false,wsRetryMs=1000,wsRetryTimer=null,wsWantSym='';
 const CATCOLOR={prev:'#d6b35a',session:'#5aa7d6',gex:'#4caf6e',vol:'#d16ba5',inst:'#ffe375'};
 // Chart-colour presets from chartthemes.com/liquidity-grab (and its full gallery) — bearB/bearW/
@@ -6933,7 +6933,7 @@ function updateForming(px,sz,closeOnly,cvol,tradeTs){
   // visibilitychange listener) already re-fetches the authoritative bars and does exactly one full
   // renderAll() the moment the tab becomes visible again — the exact same "skip while hidden, catch
   // up once on return" pattern barTimer's own poll loop already uses a few hundred lines down.
-  if(!document.hidden)visPanes().forEach(p=>lockView(p,()=>paneTick(p)));
+  if(!document.hidden){visPanes().forEach(p=>lockView(p,()=>paneTick(p)));lastPaneTickAt=Date.now();}
   // Saty ATR Levels' "day balance" readout (range vs ATR, in positionSatyInfo) and its ladder
   // (drawSatyOn) are keyed to TODAY's daily high/low, which may have just moved above — but
   // both are only called from renderPane(), so without this the readout sits stale at its last
@@ -11324,11 +11324,33 @@ async function resyncOnReturn(){
     computeInd5();computeLevels();
     catchingUp=false;
     renderAll();
+    lastPaneTickAt=Date.now();   // a full render just caught everything up — the watchdog below shouldn't re-fire immediately
     recovered();
   }catch(e){catchingUp=false;softFail(e);}
   finally{resyncBusy=false;bgEvents=[];}
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){resyncOnReturn();scanCatchUpIfStale();}});
+// WATCHDOG for the live-tick render path (paneTick — RSI/Volume/MACD/ribbon/VWAP/KC, see its own
+// call site's comment). That whole path is gated on document.hidden alone, to save GPU/compositor
+// cost while genuinely backgrounded. Confirmed live (2026-09-15, captured a 10+ minute run):
+// document.hidden can read true for extended stretches while document.hasFocus() reads true and
+// the trade stream keeps flowing completely normally the whole time (lastPx/the price badge update
+// via paintPx(), which is NOT gated on visibility, only paneTick is) — the exact "price ticks,
+// RSI/Volume/MACD frozen solid" symptom reported live on the droplet with two panes open and
+// zoomed in. Whatever the platform-level cause, the app can't trust document.hidden alone forever.
+// Deliberately gated on hasFocus(), NOT !document.hidden — reusing the same unreliable signal here
+// would silence this exact watchdog in exactly the failure case it exists to catch. hasFocus()
+// true while genuinely backgrounded is not a real scenario (a backgrounded/minimized tab loses
+// focus too), so this stays quiet during ordinary backgrounding, same as before.
+setInterval(()=>{
+  if(!document.hasFocus()||!LS.k||!panes.length)return;
+  const dataFresh=lastPxAt&&Date.now()-lastPxAt<15000;
+  const tickStale=Date.now()-lastPaneTickAt>20000;
+  if(dataFresh&&tickStale){
+    log('Live-tick render path looked stuck (price fresh, chart hadn\'t redrawn in 20s+) — forcing a full resync','warn');
+    resyncOnReturn();
+  }
+},15000);
 let failStreak=0;
 function softFail(e){
   failStreak++;
