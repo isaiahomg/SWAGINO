@@ -2874,6 +2874,10 @@ function rgbaStr(o){return o.a>=1?'#'+[o.r,o.g,o.b].map(x=>Math.round(+x).toStri
 // whose opaque stop is user-configurable; the fade-out end always matches it, not a fixed hue.
 function fadeOut(c){const o=parseColor(c);return rgbaStr({r:o.r,g:o.g,b:o.b,a:0});}
 let pkCb=null,pkAnchor=null,pkState={h:0,s:0,v:1,a:1,w:1,st:'solid',ts:10};
+// Optional per-open "live preview" callback — see emitPreview()'s own comment for why this exists
+// and what it's for (cheap, every-drag-frame updates) as distinct from pkCb (the authoritative,
+// possibly-expensive commit, still fired only on release/click/keystroke).
+let pkPreviewCb=null;
 // Level styler carries an independent label-text colour alongside the price-line colour, edited via
 // the Style / Text tabs. pkText = level (tabbed) mode; pkTab = active tab; pkLineCol / pkTextCol hold
 // the two colours across tab switches. Other swatches (candles, MAs, structure) leave pkText false.
@@ -2884,8 +2888,8 @@ let pkText=false,pkTab='style',pkLineCol='#ffffff',pkTextCol='#ffffff';
 let pkShowLine=false;
 /* ---------------------------------- colour picker -------------------------------------
    One picker serves every colour control in the app. Three surfaces, laid out the way
-   TradingView does it: a saturation/value square, a hue rail, an alpha rail — plus hex and
-   R/G/B/A boxes you can type into, and the preset swatches underneath for one-click picks.
+   TradingView does it: a saturation/value square, a hue rail, an alpha rail — plus a hex box
+   you can type into, and the preset swatches underneath for one-click picks.
 
    State is kept as HSV rather than RGB because the square and the rail ARE HSV surfaces.
    Round-tripping through RGB on every drag loses the hue as saturation approaches zero
@@ -2954,15 +2958,18 @@ function pkDrag(el,onMove){
     // stall per frame — still far too slow to track a moving pointer.
     // So the expensive commit (emitPick, everything downstream of it) now only runs on the
     // initial pointerdown (go(e) above — a single click/tap applies immediately) and once more
-    // on release; WHILE actually dragging, only the cheap in-picker preview updates each frame
-    // (move() + syncPicker() — swatch/hex/RGB fields, dot positions: measured at ~0.1ms a call,
-    // not the cost here). `pending` always holds the latest pointer position, so release commits
-    // exactly where the pointer actually is, never a stale mid-drag sample.
+    // on release; WHILE actually dragging, the cheap in-picker preview updates each frame
+    // (move() + syncPicker() — swatch/hex fields, dot positions: measured at ~0.1ms a call, not
+    // the cost here) PLUS emitPreview() — a second, much cheaper live-update path (see its own
+    // comment) that keeps the actual on-chart line/label/swatch tracking the drag in real time
+    // without paying emitPick's full-rebuild cost every frame. `pending` always holds the latest
+    // pointer position, so release commits exactly where the pointer actually is, never a stale
+    // mid-drag sample.
     let raf=0,pending=null;
     const mv=ev=>{
       pending=ev;
       if(raf)return;
-      raf=requestAnimationFrame(()=>{raf=0;move(pending);syncPicker();});
+      raf=requestAnimationFrame(()=>{raf=0;move(pending);syncPicker();emitPreview();});
     };
     const up=()=>{
       if(raf)cancelAnimationFrame(raf);raf=0;
@@ -3054,6 +3061,26 @@ function emitPick(){const c=pkRgb();const cur=rgbaStr({r:c.r,g:c.g,b:c.b,a:pkSta
     pkCb({color:pkLineCol,tc:pkTextCol,width:pkState.w,style:pkState.st,textSize:pkState.ts});
   }else pkCb({color:cur,width:pkState.w,style:pkState.st});
 }
+// A level/Saty edit's REAL commit (emitPick, above) goes through drawLevels()/drawSatyOn(), which
+// tear down and rebuild EVERY price line and line-segment DOM node on the board from scratch —
+// fine at click/keystroke cadence, much too slow to also run on every animation frame of a hue/
+// saturation/alpha DRAG (this is exactly what pkDrag's own comment measured emitPick costing:
+// 150-300ms, not the ~16ms a smooth drag needs). Dragging felt "delayed" as a result: the on-chart
+// line/label only ever actually moved on release, not while the slider was being dragged.
+// emitPreview() is a second, MUCH cheaper path a caller can opt into via openStyler's 5th arg: it
+// computes the same in-progress colour emitPick would, but hands it to a caller-supplied function
+// that patches just the handful of DOM nodes this one key owns directly (border-color, background,
+// text color — see previewLevelColor/previewSatyColor) instead of rebuilding the whole board. Runs
+// every drag frame; costs nothing when a caller doesn't pass one (pkPreviewCb stays null). Never
+// writes into pkLineCol/pkTextCol — those slots are the STYLE/TEXT tab's committed values and only
+// emitPick (an actual commit point: initial click, drag release, hex/grid pick) is allowed to move
+// them, or switching tabs mid-drag would pick up a value that was only ever a live preview.
+function emitPreview(){
+  if(!pkPreviewCb)return;
+  const c=pkRgb();const cur=rgbaStr({r:c.r,g:c.g,b:c.b,a:pkState.a});
+  if(pkText)pkPreviewCb(pkTab==='text'?{color:pkLineCol,tc:cur}:{color:cur,tc:pkTextCol});
+  else pkPreviewCb({color:cur});
+}
 // Switch the level styler between the price-line colour (Style) and the label-text colour (Text).
 // The picker surfaces always edit pkState; on switch we stash the current colour into its slot and
 // load the other, so the two stay independent. Thickness / line style belong to the price line only.
@@ -3068,16 +3095,16 @@ function pkSwitchTab(tab){
   $$('#pTabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
   syncPicker();
 }
-function openStyler(anchor,state,showLine,cb){
+function openStyler(anchor,state,showLine,cb,previewCb){
   // Second click on the SAME swatch dismisses it. The mousedown handler below deliberately
   // leaves this case alone: if it closed the popup itself, the click that follows landed
   // here with the popup already hidden and simply re-opened it, which is why it flashed
   // shut and straight back open.
   const pk0=$('#picker');
   if(pk0.style.display==='block'&&pkAnchor===anchor){
-    pk0.style.display='none';pkAnchor=null;pkCb=null;return;
+    pk0.style.display='none';pkAnchor=null;pkCb=null;pkPreviewCb=null;return;
   }
-  pkCb=cb;pkAnchor=anchor;
+  pkCb=cb;pkPreviewCb=previewCb||null;pkAnchor=anchor;
   // Text (tabbed) mode when the caller supplies a label-text colour (levels). The Style tab opens
   // first, editing the price-line colour; other callers pass no tc and get the plain single-colour UI.
   pkText=(state.tc!==undefined);pkTab='style';pkLineCol=state.color;
@@ -5803,9 +5830,10 @@ function pxRound(v){return v==null?null:Math.round(v);}
 // with white text. lightweight-charts always fills its axis-label plate opaquely (axisLabelColor
 // ignores alpha — verified), so each level family sets axisLabelVisible:false and draws the number
 // here. `fam` scopes the element so a family clears only its own on the next frame.
-function axisPxLabel(host,price,y,color,fam){
+function axisPxLabel(host,price,y,color,fam,key){
   const d=document.createElement('div');
   d.className='axpx axpx-'+fam;
+  if(key)d.dataset.pxkey=key;   // lets a live colour-picker DRAG find and repaint just this badge — see previewSatyColor
   d.textContent=(+price).toFixed(2);
   d.style.background=color;d.style.top=y+'px';
   host.appendChild(d);
@@ -5875,10 +5903,14 @@ function positionLvlTags(p){
   });
 }
 // Draw a level line as two HTML segments that break for its label. Shared by all level families.
-function lvSeg(host,y,gaps,plotW,L){
+// ownerKey is stamped onto each segment (data-ownerkey) purely so a live colour-picker DRAG can
+// find and repaint just this line's own segments directly (see previewLevelColor/previewSatyColor)
+// without paying for the full remove-everything/rebuild-everything pass this function itself is.
+function lvSeg(host,y,gaps,plotW,L,ownerKey){
   const bar=(a,b)=>{ if(b-a<2)return;
     const g=document.createElement('div');
     g.className='lvseg';
+    if(ownerKey)g.dataset.ownerkey=ownerKey;
     g.style.top=y+'px';g.style.left=a+'px';g.style.width=(b-a)+'px';
     g.style.borderTopWidth=(L.w||1)+'px';
     g.style.borderTopStyle=L.style==='dashed'?'dashed':L.style==='dotted'?'dotted':'solid';
@@ -5919,7 +5951,8 @@ function drawLevelSegments(p){
   host.querySelectorAll('.lvltag,.satylab').forEach(lbl=>{
     const L=lbl.__line;if(!L||lbl.style.display==='none')return;
     const r=lbl.getBoundingClientRect();                 // READ (batched — no writes between them)
-    items.push({L,x0:r.left-hr.left,x1:r.right-hr.left,lvl:lbl.classList.contains('lvltag')});
+    items.push({L,x0:r.left-hr.left,x1:r.right-hr.left,lvl:lbl.classList.contains('lvltag'),
+                key:lbl.dataset.key||lbl.dataset.satykey});
   });
   // A row is any set of SAME-FAMILY labels within one label-height of each other's y (matches the
   // row test deoverlapLabels/deoverlapLevelLabels themselves use) — cross-family clearance was
@@ -5930,7 +5963,7 @@ function drawLevelSegments(p){
   // close together without either one detouring around the other's text.
   items.forEach(it=>{
     const gaps=items.filter(o=>o.lvl===it.lvl&&Math.abs(o.L.y-it.L.y)<13).map(o=>({x0:o.x0,x1:o.x1})).sort((a,b)=>a.x0-b.x0);
-    lvSeg(host,it.L.y,gaps,plotW,it.L);
+    lvSeg(host,it.L.y,gaps,plotW,it.L,it.key);
   });   // WRITE
 }
 function positionRbArrows(p){
@@ -8464,7 +8497,7 @@ function positionSatyLabels(p){
   p.satyLabels.forEach(l=>{
     let y=null;try{y=pxRound(p.candles.priceToCoordinate(l.price));}catch(e){}
     if(y==null||y<6||y>h-4)return;
-    axisPxLabel(host,l.price,y,l.color,'saty');     // axis price reading badge (line colour)
+    axisPxLabel(host,l.price,y,l.color,'saty',l.key);     // axis price reading badge (line colour)
     const d=document.createElement('div');d.className='satylab';
     d.textContent=l.text;d.style.color=l.tc||'var(--axistext)';   // Text-tab colour for the name; white is the default fallback
     d.style.fontSize=(l.size||10)+'px';
@@ -8481,6 +8514,18 @@ function positionSatyLabels(p){
     d.__line={y,color:l.color,w:l.w,style:l.style};
     host.appendChild(d);
   });
+}
+// Live-drag preview for a Saty rung: patches the handful of DOM nodes this one key owns directly
+// (its on-chart name colour, its axis-price badge fill, and its own line segments) instead of
+// going through positionSatyLabels' full wipe-and-rebuild or drawLevelSegments' own full rebuild —
+// see emitPreview()'s comment for why this exists. Deliberately does NOT touch satyC().sty or call
+// satyRedraw()/saveCfg — this is a visual-only preview; the actual commit (openSatyStyler's own
+// cb, below) is what persists the edit, on release.
+function previewSatyColor(key,color,tc){
+  document.querySelectorAll('.satylab[data-satykey="'+key+'"]').forEach(e=>{
+    e.style.color=tc;if(e.__line)e.__line.color=color;});
+  document.querySelectorAll('.axpx-saty[data-pxkey="'+key+'"]').forEach(e=>e.style.background=color);
+  document.querySelectorAll('.lvseg[data-ownerkey="'+key+'"]').forEach(e=>e.style.borderTopColor=color);
 }
 /* Saty's counterpart to openLevelStyler: one styler flow and one save path for a rung's look,
    whichever UI the user clicked to get here (the on-chart name above, or the Saty modal's own
@@ -8515,7 +8560,7 @@ function openSatyStyler(anchorEl,key){
     const M=$('#satyModal');
     if(M&&M.style.display==='flex')satyBuildStyle();
     satyRedraw();
-  });
+  },s=>previewSatyColor(key,s.color,s.tc));
 }
 // The Pine table, as a chart-corner readout: period, how much of the average range this
 // period has already spent, the ribbon trend, and the two trigger prices.
@@ -8847,6 +8892,19 @@ function renderLevelTable2(){
 // #lvlTable2/its own chart redraw) instead of the main one — lvlSty itself (the actual per-key
 // color/width/style the user picks) is intentionally shared by key name across both boards, so a
 // custom style for e.g. "Top magnet" looks the same wherever it appears.
+// Live-drag preview for a level: patches the handful of DOM nodes this one key owns directly (its
+// table swatch on both boards, its on-chart tag colour, its axis-price badge fill, and its own
+// line segments) instead of going through drawLevels()'s full teardown-and-rebuild of every price
+// line and segment on the board — see emitPreview()'s own comment for why this exists. Visual-only:
+// does not touch lvlSty or call drawLevels()/redrawPane2Levels() — openLevelStyler's own cb, below,
+// is what actually persists the edit, on release.
+function previewLevelColor(key,color,tc){
+  document.querySelectorAll('.lvsw[data-key="'+key+'"]').forEach(e=>e.style.background=color);
+  document.querySelectorAll('.lvltag[data-key="'+key+'"]').forEach(e=>{
+    e.style.color=tc;if(e.__line)e.__line.color=color;});
+  document.querySelectorAll('.axpx-lvl[data-lvlkey="'+key+'"]').forEach(e=>e.style.background=color);
+  document.querySelectorAll('.lvseg[data-ownerkey="'+key+'"]').forEach(e=>e.style.borderTopColor=color);
+}
 function openLevelStyler(anchorEl,key,alt){
   const src=alt?levels2:levels;
   const l=src.find(x=>x.key===key);if(!l)return;
@@ -8866,7 +8924,7 @@ function openLevelStyler(anchorEl,key,alt){
     if(alt)redrawPane2Levels();else drawLevels();
     if(!alt&&cfg.paneN>=2&&cfg.link===false)redrawPane2Levels();
     if(alt)drawLevels();
-  });
+  },s=>previewLevelColor(key,s.color,s.tc));
 }
 
 /* ---------- GEX ---------- */
@@ -12242,7 +12300,14 @@ bindLineSwatch($('#swStPat'),()=>({color:cfg.structCfg.patC,width:cfg.structCfg.
    taken when the dialog was opened, "Defaults" restores the factory input set, and "Ok"
    just closes — which is why there is no separate apply step. */
 let satySnap=null;
-function satyRedraw(){saveCfg();visPanes().forEach(p=>{drawSatyOn(p);positionSatyLabels(p);positionSatyInfo(p);});}
+// FOUND while verifying the new live-preview drag path (see emitPreview()): this never called
+// drawLevelSegments(), so the actual visible .lvseg LINE for a rung never refreshed on a genuine
+// commit — only its label text/axis badge did (positionSatyLabels). A color edit's real, saved
+// commit was silently reverting the on-chart line back to its old color until some UNRELATED
+// render (a tick, pan/zoom, resize) happened to call the full pipeline. Pre-existing, not
+// introduced by the preview work — just never visible before because nothing exercised a rung's
+// line color in isolation closely enough to notice the on-chart line lagging its own saved value.
+function satyRedraw(){saveCfg();visPanes().forEach(p=>{drawSatyOn(p);positionSatyLabels(p);positionSatyInfo(p);drawLevelSegments(p);});}
 // Says what the length actually is right now and why, so "Auto" is never a black box.
 function satyLenNote(){
   const el=$('#syLenNote');if(!el)return;
@@ -12314,7 +12379,8 @@ function satyBuildStyle(){
       const cur=satyC().sty[r.key]||{},line=satyRowColor(r,satyC());
       openStyler(sw,{color:line,tc:cur.tc||'var(--axistext)',textSize:cur.size},false,st=>{
         sw.style.background=st.color;
-        const c=satyC();c.sty[r.key]=Object.assign({},c.sty[r.key],{color:st.color,tc:st.tc,size:st.textSize});satyRedraw();});};
+        const c=satyC();c.sty[r.key]=Object.assign({},c.sty[r.key],{color:st.color,tc:st.tc,size:st.textSize});satyRedraw();},
+        st=>{sw.style.background=st.color;previewSatyColor(r.key,st.color,st.tc);});};
     wsel.onchange=()=>put('w',+wsel.value);
     ssel.onchange=()=>put('st',ssel.value);
     host.appendChild(row);
