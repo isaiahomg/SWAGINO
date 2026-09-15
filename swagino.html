@@ -1096,7 +1096,10 @@ input[type=checkbox]{accent-color:var(--accent)}
   background:currentColor;border:none!important;box-shadow:none!important;
   cursor:grab;color:var(--axistext);
   opacity:.45;transition:opacity .12s ease}
-#sbBtn.sbFloat:hover,#sbBtn2.sbFloat:hover{opacity:.85}
+/* Dimmed on request — the first pass (.45 -> .85 on hover) read as a bright flash, not a subtle
+   highlight; a smaller step up keeps the hover feedback noticeable without it overpowering the
+   capsule's own resting look. */
+#sbBtn.sbFloat:hover,#sbBtn2.sbFloat:hover{opacity:.6}
 #sbBtn.sbFloat:active,#sbBtn2.sbFloat:active{cursor:grabbing}
 /* The old expand/collapse arrows glyph is desktop-dead weight now (the capsule shape itself is
    the whole affordance) but stays wired up for the mobile corner-button fallback just below,
@@ -11724,23 +11727,38 @@ function initSidePopout(o){
     // only its own width would just relocate it to another fully on-screen spot instead of
     // actually leaving view — confirmed live, exactly that on a 1435px-wide window. Anchoring the
     // slide target to boundsLeft/boundsRight (the same box every other clamp in this function
-    // already respects) guarantees full clearance regardless of where the panel started. A little
-    // extra SLIDE_CLEAR past that edge so no 1px sliver is still peeking onscreen; cubic-bezier
-    // eases out fast then settles, reading as a drawer sliding shut rather than the plain-ease
-    // genie-fade this replaced.
+    // already respects) guarantees full clearance regardless of where the panel started.
     const SLIDE_CLEAR=16;
+    // One shared easing/duration for the panel's slide AND the handle's own reposition (below) —
+    // on request, so a dockLeft flip (the panel dragged across the midpoint of its bounds) glides
+    // the handle to its new edge in the same motion as the panel's own slide, instead of the
+    // handle instantly snapping there while the panel glides. Standard Material "ease" curve
+    // (.4,0,.2,1) over a single .3s, replacing the old .22s-transform/.18s-opacity split cubic-
+    // bezier — that mismatch (two different curves finishing at two different moments) is what
+    // read as not-quite-clean; one curve, one duration, on both properties reads as one motion.
+    const SLIDE_EASE='cubic-bezier(.4,0,.2,1)';
+    const slideT=dragCount>0?'none':`transform .3s ${SLIDE_EASE}, opacity .3s ${SLIDE_EASE}`;
     side.style.transform=hidden
       ?`translate3d(${dockLeft?boundsLeft-w-SLIDE_CLEAR:boundsRight+SLIDE_CLEAR}px,${y}px,0)`
       :`translate3d(${x}px,${y}px,0)`;
     side.style.opacity=hidden?'0':'1';
     side.style.pointerEvents=hidden?'none':'auto';
-    side.style.transition=dragCount>0?'none':'transform .22s cubic-bezier(.2,.8,.2,1), opacity .18s ease';
-    // The handle itself never hides or slides away with the panel — it stays parked at the SAME
-    // x/y regardless of `hidden`, exactly the "always there to click" contract the old corner
-    // button already had (its own transform never depended on `hidden` either), just generalized
-    // from one fixed corner to a full-height edge that can now be on either side of the panel.
-    btn.style.width=SIDE_HANDLE_W+'px';btn.style.height=h+'px';
-    btn.style.transform=`translate3d(${dockLeft?x-SIDE_HANDLE_W:x+w}px,${y}px,0)`;
+    side.style.transition=slideT;
+    // The handle now sits INSIDE the panel's own rounded edge instead of protruding past it —
+    // EDGE_INSET clears it from the panel's true left/right boundary, CORNER_CLEAR keeps its top
+    // and bottom short of the panel's 28px corner radius so it never visually clips the curve
+    // (at 20px down from a 28px-radius corner the curve has only encroached ~1px past the flat
+    // edge — comfortably inside EDGE_INSET's own 8px, so this is real clearance, not a guess).
+    // It still never hides or slides away with the panel — parked at the same x/y regardless of
+    // `hidden`, exactly the "always there to click" contract the old corner button always had —
+    // but now carries the SAME transform transition as the panel (see slideT above), just with
+    // its own snappier opacity timing for hover (.12s, from the CSS rule — listed here explicitly
+    // since setting .transition inline for transform would otherwise silently drop that CSS
+    // transition for opacity too, not merge with it).
+    const EDGE_INSET=8,CORNER_CLEAR=20;
+    btn.style.width=SIDE_HANDLE_W+'px';btn.style.height=Math.max(20,h-CORNER_CLEAR*2)+'px';
+    btn.style.transform=`translate3d(${dockLeft?x+EDGE_INSET:x+w-SIDE_HANDLE_W-EDGE_INSET}px,${y+CORNER_CLEAR}px,0)`;
+    btn.style.transition=dragCount>0?'none':`transform .3s ${SLIDE_EASE}, opacity .12s ease`;
   }
   function setHidden(hidden){
     cfg[o.cfgHidden]=hidden?0:1;saveCfg();
