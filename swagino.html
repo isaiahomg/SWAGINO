@@ -5892,11 +5892,13 @@ function lvSeg(host,y,gaps,plotW,L){
   // so the line steps around ALL of them: two colliding labels slide apart HORIZONTALLY onto the
   // SAME row (deoverlapLabels/deoverlapLevelLabels never move a label off its own price), so a
   // line that only cleared its own label would still run straight through whichever neighbour
-  // just slid in next to it. Each gap carries its own pad: a LEVEL label (gp.lvl) breaks the line
-  // flush against its exact rendered edges (0px — pixel-perfect, matches deoverlapLevelLabels()'
-  // own zero-gap placement); any other family (Saty) keeps the original 5px breathing room.
+  // just slid in next to it. LVL_GAP_PAD applies to every family alike (level tags AND Saty) —
+  // pixel-tight against the label's real rendered edges, not the old 5px. A bare 0px was tried
+  // first and looked wrong: with zero breathing room the line reads as touching/cutting into the
+  // text instead of stopping for it, so this keeps a hairline gap instead of true edge contact.
+  const LVL_GAP_PAD=1;
   let cursor=0;
-  gaps.forEach(gp=>{ const pad=gp.lvl?0:5; bar(cursor,Math.max(cursor,gp.x0-pad)); cursor=Math.max(cursor,gp.x1+pad); });
+  gaps.forEach(gp=>{ bar(cursor,Math.max(cursor,gp.x0-LVL_GAP_PAD)); cursor=Math.max(cursor,gp.x1+LVL_GAP_PAD); });
   bar(cursor,plotW);
 }
 // Every level / Saty / structure-break / alert line, drawn AFTER deoverlapLabels so each line's
@@ -5920,14 +5922,13 @@ function drawLevelSegments(p){
   host.querySelectorAll('.lvltag,.satylab').forEach(lbl=>{
     const L=lbl.__line;if(!L||lbl.style.display==='none')return;
     const r=lbl.getBoundingClientRect();                 // READ (batched — no writes between them)
-    items.push({L,x0:r.left-hr.left,x1:r.right-hr.left,lvl:lbl.classList.contains('lvltag')});
+    items.push({L,x0:r.left-hr.left,x1:r.right-hr.left});
   });
   // A row is any set of labels within one label-height of each other's y (matches the row test
   // deoverlapLabels/deoverlapLevelLabels themselves use), regardless of which family each one
-  // belongs to. `lvl` rides along per gap so lvSeg can give a level label's own edges 0px pad
-  // (pixel-perfect) while leaving any other family's gap at its original size.
+  // belongs to — lvSeg's own LVL_GAP_PAD applies the same pixel-tight gap to all of them alike.
   items.forEach(it=>{
-    const gaps=items.filter(o=>Math.abs(o.L.y-it.L.y)<13).map(o=>({x0:o.x0,x1:o.x1,lvl:o.lvl})).sort((a,b)=>a.x0-b.x0);
+    const gaps=items.filter(o=>Math.abs(o.L.y-it.L.y)<13).map(o=>({x0:o.x0,x1:o.x1})).sort((a,b)=>a.x0-b.x0);
     lvSeg(host,it.L.y,gaps,plotW,it.L);
   });   // WRITE
 }
