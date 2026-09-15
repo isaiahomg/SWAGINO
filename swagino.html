@@ -3621,6 +3621,40 @@ function makePane(idx){
     el.addEventListener('wheel',nudge,{passive:true});
   };
   [pEl,rEl,vEl,mEl].forEach(holdWhileDragging);
+  // Safari (desktop AND iOS) fires its own non-standard gesturestart/gesturechange/gestureend
+  // events for a trackpad/touchscreen PINCH instead of a regular wheel event with ctrlKey:true —
+  // the synthetic event Chrome/Firefox send for the exact same gesture, which is what the
+  // vendored chart library's own handleScale.pinch (see chartOpts) actually listens for
+  // (confirmed: grepped vendor/lwc.min.js end to end, zero references to "gesture" anywhere in
+  // it). Reported live: pinch-to-zoom on a MacBook trackpad does nothing at all in Safari — the
+  // browser most non-technical Mac users default to — while the identical gesture works fine in
+  // Chrome on the same machine. Plain two-finger vertical SCROLL still zooms everywhere
+  // regardless (handleScale.mouseWheel reads the wheel event's plain deltaY, nothing gesture- or
+  // ctrlKey-specific — confirmed in the same grep, the library's own wheel handler branches on
+  // deltaY alone) — but pinching is the gesture most people reach for first on a trackpad, so
+  // this reads as "can't zoom the chart at all" even though one path already works.
+  // Translates Safari's gesture events into the same public barSpacing API this file already
+  // uses elsewhere for zoom (see renderPaneKeepView) — not cursor-centered the way the library's
+  // OWN internal wheel-zoom is (that anchoring math is private to the library, never exposed on
+  // its public API), but a working approximation is a large improvement over doing nothing.
+  const PINCH_SPACING_MIN=0.5,PINCH_SPACING_MAX=200;
+  const enablePinchZoom=(el,ch)=>{
+    if(!el||!('ongesturestart' in window))return;   // feature-detect Safari's own API, not a UA sniff
+    let startSpacing=null;
+    el.addEventListener('gesturestart',e=>{
+      e.preventDefault();
+      pane._userZoomed=true;
+      try{startSpacing=ch.timeScale().options().barSpacing;}catch(err){startSpacing=null;}
+    });
+    el.addEventListener('gesturechange',e=>{
+      e.preventDefault();
+      if(startSpacing==null)return;
+      const next=Math.min(PINCH_SPACING_MAX,Math.max(PINCH_SPACING_MIN,startSpacing*e.scale));
+      try{ch.timeScale().applyOptions({barSpacing:next});}catch(err){}
+    });
+    el.addEventListener('gestureend',e=>{e.preventDefault();startSpacing=null;});
+  };
+  enablePinchZoom(pEl,chart);enablePinchZoom(vEl,vchart);enablePinchZoom(rEl,rchart);enablePinchZoom(mEl,mchart);
   const sizeAll=()=>{
     try{
       chart.applyOptions({width:pEl.clientWidth,height:pEl.clientHeight});
