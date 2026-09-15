@@ -6802,6 +6802,10 @@ function bucketFields(t){const p=etParts(new Date(t*1000));return{etYmd:p.ymd,et
 // §6 cvol reconciliation state + a one-time raw sample so the trade-event field names (esp. cvol)
 // can be spot-checked against a live print rather than assumed.
 let _volChk={t:null,warned:false},_tradeSampled=false,_cvolPrev=null,_lastTradeDateMs=null;const _volBase={};
+// Live-tick counterpart to cleanBadPrintRows() below (that one only ever sees a bad print AFTER
+// the fact, once Tradier's own REST bar for the bucket is fetched — this one stops it from ever
+// touching the forming candle live in the first place). See filterTradeTick just below updateForming.
+let _tickRef=null,_pendingTick=null;
 function updateForming(px,sz,closeOnly,cvol,tradeTs){
   if(px==null||!isFinite(px))return;
   sz=+sz||0;
@@ -6940,6 +6944,57 @@ function updateForming(px,sz,closeOnly,cvol,tradeTs){
   // the ladder's on-chart position can, and only when a genuine new high/low is set.
   if(dailyExtremeMoved){
     visPanes().forEach(p=>{try{drawSatyOn(p);positionSatyLabels(p);positionSatyInfo(p);}catch(e){}});
+  }
+}
+// Extended-hours tape occasionally carries a single erroneous trade print (confirmed repeatedly
+// via REST-bar analysis — see cleanBadPrintRows further down) that, arriving live over the WS
+// trade stream instead of a REST bar, would otherwise flash straight onto the forming candle as
+// a wrong wick before the next bucket-close/REST-refresh cycle quietly corrects it: the "tall
+// candle appears, then the real one prints a bit later" symptom reported live. Two independent,
+// both real, signals feed this: (1) price deviation — every confirmed bad print was a single
+// isolated outlier with normal prices immediately before AND after it, so a live tick is trusted
+// immediately unless it deviates sharply from the last accepted price, in which case it's held
+// for exactly one more tick (confirmed by a close follow-up print — a real fast move, let through
+// with a one-tick delay — or discarded if the next print reverts back toward the prior price,
+// never touching lastPx or any bar). TICK_OUTLIER_PCT sits comfortably under the smallest
+// confirmed-bad single-print deviation measured across 5 real instances (QQQ 9/10 08:20: 0.82%;
+// QQQ 9/1 08:45: 1.33%; AMZN 9/8 08:15: 1.39%; QQQ 9/14 08:26: 1.69%; NVDA 9/14 08:25: 2.30%),
+// while sitting well above genuine tick-to-tick noise. (2) sizeSuspect (passed in by the WS
+// handler, computed from the SAME "raw size can't exceed cvol" check already used to sanitize
+// volume) — confirmed live switching through all 9 requested symbols (2026-09-15) that Tradier's
+// very first trade message after a fresh subscribe can be this exact phantom (garbage size,
+// price pinned to prevclose), and on TSLA/META that morning the phantom price happened to be
+// close enough to the real price that signal (1) alone missed it — sizeSuspect catches it
+// deterministically instead, on the message's own internal inconsistency, regardless of how
+// close the bad price happens to land to the truth. A sizeSuspect tick is never trusted even if a
+// later tick's price would otherwise have "confirmed" it — unlike (1), this is independent
+// evidence the tick itself is a known-bad artifact, not close-but-plausible noise. Scoped to
+// extended hours only — RTH has no evidence of the price-deviation pattern in any of the above
+// analysis, so it stays applied unfiltered exactly as before there; this exists to fix the
+// thin-tape symptom specifically, not to add latency where nothing is wrong.
+const TICK_OUTLIER_PCT=0.005;
+function applyTradeTick(px,sz,cvolNum,tradeTs){
+  lastPx=px;lastPxAt=Date.now();paintPx();updateForming(px,sz,false,cvolNum,tradeTs);evaluateAlerts(px);
+}
+function filterTradeTick(px,sz,cvolNum,tradeTs,sizeSuspect){
+  if(!isFinite(px)||px<=0)return;
+  const mm=nowET().h*60+nowET().m;
+  if(mm>=570&&mm<960){applyTradeTick(px,sz,cvolNum,tradeTs);return;}   // RTH — unfiltered, as before
+  const held=_pendingTick;
+  if(held){
+    _pendingTick=null;
+    if(!held.sizeSuspect&&Math.abs(held.px-px)/held.px<TICK_OUTLIER_PCT){
+      applyTradeTick(held.px,held.sz,held.cvolNum,held.tradeTs);
+      _tickRef=held.px;
+    }
+    // else: discarded — the held tick was noise (or independently known-bad), never touched lastPx or any bar
+  }
+  const ref=_tickRef;
+  if(!sizeSuspect&&(ref==null||Math.abs(px-ref)/ref<TICK_OUTLIER_PCT)){
+    applyTradeTick(px,sz,cvolNum,tradeTs);
+    _tickRef=px;
+  }else{
+    _pendingTick={px,sz,cvolNum,tradeTs,sizeSuspect};
   }
 }
 /* ---------- Tradier WebSocket streaming ---------- */
@@ -7087,6 +7142,19 @@ async function startStream(){
     wsAlive=true;wsRetryMs=1000;setStatus();
     _cvolPrev=null;Object.keys(_volBase).forEach(k=>delete _volBase[k]);   // (re)connect: cvol boundary unknown until the next clean bucket
     _lastTradeDateMs=null;   // (re)connect/symbol change: a new stream, so nothing to dedupe against yet
+    // Seeding _tickRef to null here unconditionally used to erase loadQuote()'s own good seed
+    // (see its own comment) every single time, since onopen fires AFTER loadQuote's one-round-trip
+    // fetch has almost always already resolved and set it — onopen needs a session POST *and* a
+    // full WS handshake first, so it consistently lands second. Confirmed live switching through
+    // GOOGL/AAPL/NVDA/TSLA/META/AMZN/MSFT in sequence (2026-09-15): with a hard null reset here,
+    // 7 of 9 symbols had Tradier's WS stream send a stale prevclose-priced "trade" (real positive
+    // size, not the already-guarded size:0 case) as its very first print after subscribing, and
+    // with the reference wiped right before that arrived, it was accepted outright and baked into
+    // a brand-new candle (o=h=l=c=prevclose, v=0). Falling back to whatever lastPx already holds
+    // (loadQuote's own tradeFresh/bid-ask-fallback price, not a raw quote) instead of a hard null
+    // closes that reopened gap; genuinely nothing yet (a truly first-ever connect before any quote
+    // has landed) still falls back to null exactly as before.
+    _tickRef=(isFinite(lastPx)&&lastPx>0)?lastPx:null;_pendingTick=null;
     log('WebSocket streaming live · '+wsWantSym+' · per-trade updates','long');
   };
   ws.onmessage=ev=>{
@@ -7122,7 +7190,19 @@ async function startStream(){
         // rather than dropping the whole trade, so the (unaffected) price still updates.
         const cvolNum=(d.cvol!=null&&isFinite(+d.cvol))?+d.cvol:null;
         let szNum=+d.size||0;
-        if(cvolNum!=null&&szNum>cvolNum)szNum=0;
+        // This exact garbage-size signature (raw size impossibly larger than the session's own
+        // cumulative volume) turns out to correlate deterministically with the SAME phantom
+        // stale-price "trade" the price-deviation check in filterTradeTick guards against —
+        // confirmed live (2026-09-15) on the very first trade tick received after subscribing to
+        // TSLA and META: both carried size 2,123,753 / 1,896,216 against a cvol of only ~455,500 /
+        // ~159,550, AND price pinned exactly to that day's prevclose. Captured BEFORE szNum gets
+        // zeroed just below, so filterTradeTick can treat the price as equally suspect — a plain
+        // price-deviation threshold alone missed these two, because TSLA/META's real premarket
+        // price that morning happened to sit within the threshold of their own prevclose anyway;
+        // this catches it on the message's own internal inconsistency instead, regardless of how
+        // close the phantom price happens to land to the truth.
+        const sizeSuspect=cvolNum!=null&&szNum>cvolNum;
+        if(sizeSuspect)szNum=0;
         // d.date is the EXCHANGE's own execution timestamp for this print (ms) — confirmed present
         // on every live trade message via LOCAL-DIAG capture, e.g. {"price":"712.53",...,
         // "date":"1788443988353"}. Passed through to updateForming so it can bucket the trade by
@@ -7142,7 +7222,7 @@ async function startStream(){
         // this replay, not news, so skip it entirely rather than reprocess it.
         if(tradeTsMs===_lastTradeDateMs)return;
         _lastTradeDateMs=tradeTsMs;
-        if(isFinite(px)){lastPx=px;lastPxAt=Date.now();paintPx();updateForming(px,szNum,false,cvolNum,tradeTs);evaluateAlerts(px);}
+        filterTradeTick(px,szNum,cvolNum,tradeTs,sizeSuspect);
       }else if(d.type==='quote'&&d.symbol===wsWantSym){
         // Extended-hours trade prints are sparse to nonexistent for a lot of symbols - confirmed
         // via LOCAL-DIAG capture: 30 straight minutes of pre-market 'trade' ticks for MU, all
@@ -10943,6 +11023,19 @@ async function loadQuote(){
   const bid=+q.bid,ask=+q.ask;
   lastPx=(!tradeFresh&&isFinite(bid)&&isFinite(ask)&&bid>0&&ask>0)?(bid+ask)/2:+q.last;
   lastPxAt=Date.now();
+  // filterTradeTick's own reference (_tickRef) starts null on every reconnect/symbol switch, and
+  // its bootstrap rule trusts the FIRST live trade tick it sees unconditionally — which is exactly
+  // the opening this REST poll only reaches when WS ticks are sparse or just starting (the guard
+  // just above returns early otherwise). Confirmed live switching to GOOGL/MSFT/AAPL/AMZN/TSLA in
+  // succession (2026-09-15, pre-market): Tradier's WS trade stream sent a stale prevclose-priced
+  // "trade" (real positive size, not the already-guarded size:0 case) as the very first print
+  // after each subscribe, and with no reference yet to compare it against, it was accepted
+  // outright and baked into the fresh candle's high/close — the exact "tall candle, real one
+  // prints later" symptom, just from the WS boot race rather than a REST bar. This line closes
+  // that gap by keeping _tickRef aligned to this same already-guarded (tradeFresh/bid-ask-
+  // fallback) price whenever the poll actually reaches it, so even the very first WS trade tick
+  // has a trustworthy reference to be checked against instead of an empty one.
+  _tickRef=lastPx;
   paintPx();
   evaluateAlerts(lastPx);
   if(!tradeFresh)return;
