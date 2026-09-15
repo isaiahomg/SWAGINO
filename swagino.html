@@ -3582,19 +3582,15 @@ function makePane(idx){
   // a plain HTML div in the .tips overlay sitting on top of that canvas (position:absolute always
   // paints above a plain static canvas, regardless of any z-index value — nothing was ever
   // deliberately "pushing" one or the other, our badges just always won that pixel by default).
-  // On request the cursor's own label should always be the thing you see there instead — hides
-  // whichever of THIS pane's own axis badges the crosshair's Y currently sits within, rather than
-  // repositioning/pushing anything: purely a visibility toggle, re-evaluated on every crosshair
-  // move (cheap - a handful of badges, checked against one Y value) and cleared the moment the
-  // cursor leaves the pane so nothing is left permanently hidden.
-  const AXPX_HIDE_DIST=9;   // roughly half a badge's own rendered height
+  // On request the cursor's own label should always be the thing you see there instead. Only
+  // STORES the crosshair's current Y on the pane here — syncAxpxCrosshair() (top-level, shared
+  // with positionLvlTags/positionSatyLabels/renderGexLevels — see its own comment for why) is
+  // what actually applies it, so a badge rebuilt by any of those three while the cursor is
+  // sitting still re-asserts the hidden state the instant it's rebuilt, not just on the next
+  // mouse pixel of movement.
   chart.subscribeCrosshairMove(param=>{
-    const host=$('#tips'+idx);if(!host)return;
-    const y=param&&param.point?param.point.y:null;
-    host.querySelectorAll('.axpx').forEach(b=>{
-      const by=parseFloat(b.style.top);
-      b.style.visibility=(y!=null&&!isNaN(by)&&Math.abs(by-y)<AXPX_HIDE_DIST)?'hidden':'';
-    });
+    pane._crosshairY=param&&param.point?param.point.y:null;
+    syncAxpxCrosshair(pane);
   });
   trackOverlays(pane);
   applyRsiBands(pane);
@@ -5928,6 +5924,36 @@ function axisPxLabel(host,price,y,color,fam,key){
   d.style.background=color;d.style.top=y+'px';
   host.appendChild(d);
 }
+// Re-applies the crosshair-hide state (see makePane's own subscribeCrosshairMove, which only
+// STORES pane._crosshairY — this is what actually reads it) to every one of a pane's own axis
+// badges. Top-level and called from THREE places — the end of positionLvlTags/positionSatyLabels
+// below and inside renderGexLevels' own per-pane loop further down — because a crosshair-move
+// event is not the only thing that touches these badges: positionSatyLabels in particular wipes
+// and recreates its own .axpx-saty nodes on EVERY call (see its own "FLICKER FIX" precedent
+// comment on positionLvlTags just below, which fixed the identical issue for level badges by
+// diffing instead — Saty never got the same treatment), and it's called from several places
+// besides the crosshair-agnostic positionTips ticker (satyRedraw, the real-time HOD/LOD-style
+// "the tick that moved the extreme triggers the recompute directly" paths). A freshly-created
+// node has no inline visibility of its own, so without this, a badge the crosshair had hidden
+// reverted to visible the moment ANY of those unrelated triggers next fired - reproduced live,
+// holding the cursor still over a Saty rung's own badge: it went from hidden back to fully
+// visible within about a second with no mouse movement at all, while a Level badge (already
+// diffed, patched in place rather than recreated) sitting under the same cursor position stayed
+// correctly hidden for the same 3+ seconds. Calling this again right after ANY of those three
+// functions finishes rebuilding is what closes that gap regardless of which one caused it - cheap
+// (a handful of badges, one Y comparison each) and idempotent, so calling it slightly more than
+// strictly necessary (e.g. once from positionLvlTags even though only Saty was ever provably
+// affected) costs nothing and keeps all three badge families under the same guarantee.
+const AXPX_HIDE_DIST=9;   // roughly half a badge's own rendered height
+function syncAxpxCrosshair(pane){
+  if(!pane)return;
+  const host=$('#tips'+pane.idx);if(!host)return;
+  const y=pane._crosshairY==null?null:pane._crosshairY;
+  host.querySelectorAll('.axpx').forEach(b=>{
+    const by=parseFloat(b.style.top);
+    b.style.visibility=(y!=null&&!isNaN(by)&&Math.abs(by-y)<AXPX_HIDE_DIST)?'hidden':'';
+  });
+}
 // FLICKER FIX: this used to wipe and recreate every .lvltag/.axpx-lvl node on every call — fine
 // at drawLevelsOn's own change-driven cadence, but this function is ALSO called every second by
 // the shared positionTips() ticker (visPanes().forEach(p=>positionTips(p)), 1000ms, regardless of
@@ -5991,6 +6017,7 @@ function positionLvlTags(p){
     // The visible line is drawn in drawLevelSegments — AFTER deoverlapLabels has placed the labels —
     // so its break follows each label to its final position (no orphan gap, no strike-through).
   });
+  syncAxpxCrosshair(p);   // re-assert crosshair-hide over whichever badges this pass just touched — see its own comment
 }
 // Draw a level line as two HTML segments that break for its label. Shared by all level families.
 // ownerKey is stamped onto each segment (data-ownerkey) purely so a live colour-picker DRAG can
@@ -8604,6 +8631,7 @@ function positionSatyLabels(p){
     d.__line={y,color:l.color,w:l.w,style:l.style};
     host.appendChild(d);
   });
+  syncAxpxCrosshair(p);   // this function wipes+recreates .axpx-saty every call — see syncAxpxCrosshair's own comment for why that specifically needs this
 }
 // Live-drag preview for a Saty rung: patches the handful of DOM nodes this one key owns directly
 // (its on-chart name colour, its axis-price badge fill, and its own line segments) instead of
@@ -9220,6 +9248,7 @@ function renderGexLevels(lv,targetPanes,alt){
       if(badge){badge.style.display='';badge.style.top=y+'px';badge.textContent=priceKey;badge.style.background=st.color;}
       gexRedrawSeg(host,x.key,tagEl,plotW,st);   // segments follow the same y; also regap for the (possibly resized/relocated) label
     });
+    syncAxpxCrosshair(p);   // re-assert crosshair-hide over this pane's own GEX badges — see syncAxpxCrosshair's own comment
   });
 }
 // Draws one GEX level's line as two segments that stop short of its own label on either side,
