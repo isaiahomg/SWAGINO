@@ -5893,10 +5893,10 @@ function lvSeg(host,y,gaps,plotW,L){
   // SAME row (deoverlapLabels/deoverlapLevelLabels never move a label off its own price), so a
   // line that only cleared its own label would still run straight through whichever neighbour
   // just slid in next to it. LVL_GAP_PAD applies to every family alike (level tags AND Saty) —
-  // pixel-tight against the label's real rendered edges, not the old 5px. A bare 0px was tried
-  // first and looked wrong: with zero breathing room the line reads as touching/cutting into the
-  // text instead of stopping for it, so this keeps a hairline gap instead of true edge contact.
-  const LVL_GAP_PAD=1;
+  // both now use Saty's original 5px breathing room. 0px and 1px were both tried first and looked
+  // wrong: with that little clearance the line reads as touching/cutting into the text instead of
+  // visibly stopping for it, on request.
+  const LVL_GAP_PAD=5;
   let cursor=0;
   gaps.forEach(gp=>{ bar(cursor,Math.max(cursor,gp.x0-LVL_GAP_PAD)); cursor=Math.max(cursor,gp.x1+LVL_GAP_PAD); });
   bar(cursor,plotW);
