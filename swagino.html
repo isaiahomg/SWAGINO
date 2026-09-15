@@ -740,6 +740,14 @@ input:disabled,select:disabled{opacity:.45;cursor:not-allowed}
 #picker .pf input::-webkit-outer-spin-button,#picker .pf input::-webkit-inner-spin-button{
   -webkit-appearance:none;appearance:none;margin:0}
 #picker .pf input:focus{outline:none}
+/* Text size select now lives in this same row, in the slot the R/G/B/A number boxes used to
+   occupy (see .pfields/.pf's own history) — same compact dark-chip sizing as a .pf input, not
+   the old full-width #pTextSec dropdown, so it reads as one of this row's boxes rather than a
+   banner below it. */
+#picker .pf select{width:100%;background:#1c2030;color:#ffffff;
+  border-radius:4px;padding:4px 3px;font-family:var(--mono);font-size:10.5px;text-align:center;
+  min-width:0;cursor:pointer}
+#picker .pf select:focus{outline:none}
 #picker .pgrid{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;margin-bottom:2px}
 #picker .pc{width:100%;aspect-ratio:1;border-radius:3px;cursor:pointer}
 #picker .pc:hover{transform:scale(1.18)}
@@ -758,11 +766,6 @@ input:disabled,select:disabled{opacity:.45;cursor:not-allowed}
   box-shadow:inset 0 1px .5px rgba(255,255,255,.6),0 1px 3px rgba(0,0,0,.4)}
 #picker .lg{width:22px;border-top-color:#d1d4dc;border-top-style:solid}
 #picker .pbtns button.on .lg{border-top-color:#fff}
-/* Text-tab-only text size dropdown (8-40px) — same dark chip look as the rest of the picker,
-   shown only while editing a label's text colour (see pkSwitchTab/openStyler's pTextSec gating). */
-#pTextSec select{width:100%;background:#1c2030;border-radius:9px;
-  color:#fff;padding:7px 8px;font-size:12px;font-family:var(--mono);cursor:pointer}
-#pTextSec select:focus{outline:none}
 /* Levels list: one grouped tree instead of a separate master-switch panel. The group header
    carries the family's master checkbox; unchecking it dims its rows in place rather than
    hiding them, so you can still see and restyle a family you have temporarily turned off. */
@@ -2107,14 +2110,7 @@ table.lv td{padding:6px 10px}
   <div class="pfields">
     <span class="pprev" id="pPrev"></span>
     <label class="pf pfhex">HEX<input id="pHex" spellcheck="false" maxlength="9"></label>
-    <label class="pf">R<input id="pR" type="number" min="0" max="255"></label>
-    <label class="pf">G<input id="pG" type="number" min="0" max="255"></label>
-    <label class="pf">B<input id="pB" type="number" min="0" max="255"></label>
-    <label class="pf">A<input id="pA" type="number" min="0" max="100"></label>
-  </div>
-  <div id="pTextSec" style="display:none">
-    <div class="psec">Text size</div>
-    <select id="pTSize"></select>
+    <label class="pf pfts" id="pTSizeWrap" style="display:none">SIZE<select id="pTSize"></select></label>
   </div>
   <div class="psec">Swatches</div>
   <div class="pgrid" id="pgrid"></div>
@@ -2921,9 +2917,6 @@ function syncPicker(){
     +'linear-gradient(45deg,#2a2e39 25%,#1c2030 25%,#1c2030 75%,#2a2e39 75%)';
   $('#pPrev').style.backgroundColor='rgba('+c.r+','+c.g+','+c.b+','+pkState.a+')';
   const hx=$('#pHex');if(hx&&document.activeElement!==hx)hx.value=pkHexStr();
-  [['#pR',c.r],['#pG',c.g],['#pB',c.b],['#pA',Math.round(pkState.a*100)]].forEach(pair=>{
-    const el=$(pair[0]);if(el&&document.activeElement!==el)el.value=pair[1];
-  });
   syncPickerBtns();
 }
 // dragging continues outside the surface once the pointer is down, as it should
@@ -2994,16 +2987,6 @@ function buildPicker(){
     if(t.length===8)pkState.a=parseInt(t.slice(6),16)/255;
     syncPicker();emitPick();
   };
-  const rgbIn=()=>{
-    const g=id=>Math.min(255,Math.max(0,+$(id).value||0));
-    const hs=rgb2hsv(g('#pR'),g('#pG'),g('#pB'));
-    pkState.h=hs.h;pkState.s=hs.s;pkState.v=hs.v;
-    syncPicker();emitPick();
-  };
-  ['#pR','#pG','#pB'].forEach(id=>{const e=$(id);if(e)e.oninput=rgbIn;});
-  const pa=$('#pA');
-  if(pa)pa.oninput=()=>{pkState.a=Math.min(100,Math.max(0,+pa.value||0))/100;
-    syncPicker();emitPick();};
   $$('#pW button').forEach(b=>b.onclick=()=>{pkState.w=+b.dataset.w;syncPickerBtns();emitPick();});
   $$('#pS button').forEach(b=>b.onclick=()=>{pkState.st=b.dataset.s;syncPickerBtns();emitPick();});
   const tsel=$('#pTSize');
@@ -3070,7 +3053,6 @@ function pkSwitchTab(tab){
   const o=parseColor(tab==='text'?pkTextCol:pkLineCol),hs=rgb2hsv(o.r,o.g,o.b);
   pkState.h=hs.h;pkState.s=hs.s;pkState.v=hs.v;pkState.a=o.a;
   const ls=$('#pLineSec');if(ls)ls.style.display=(tab==='style'&&pkShowLine)?'block':'none';
-  const ts=$('#pTextSec');if(ts)ts.style.display=(tab==='text')?'block':'none';
   $$('#pTabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
   syncPicker();
 }
@@ -3095,7 +3077,10 @@ function openStyler(anchor,state,showLine,cb){
     $$('#pTabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab==='style'));}
   pkShowLine=!!showLine;
   $('#pLineSec').style.display=showLine?'block':'none';
-  $('#pTextSec').style.display='none';   // always reopens on the Style tab first; Text tab reveals it
+  // Text size sits in .pfields now (same row as the swatch/HEX), visible whenever this picker
+  // instance has a text-colour slot at all — no longer tab-gated the way #pTextSec used to be,
+  // so it's there on the Style tab too, not just after switching to Text.
+  $('#pTSizeWrap').style.display=pkText?'':'none';
   syncPicker();
   const p=$('#picker');
   // Measure the REAL rendered size (content is already synced above) instead of guessing a
