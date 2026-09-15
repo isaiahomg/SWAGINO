@@ -499,6 +499,15 @@ input[type=checkbox]{accent-color:var(--pivot)}
 .pane::-webkit-scrollbar{width:6px}
 .pane::-webkit-scrollbar-thumb{background:var(--line2);border-radius:999px}
 .pane::-webkit-scrollbar-track{background:transparent}
+/* .pane's own base padding (12px, all sides, above) put every tab's actual content — the Levels
+   table's swatches/labels, the GEX board, the "Market closed" placeholder text — right up against
+   the edge-docked handle (see #sbBtn.sbFloat's own CSS comment), the same crowding .tabs' own 40px
+   padding fix addressed for the tab row itself, on request ("still too close... feels
+   claustrophobic"). Matches that same 40px, left AND right (not just whichever edge the handle
+   happens to be docked to — it can be on either, and a pane's own content can't reflow around
+   it), for the same reason .tabs' padding is symmetric. Top/bottom stay at the base rule's 12px —
+   only widened horizontally. */
+.pane{padding-left:40px;padding-right:40px}
 .pane.on{display:block}
 .pane h3{font-size:11px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase;margin:14px 0 6px}
 .pane h3:first-child{margin-top:0}
@@ -969,16 +978,18 @@ body.tab-hidden .tbheart,body.tab-hidden .tbjet,body.tab-hidden .bspin{animation
     color:var(--axistext)}
   #sbBtn.sbFloat:hover{background:rgba(255,255,255,.10)!important}
   #sbBtn.sbFloat svg{display:block!important;width:16px!important;height:16px!important}
-  /* The desktop .tabs rule's 26px side padding (breathing room around the edge-docked handle,
-     see its own comment) is dead weight here — mobile has no edge handle at all, just the small
-     pinned corner button above, so this would only crowd the tab row's actual labels for nothing.
-     !important, deliberately: this media-query rule sits EARLIER in the file than the desktop
-     26px rule it needs to beat, and neither selector is more specific than the other, so without
-     !important the plain "last one in source order wins" tie-break would hand it to the desktop
-     rule regardless of which media query is actually active — the exact bug #sbBtn.sbFloat's own
-     border-radius hit earlier for the same reason. The desktop rule stays plain (not !important)
-     specifically so this can always beat it outright, independent of ordering. */
+  /* The desktop .tabs/.pane rules' 40px side padding (breathing room around the edge-docked
+     handle, see their own comments) is dead weight here — mobile has no edge handle at all, just
+     the small pinned corner button above, so this would only crowd the tab row's/every pane's own
+     content for nothing. !important, deliberately: these media-query rules sit EARLIER in the
+     file than the desktop 40px rules they need to beat, and neither selector is more specific
+     than the other, so without !important the plain "last one in source order wins" tie-break
+     would hand it to the desktop rule regardless of which media query is actually active — the
+     exact bug #sbBtn.sbFloat's own border-radius hit earlier for the same reason. The desktop
+     rules stay plain (not !important) specifically so these can always beat them outright,
+     independent of ordering. */
   .tabs{padding-left:4px!important;padding-right:4px!important}
+  .pane{padding-left:12px!important;padding-right:12px!important}
   #toasts{right:12px}
   .toast{min-width:0;max-width:calc(100vw - 24px)}
   .tbpix{display:none}
