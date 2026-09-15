@@ -9,9 +9,13 @@
      tab showed no icon. It now sits at the conventional /favicon.ico path and is declared here. -->
 <link rel="icon" type="image/x-icon" href="/favicon.ico">
 <link rel="apple-touch-icon" href="/favicon.ico">
-<!-- Warm the TLS/DNS to the ticker-logo CDN before the first logo is ever requested, so the
-     image fetch on the opening symbol (and every ticker entry) skips the connection setup cost. -->
-<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<!-- Warm the TLS/DNS to the ticker-logo host before the first logo is ever requested, so the
+     image fetch on the opening symbol (and every ticker entry) skips the connection setup cost.
+     Repointed from cdn.jsdelivr.net to financialmodelingprep.com alongside updateSymLogo()'s own
+     switch to that host (see its comment) — jsdelivr itself is still referenced elsewhere only as
+     ensureLWC()'s dormant charting-library fallback, which isn't worth a warm connection since it
+     almost never actually fires. -->
+<link rel="preconnect" href="https://financialmodelingprep.com" crossorigin>
 <script>/* lightweight-charts v4.2.3 — vendored inline 2026-08-14 to drop the cdnjs dependency (upstream: standalone.production, byte-for-byte). ensureLWC() still keeps the unpkg/jsdelivr CDN fallback as a dormant safety net. */
 /*!
  * @license
@@ -1847,7 +1851,15 @@ table.lv td{padding:6px 10px}
     <div class="p2cluster" id="p1cluster">
     <div class="sym">
       <img id="symLogo" class="symlogo" alt="" src="" style="display:none">
-      <input id="symInput" size="6" value="QQQ" placeholder="Ticker" autocomplete="off">
+      <!-- autocomplete="off" alone does not actually suppress Chrome's own "previously typed
+           values" suggestion dropdown for a plain text input — Chrome has deliberately ignored
+           the literal token "off" for this specific feature for years (a long-standing, widely
+           documented Chromium decision, distinct from full address/payment AutoFill). The
+           reliable workaround is an autocomplete value Chrome does NOT recognize as a keyword at
+           all, so it falls through to "no autofill" instead of being special-cased back to on;
+           autocorrect/autocapitalize/spellcheck are turned off alongside it so no other
+           browser-native suggestion surface can pop up over this field either. -->
+      <input id="symInput" size="6" value="QQQ" placeholder="Ticker" autocomplete="chrome-off" autocorrect="off" autocapitalize="off" spellcheck="false">
       <div class="tfdrop" data-pane="0">
         <button class="tfbtn" id="tfbtn0" title="Timeframe"><span id="tfbtnLabel0">5m</span><svg viewBox="0 0 12 12" fill="none"><path d="M2.5 4.5L6 8l3.5-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         <div class="tfmenu">
@@ -10793,14 +10805,18 @@ function teardownPane2Levels(){
   hidePane2Levels();
 }
 // LogoKit's image CDN did not actually load (confirmed both here and by the user's own real
-// browser — not a sandbox artifact). Switched to jsdelivr serving davidepalazzo/ticker-logos, a
-// community-maintained set of transparent 250x250 PNGs for NYSE/NASDAQ tickers, filed by ticker
-// symbol under ticker_icons/ — verified working end-to-end (AAPL/MSFT/TSLA/QQQ all load; an
-// invalid symbol correctly 404s rather than silently returning something else). jsdelivr is a
-// major CDN in front of the same GitHub content, so it is far less likely to be firewalled than
-// a small logo-API startup's own domain was. Not every ticker has a logo in the set (OTC/thinly-
-// covered names, indices); onerror hides the <img> instead of showing a broken-image glyph, and
-// it reappears the moment a symbol that DOES resolve loads successfully.
+// browser — not a sandbox artifact). davidepalazzo/ticker-logos (a static, one-time community
+// GitHub upload served through jsdelivr) came next but turned out to be stale and narrower than
+// it looked: verified live (curl, 2026-09-15) that it 404s on real, currently-listed tickers the
+// static snapshot was simply never updated for — RDDT (Reddit, IPO Mar 2024) and CRCL (Circle,
+// IPO Jun 2025) both 404, and even an older, unglamorous name like UUUU 404s. Switched to
+// financialmodelingprep.com's public /image-stock/{TICKER}.png endpoint instead — no API key
+// needed for the image itself, confirmed working for all of the above (RDDT/CRCL/UUUU included)
+// plus ETFs (SPY/QQQ/DIA/IWM) and dotted classes (BRK.B), and a genuinely invalid ticker still
+// gets a clean 404 rather than a placeholder image, so the onerror-hide behavior below is
+// unaffected. Resolution is lower per image (100x100 vs the old set's 250x250) but irrelevant at
+// this app's 20x20 display size, and FMP mirrors company-provided logos on an ongoing basis
+// rather than a single historical snapshot, so it stays current as new tickers list.
 // Cache of URLs already known to resolve (or 404) this session, so re-entering a symbol never
 // re-hits the network to re-discover the same answer — the swap is instant.
 const _logoState=new Map();   // url -> 'ok' | 'bad'
@@ -10809,7 +10825,7 @@ function updateSymLogo(sym,suffix){
   if(!sym){img.style.display='none';img.dataset.sym='';return;}
   if(img.dataset.sym===sym)return;                 // already showing/loading this one
   img.dataset.sym=sym;
-  const url='https://cdn.jsdelivr.net/gh/davidepalazzo/ticker-logos@main/ticker_icons/'+encodeURIComponent(sym)+'.png';
+  const url='https://financialmodelingprep.com/image-stock/'+encodeURIComponent(sym)+'.png';
   const known=_logoState.get(url);
   if(known==='bad'){img.style.display='none';return;}
   if(known==='ok'){img.src=url;img.style.display='';return;}
