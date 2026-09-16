@@ -5967,6 +5967,7 @@ function axisPxLabel(host,price,y,color,fam,key){
 // strictly necessary (e.g. once from positionLvlTags even though only Saty was ever provably
 // affected) costs nothing and keeps all three badge families under the same guarantee.
 const AXPX_HIDE_DIST=9;   // roughly half a badge's own rendered height
+const CDOWN_HIDE_DIST=14;   // .cdown is a taller two-line badge (~26px) than .axpx (~15px) — half its own height
 function syncAxpxCrosshair(pane){
   if(!pane)return;
   const host=$('#tips'+pane.idx);if(!host)return;
@@ -5975,6 +5976,16 @@ function syncAxpxCrosshair(pane){
     const by=parseFloat(b.style.top);
     b.style.visibility=(y!=null&&!isNaN(by)&&Math.abs(by-y)<AXPX_HIDE_DIST)?'hidden':'';
   });
+  // The countdown badge (.cdown, always full-opacity/z-index 7 — see updateCountdown's own
+  // comment) was never part of this hide treatment, so it kept winning the pixel over the
+  // cursor's own native price label exactly like the .axpx badges used to before this function
+  // existed. TradingView's own crosshair price label wins over EVERY axis label near it,
+  // including its own last-price/bar marker — same rule applied here.
+  const cd=$('#cd'+pane.idx);
+  if(cd&&cd.style.display!=='none'){
+    const cy=parseFloat(cd.style.top);
+    cd.style.visibility=(y!=null&&!isNaN(cy)&&Math.abs(cy-y)<CDOWN_HIDE_DIST)?'hidden':'';
+  }
 }
 // FLICKER FIX: this used to wipe and recreate every .lvltag/.axpx-lvl node on every call — fine
 // at drawLevelsOn's own change-driven cadence, but this function is ALSO called every second by
@@ -7768,6 +7779,7 @@ function updateCountdown(p){
   const vcol=rem==null?'style="color:#ffffff"':'';
   el.innerHTML='<div class="v" '+vcol+'>'+p.lastClose.toFixed(2)+'</div><div class="t" '+vcol+'>'+fmtCd(rem)+'</div>';
   el.style.display='block';el.style.top=y+'px';
+  syncAxpxCrosshair(p);   // re-assert crosshair-hide at the countdown's (possibly just-moved) new Y — same reasoning as positionLvlTags/positionSatyLabels/renderGexLevels
 }
 // alt=true reads Pane 2's own show/hide memory (lvlOn2) instead of the shared lvlSty[key].on —
 // color/width/style/size stay shared by key across both boards (see LS.lvlOn2's own comment for
