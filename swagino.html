@@ -791,13 +791,14 @@ input:disabled,select:disabled{opacity:.45;cursor:not-allowed}
 #ctxMenu .ci .lbl{flex:1}
 #ctxMenu .ci .kbd{color:#ffffff;font-size:11px;letter-spacing:.02em}
 
-/* Same glass material as the popout (.side): translucent fill + backdrop-filter blur, a thin
-   light-catching border, an inset top/bottom highlight, and text-shadow so the text stays legible
-   over whatever's behind it now that the background isn't a flat opaque chip any more. Shadow and
-   radius are scaled down from .side's own — those numbers were calibrated for a floating panel
-   hundreds of pixels tall; applied as-is to a ~20px text chip they'd read as an oversized glow
-   around a tiny pill. border-radius half again past the chip's own rendered height keeps it a
-   true capsule regardless of exact text length. */
+/* Same glass material as the popout (.side): translucent fill + backdrop-filter blur, and
+   text-shadow so the text stays legible over whatever's behind it now that the background isn't
+   a flat opaque chip any more. border-radius half again past the chip's own rendered height keeps
+   it a true capsule regardless of exact text length.
+   No border and no box-shadow, on request (2026-09-16) — several passes tried to get a light-
+   catching rim/glow right on this pill (a plain top/bottom-only inset, then a wrap-around
+   version, amplified, blurred, dimmed twice) and none of it was wanted in the end; the fill +
+   blur alone is the material now. */
 .satyinfo{pointer-events:none;position:absolute;bottom:6px;left:9px;z-index:8;
   font:500 10.5px/1.35 var(--disp);color:var(--axistext);
   text-shadow:0 1px 2px rgba(0,0,0,.65);
@@ -807,19 +808,6 @@ input:disabled,select:disabled{opacity:.45;cursor:not-allowed}
   -webkit-backdrop-filter:blur(3px) saturate(1.3);
   backdrop-filter:url(#liquidGlassDistort) saturate(1.3);
   -webkit-backdrop-filter:url(#liquidGlassDistort) saturate(1.3);
-  border:1px solid rgba(255,255,255,.05);
-  /* Was top+bottom only (0 1px 0 / 0 -1px 0) — an inset shadow with a pure y-offset and no
-     spread only ever paints a horizontal sliver at one edge, so the capsule's curved left/right
-     ends carried zero highlight at all and the rim read as broken rather than wrapping the pill.
-     Verified live at 3x zoom (2026-09-16): raising the alpha alone kept the 0-blur shadow a hard
-     1-2px line, so blur was added so it diffuses into a real sheen instead of sitting on top as
-     a stroke. Two dimming passes followed but were reverted on request (.side kept its dimmed
-     version; this pill did not) — back to the brighter blurred values here. */
-  box-shadow:
-    inset 0 3px 5px rgba(255,255,255,.22),
-    inset 0 -3px 5px rgba(255,255,255,.14),
-    inset 3px 0 5px rgba(255,255,255,.18),
-    inset -3px 0 5px rgba(255,255,255,.18);
   border-radius:12px;padding:3px 10px;
   white-space:nowrap;width:max-content}
 /* ---- Saty ATR Levels ----
@@ -1149,6 +1137,25 @@ input[type=checkbox]{accent-color:var(--accent)}
    the whole affordance) but stays wired up for the mobile corner-button fallback just below,
    where there's no panel edge to run a capsule along. */
 #sbBtn.sbFloat svg,#sbBtn2.sbFloat svg{display:none}
+/* Subtle at-rest chevron on the capsule handle, on request (2026-09-16) — the capsule shape
+   alone read as ambiguous, not clearly an affordance. A small CSS-drawn arrow (no SVG, no extra
+   asset) rather than reviving the old compress/expand glyph above, which is sized and shaped for
+   a small square button, not a thin full-height bar. Points toward whichever edge the panel will
+   open from (.dockLeft, set alongside the handle's own position in applyPos()) — same direction
+   regardless of hidden/shown state, since that's simpler and still reads correctly either way:
+   "the panel lives/opens this way." Faint at rest, brightens with the same hover the capsule
+   itself already gets. */
+#sbBtn.sbFloat::after,#sbBtn2.sbFloat::after{
+  content:'';position:absolute;top:50%;left:50%;width:6px;height:6px;
+  border-top:1.5px solid rgba(255,255,255,.4);border-right:1.5px solid rgba(255,255,255,.4);
+  transition:border-color .12s ease;pointer-events:none}
+/* dockLeft = handle sits at the panel's own LEFT edge, so the panel body opens to the RIGHT of
+   it — chevron points right (›) to match. A right-docked handle opens leftward, chevron flipped
+   to match (‹). Confirmed the un-swapped mapping visually at 6x zoom first: dockLeft rendering as
+   ‹ pointed away from where the panel actually opens, backwards from the intent. */
+#sbBtn.sbFloat.dockLeft::after,#sbBtn2.sbFloat.dockLeft::after{transform:translate(-35%,-50%) rotate(45deg)}
+#sbBtn.sbFloat:not(.dockLeft)::after,#sbBtn2.sbFloat:not(.dockLeft)::after{transform:translate(-65%,-50%) rotate(225deg)}
+#sbBtn.sbFloat:hover::after,#sbBtn2.sbFloat:hover::after{border-color:rgba(255,255,255,.85)}
 /* ── buttons ── */
 .tbtn{
   background:var(--panel2); color:var(--text); border:none;
@@ -12083,6 +12090,10 @@ function initSidePopout(o){
     const TOP_CLEAR=16,BOTTOM_CLEAR=16;
     btn.style.width=SIDE_HANDLE_W+'px';btn.style.height=Math.max(20,h-TOP_CLEAR-BOTTOM_CLEAR)+'px';
     btn.style.transform=`translate3d(${dockLeft?x+EDGE_INSET:x+w-SIDE_HANDLE_W-EDGE_INSET}px,${y+TOP_CLEAR}px,0)`;
+    // Drives the handle's own at-rest chevron (::after, see its CSS) — which way it points
+    // depends only on which edge the handle is docked to, not on hidden/shown state, so a single
+    // class here is enough; no JS chevron-swap logic needed.
+    btn.classList.toggle('dockLeft',dockLeft);
     btn.style.transition=dragCount>0?'none':`transform .3s ${SLIDE_EASE}, opacity .12s ease`;
   }
   function setHidden(hidden){
