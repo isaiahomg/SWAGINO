@@ -11224,12 +11224,24 @@ async function applyPaneSym(paneIdx){
   }else{
     const sym=(box.value||'').trim().toUpperCase();
     if(!sym)return;
+    // startAltPane() calls this same function to re-show an already-unlinked pane with the
+    // SYMBOL IT ALREADY HAD (just re-syncing the box value first) — not just on a genuine user
+    // edit to a new ticker. An unconditional resetView() below wiped out any zoom/pan the user
+    // had on that pane every single time it was hidden and shown again (e.g. toggling the 1/2
+    // pane layout), even though nothing about the symbol or its data actually changed. Only a
+    // REAL symbol change should force the view back to the app's default framing; a same-symbol
+    // re-show should behave like any other re-render and respect _userZoomed via
+    // renderPaneKeepView, same as everywhere else in the app.
+    const symChanged=!panes[paneIdx]||panes[paneIdx].sym!==sym;
     cfg[symKey]=sym;
     updateSymLogo(sym,paneIdx);
     if(panes[paneIdx])panes[paneIdx].sym=sym;
     try{
       await loadAlt(sym,paneIdx);
-      if(panes[paneIdx]){renderPane(panes[paneIdx]);resetView(panes[paneIdx]);}
+      if(panes[paneIdx]){
+        if(symChanged){renderPane(panes[paneIdx]);resetView(panes[paneIdx]);}
+        else renderPaneKeepView(panes[paneIdx]);
+      }
       clearInterval(st.timer);
       st.timer=setInterval(()=>refreshAlt(paneIdx),Math.max(15,cfg.barS)*1000);
       drawAlertLines();   // new unlinked symbol for this pane — draw whatever alerts belong to it
