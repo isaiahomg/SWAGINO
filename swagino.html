@@ -13061,6 +13061,30 @@ bindLineSwatch($('#rbSwSlowConv'),
   const O=$('#satyOk');if(O)O.onclick=closeSatyModal;
   const M=$('#satyModal');if(M)M.onclick=e=>{if(e.target===M)closeSatyModal();};
 })();
+// Escape closes whichever indicator/settings modal is currently open — CLICKS that modal's own
+// Cancel/Close button rather than just hiding it, so modals with snapshot-revert-on-cancel
+// (Saty/Ribbon/Keltner all restore cfg from a pre-open snapshot in their own Cancel handler) get
+// that revert too, not just a silent hide that leaves a live-previewed-but-uncommitted edit in
+// place. Ordered by each modal's own z-index, descending, so the topmost open one wins on the
+// rare chance more than one is somehow open at once.
+const ESCAPE_MODALS=[
+  ['satyModal','satyCancel'],['rbModal','rbCancel'],
+  ['alertEditModal','alCancelBtn'],['alertsModal','alertsCloseBtn'],
+  ['rsiModal','rsCancel'],['macdModal','mcCancel'],['volModal','voCancel'],
+  ['vwapModal','vwapCancel'],['kcModal','kcCancel'],['stModal','stCancel'],
+  ['setup','cfgCancel'],
+];
+addEventListener('keydown',e=>{
+  if(e.key!=='Escape')return;
+  for(const[modalId,btnId]of ESCAPE_MODALS){
+    const m=document.getElementById(modalId);
+    if(m&&getComputedStyle(m).display!=='none'){
+      const b=document.getElementById(btnId);
+      if(b)b.click();
+      return;
+    }
+  }
+});
 
 /* ── Draggable indicator settings panels — reuses #pDrag's exact pointer-capture drag model ──
    Each indicator modal's <h1> title is the drag handle. On the first grab the .card is DETACHED
