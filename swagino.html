@@ -11923,7 +11923,9 @@ const SIDE_MINW=300,SIDE_MAXW=640,SIDE_MINH=260,SIDE_MAXH=760;
 // Must match #sbBtn.sbFloat/#sbBtn2.sbFloat's own desktop `width` in CSS — kept as a JS constant
 // (not read back from the DOM) because applyPos() needs it for the handle's OWN x position math
 // below, the same way SIDE_MINW/SIDE_MINH above are shared constants rather than re-measured.
-const SIDE_HANDLE_W=10;
+// Widened from 10 on request (2026-09-16) — the at-rest chevron (see #sbBtn.sbFloat::after)
+// was crowding the capsule's own edges at that width.
+const SIDE_HANDLE_W=16;
 function sideIsMobile(){return matchMedia('(max-width:700px)').matches;}
 // The popout must never be dragged/resized so it leaves the viewport or rides up over the
 // topbar — measured (not guessed) so it tracks the topbar's REAL rendered height, and cached
