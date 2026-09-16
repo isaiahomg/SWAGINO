@@ -423,7 +423,7 @@ input[type=checkbox]{accent-color:var(--pivot)}
 .axcur{position:absolute;right:0;z-index:8;font-family:var(--lab);font-size:11px;font-weight:400;
   letter-spacing:.01em;white-space:nowrap;font-variant-numeric:tabular-nums;text-align:center;
   color:#fff;background:#3a3a3a;padding:2px 6px;border-radius:2px;transform:translateY(-50%);
-  display:none;pointer-events:none}
+  display:none;pointer-events:none;box-sizing:border-box}
 .phandle{height:5px;cursor:ns-resize;background:var(--panel);touch-action:none}
 .phandle:hover{background:var(--line)}
 .subpane{position:relative}
@@ -5977,6 +5977,13 @@ function updateAxCursor(pane,y){
   el.textContent=price.toFixed(2);
   el.style.top=y+'px';
   el.style.display='block';
+  // Shrink-wrapped to its own text, right:0 left a gap between the badge's left edge and where
+  // the crosshair's horizontal line actually ends (the plot/axis boundary) — spanning the FULL
+  // axis width (border-box, so padding doesn't push past it) closes that gap exactly, same axisW
+  // read positionLvlTags/positionSatyLabels already use for their own axis-relative placement.
+  let axisW=0;try{axisW=Math.round(pane.chart.priceScale('right').width()||0);}catch(e){}
+  if(!(axisW>10))axisW=56;
+  el.style.width=axisW+'px';
 }
 // FLICKER FIX: this used to wipe and recreate every .lvltag/.axpx-lvl node on every call — fine
 // at drawLevelsOn's own change-driven cadence, but this function is ALSO called every second by
