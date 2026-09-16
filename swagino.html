@@ -210,6 +210,18 @@ input[type=checkbox]{accent-color:var(--pivot)}
    visual: the algorithm, its timing and its prices are unchanged either way. */
 .swdot.open{width:6px;height:6px;border:1.5px solid;box-shadow:none}
 .swlab.open{opacity:.7}
+/* Same "still forming" disclosure as .swdot/.swlab, on the RSI pane's own divergence markers
+   (positionDivergence) — a divergence's pivot swing can still be superseded until something
+   settles it, exactly like the price-chart swing it's anchored to, so it draws hollow/faint
+   until that happens instead of not drawing at all (see detectDivergences' own comment). */
+.divdot{position:absolute;width:5px;height:5px;border-radius:50%;pointer-events:none;
+  transform:translate(-50%,-50%);box-shadow:0 0 3px rgba(0,0,0,.9)}
+.divdot.open{width:6px;height:6px;border:1.5px solid;box-shadow:none}
+.divlab{position:absolute;font-family:var(--lab);font-size:9.5px;font-weight:400;
+  letter-spacing:.02em;pointer-events:none;white-space:nowrap;
+  transform:translate(-50%,-50%);background:transparent;padding:0 3px;border-radius:3px;
+  text-shadow:0 1px 1px rgba(0,0,0,.85)}
+.divlab.open{opacity:.7}
 /* a break reads in two places: its name+state label near the swing's own wick, and a tick or
    cross on the bar that settled it. (A tilted solid tick used to sit at the wick too — removed
    per feedback, it read as a stray dash — the swing's own dot, positionStruct, already marks
@@ -2001,7 +2013,7 @@ table.lv td{padding:6px 10px}
         <div class="phandle" data-pane="0" data-t="vol" title="Drag to resize Volume panel"></div>
         <div class="subpane" id="volc0wrap"><span class="ptag">Volume <button class="mini volgear" data-pane="0" style="padding:0 5px;margin-left:4px">&#9881;</button></span><div class="cinner" id="volc0"></div></div>
         <div class="phandle" data-pane="0" data-t="rsi" title="Drag to resize RSI panel"></div>
-        <div class="subpane" id="rsic0wrap"><span class="ptag">RSI <button class="mini rsigear" data-pane="0" style="padding:0 5px;margin-left:4px">⚙</button></span><div class="cinner" id="rsic0"></div></div>
+        <div class="subpane" id="rsic0wrap"><span class="ptag">RSI <button class="mini rsigear" data-pane="0" style="padding:0 5px;margin-left:4px">⚙</button></span><div class="cinner" id="rsic0"></div><div class="tips" id="rtips0"></div></div>
         <div class="phandle" data-pane="0" data-t="macd" title="Drag to resize MACD panel"></div>
         <div class="subpane" id="macdc0wrap"><span class="ptag">MACD <button class="mini macdgear" data-pane="0" style="padding:0 5px;margin-left:4px">⚙</button></span><div class="cinner" id="macdc0"></div></div>
       </div>
@@ -2010,7 +2022,7 @@ table.lv td{padding:6px 10px}
         <div class="phandle" data-pane="1" data-t="vol" title="Drag to resize Volume panel"></div>
         <div class="subpane" id="volc1wrap"><span class="ptag">Volume <button class="mini volgear" data-pane="1" style="padding:0 5px;margin-left:4px">&#9881;</button></span><div class="cinner" id="volc1"></div></div>
         <div class="phandle" data-pane="1" data-t="rsi" title="Drag to resize RSI panel"></div>
-        <div class="subpane" id="rsic1wrap"><span class="ptag">RSI <button class="mini rsigear" data-pane="1" style="padding:0 5px;margin-left:4px">⚙</button></span><div class="cinner" id="rsic1"></div></div>
+        <div class="subpane" id="rsic1wrap"><span class="ptag">RSI <button class="mini rsigear" data-pane="1" style="padding:0 5px;margin-left:4px">⚙</button></span><div class="cinner" id="rsic1"></div><div class="tips" id="rtips1"></div></div>
         <div class="phandle" data-pane="1" data-t="macd" title="Drag to resize MACD panel"></div>
         <div class="subpane" id="macdc1wrap"><span class="ptag">MACD <button class="mini macdgear" data-pane="1" style="padding:0 5px;margin-left:4px">⚙</button></span><div class="cinner" id="macdc1"></div></div>
       </div>
@@ -4089,9 +4101,15 @@ function pivotIdx(vals,look,isHigh){
    is negative (t-stats above). It is DECOUPLED from Modules 1/2 — it reads only `rsi` (values) and
    `sw` (the Structure engine's confirmed swings); changing RSI smoothing or the tick engine never
    touches it, and vice versa. STRUCTURE TIMING (not instant, and that is correct): a swing at bar i
-   is only known `strength` bars later (5 on 5m, 4 on 1H/4H, 3 on 1D). The `confirm=b.i+strength`
-   gate below enforces it, so a divergence is drawn at its historical swing bar once that swing has
-   actually turned — never predicted early. ============================================== */
+   is only known `strength` bars later (5 on 5m, 4 on 1H/4H, 3 on 1D) — its price/type never move
+   after that, but until the NEXT swing forms it could still be superseded by a bigger same-type
+   extreme, same as every price-chart swing (see positionStruct's own "OPEN-TIP" comment). A
+   divergence anchored to that still-open tip is drawn immediately rather than withheld until it
+   settles — same "algorithm/timing/prices unchanged, purely a visual disclosure" idea the swing
+   dots use — marked `open` (hollow circle + faded label, positionDivergence) until the swing it
+   sits on stops being `sw`'s own last entry. Never predicted any earlier than the swing itself
+   exists; only the SOLID vs. hollow read changes over time, never the pivot/price/RSI values.
+   ============================================== */
 const DIV_DEF={regular:true,hidden:true,minPriceATR:0.5,minRsiDelta:3,
   zoneLo:35,zoneHi:65,minBars:5,maxBars:120,pairs:5};
 function divCfg(){return Object.assign({},DIV_DEF,cfg.rsi.divCfg||{});}
@@ -4136,16 +4154,22 @@ function detectDivergences(data,rsi,sw,strength,over){
   const D=Object.assign(divCfg(),over||{});
   const atr=atrSeriesOf(data,14);
   const lows=sw.filter(x=>x.type==='L'),highs=sw.filter(x=>x.type==='H');
+  // Same "open" signal .swdot/.swlab already use for the price chart's still-forming swing tip
+  // (see positionStruct's own comment) — the last entry in `sw` overall, of either type, is the
+  // only one nothing has followed yet and so could still be superseded. A divergence anchored to
+  // it is real (the pair-comparison math below is unchanged either way) but not yet settled, so
+  // it draws hollow/faint via this flag instead of being withheld from `out` until it ages past
+  // `strength` bars the way it used to — that used to mean a divergence was invisible right up
+  // until the moment it was already fully confirmed, the same "printed then popped in" gap the
+  // swing engine solved for its own dots long before this.
+  const openSwing=sw.length?sw[sw.length-1]:null;
   const scan=(seq,isLow)=>{
     for(let bi=1;bi<seq.length;bi++){
       const b=seq[bi],rb=rsi[b.i];
       if(rb==null)continue;
       const aref=atr[b.i];
       if(!(aref>0))continue;
-      // a swing is only KNOWN `strength` bars after it prints; drawing it any earlier
-      // would show a signal that could not have been read at the time
-      const confirm=b.i+strength;
-      if(confirm>=data.length)continue;
+      const confirm=b.i+strength;   // kept only for the sort below; no longer gates inclusion
       for(let ai=bi-1;ai>=Math.max(0,bi-D.pairs);ai--){
         const a=seq[ai],ra=rsi[a.i];
         if(ra==null)continue;
@@ -4163,7 +4187,7 @@ function detectDivergences(data,rsi,sw,strength,over){
           else if(D.hidden&&b.price<a.price&&rb>ra){side='bear';kind='hidden';}
         }
         if(!side)continue;
-        out.push({side,kind,pivot:b.i,from:a.i,fromVal:ra,val:rb,confirm,
+        out.push({side,kind,pivot:b.i,from:a.i,fromVal:ra,val:rb,confirm,open:b===openSwing,
           time:data[b.i].time,
           type:(kind==='hidden'?'hidden ':'')+(side==='bull'?'bullish':'bearish')+' divergence'});
         break;                       // one reading per swing, the most recent pair that fits
@@ -5698,8 +5722,9 @@ function renderPane(p){
     p.rsiOB.setData(gradOn?padSeries(data,rampFill(+cfg.rsi.up)):[]);
     p.rsiOS.setData(gradOn?padSeries(data,rampFill(+cfg.rsi.lo)):[]);
     const divOn=!!(cfg.rsi.div&&cfg.ind.rsi.on);
-    // Divergence — off by default. When on it draws the pivot-to-pivot line plus a label at
-    // the swing, and still writes to the Log.
+    // Divergence — off by default. When on it draws the pivot-to-pivot line plus a marker+label
+    // at the swing (positionDivergence, HTML overlay over the RSI pane — see its own comment for
+    // why this moved off LWC's native setMarkers).
     const divs=divOn?detectDivergences(data,rsi,p.sw,Math.max(2,PP.swing),
       {minBars:PP.divMin,maxBars:PP.divMax}):[];
     if(!p.rsiDivLines)p.rsiDivLines=[];
@@ -5720,11 +5745,10 @@ function renderPane(p){
                     {time:data[d.pivot].time,value:+d.val.toFixed(2)}]);
         p.rsiDivLines.push(sr);
       });
-      try{p.rsi.setMarkers(divs.slice(-20).map(d=>({
-        time:data[d.pivot].time,position:d.side==='bull'?'belowBar':'aboveBar',
-        color:d.side==='bull'?BULL:BEAR,shape:'circle',
-        text:(d.kind==='hidden'?'H.':'')+(d.side==='bull'?'Bull':'Bear')})));}catch(e){}
-    }else{try{p.rsi.setMarkers([]);}catch(e){}}
+      p.divs=divs.slice(-20);
+    }else{p.divs=null;}
+    try{p.rsi.setMarkers([]);}catch(e){}   // fully replaced by positionDivergence's HTML overlay
+    positionDivergence(p);
     p._rsiRenderCache={data,sw:p.sw,key:rBlockKey};
   }
   // ---- MACD (own subpane, below RSI) — ported verbatim from the Pine v6 source given for
@@ -6415,6 +6439,41 @@ function sessClass(mm){
   if(mm>=960&&mm<1200)return 'post';              // 16:00-20:00
   return null;                                     // RTH 09:30-16:00 (and the 20:00-24:00 gap)
 }
+// RSI divergence's own marker+label, over the RSI subpane — moved off LWC's native
+// series.setMarkers() (which has no hollow-circle shape) onto plain HTML overlay divs so it can
+// use the exact .swdot/.swlab "open" disclosure (see detectDivergences' own comment on `open`).
+// Called from renderPane's RSI block on every recompute AND from positionTips (pan/zoom/resize)
+// since a marker's x/y, like every other overlay here, is only valid for the chart's current
+// visible range.
+function positionDivergence(p){
+  const host=$('#rtips'+p.idx);if(!host)return;
+  host.querySelectorAll('.divdot,.divlab').forEach(e=>e.remove());
+  if(!p.divs||!p.divs.length||!p.rsi||!p.rchart)return;
+  const el=$('#rsic'+p.idx);if(!el)return;
+  const w=el.clientWidth;
+  let axisW=0;try{axisW=Math.round(p.rchart.priceScale('right').width()||0);}catch(e){}
+  if(!(axisW>10))axisW=56;
+  const BULL='#26a69a',BEAR='#ef5350';
+  p.divs.forEach(d=>{
+    let y=null,cx=null;
+    try{y=pxRound(p.rsi.priceToCoordinate(d.val));}catch(e){}
+    try{cx=p.rchart.timeScale().timeToCoordinate(d.time);}catch(e){}
+    if(y==null||cx==null||cx<0||cx>w-axisW)return;
+    const color=d.side==='bull'?BULL:BEAR;
+    const text=(d.kind==='hidden'?'H.':'')+(d.side==='bull'?'Bull':'Bear');
+    const dot=document.createElement('div');dot.className='divdot'+(d.open?' open':'');
+    if(d.open){dot.style.borderColor=color;dot.style.background='transparent';}
+    else dot.style.background=color;
+    dot.style.left=cx+'px';
+    dot.style.top=(d.side==='bull'?y+7:y-7)+'px';
+    host.appendChild(dot);
+    const lab=document.createElement('div');lab.className='divlab'+(d.open?' open':'');
+    lab.textContent=text;lab.style.color=color;
+    lab.style.left=cx+'px';
+    lab.style.top=(d.side==='bull'?y+17:y-17)+'px';
+    host.appendChild(lab);
+  });
+}
 function computeSessBands(times){
   const out=[];let run=null;
   for(let i=0;i<times.length;i++){
@@ -6637,6 +6696,7 @@ function positionTips(p){
   if(!p||!p.chart)return;
   positionSessionBands(p);
   positionStruct(p);
+  positionDivergence(p);
   positionSatyLabels(p);
   positionSatyInfo(p);
   positionRbArrows(p);
