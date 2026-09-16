@@ -811,15 +811,15 @@ input:disabled,select:disabled{opacity:.45;cursor:not-allowed}
   /* Was top+bottom only (0 1px 0 / 0 -1px 0) — an inset shadow with a pure y-offset and no
      spread only ever paints a horizontal sliver at one edge, so the capsule's curved left/right
      ends carried zero highlight at all and the rim read as broken rather than wrapping the pill.
-     Verified live at 3x zoom (2026-09-16): raising the alpha alone (the first amplify pass) kept
-     the 0-blur shadow a hard 1-2px line, so blur was added so it diffuses into a real sheen
-     instead of sitting on top as a stroke — then dimmed back down (same pass) once the blurred
-     version read as too intense at normal scale, then dimmed again (still too bright) to this. */
+     Verified live at 3x zoom (2026-09-16): raising the alpha alone kept the 0-blur shadow a hard
+     1-2px line, so blur was added so it diffuses into a real sheen instead of sitting on top as
+     a stroke. Two dimming passes followed but were reverted on request (.side kept its dimmed
+     version; this pill did not) — back to the brighter blurred values here. */
   box-shadow:
-    inset 0 3px 5px rgba(255,255,255,.07),
-    inset 0 -3px 5px rgba(255,255,255,.04),
-    inset 3px 0 5px rgba(255,255,255,.05),
-    inset -3px 0 5px rgba(255,255,255,.05);
+    inset 0 3px 5px rgba(255,255,255,.22),
+    inset 0 -3px 5px rgba(255,255,255,.14),
+    inset 3px 0 5px rgba(255,255,255,.18),
+    inset -3px 0 5px rgba(255,255,255,.18);
   border-radius:12px;padding:3px 10px;
   white-space:nowrap;width:max-content}
 /* ---- Saty ATR Levels ----
