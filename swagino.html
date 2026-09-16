@@ -415,6 +415,14 @@ input[type=checkbox]{accent-color:var(--pivot)}
 .cdown{position:absolute;right:0;z-index:7;font-family:var(--lab);transform:translateY(-50%);display:none;pointer-events:none;text-align:center;min-width:58px;border-radius:2px;overflow:hidden}
 .cdown .v{font-size:10px;font-weight:400;padding:1px 6px;color:#050505;text-align:center}
 .cdown .t{font-size:9px;padding:0 6px 1px;color:#050505;font-weight:400;text-align:center}
+/* The cursor's own price readout — z-index above every other axis badge (.axpx:6, .cdown:7) so it
+   continuously paints over whatever it overlaps as the mouse moves, exactly like TradingView's own
+   crosshair label on its separate top canvas layer (see updateAxCursor's own comment). #050505-on-
+   neutral-grey mirrors .cdown's CLOSED-state fill (the same "neutral info badge" already in the app). */
+.axcur{position:absolute;right:0;z-index:8;font-family:var(--lab);font-size:11px;font-weight:400;
+  letter-spacing:.01em;white-space:nowrap;font-variant-numeric:tabular-nums;text-align:center;
+  color:#050505;background:#3a3a3a;padding:2px 6px;border-radius:2px;transform:translateY(-50%);
+  display:none;pointer-events:none}
 .phandle{height:5px;cursor:ns-resize;background:var(--panel);touch-action:none}
 .phandle:hover{background:var(--line)}
 .subpane{position:relative}
@@ -1988,7 +1996,7 @@ table.lv td{padding:6px 10px}
     <div class="chartcol">
      <div class="panerow" id="panerow">
       <div class="panewrap" id="pw0">
-        <div class="pchart"><div class="chartcorner" data-pane="0"><div class="indlist hide" id="indlist0"><span class="indtog" id="stylab0">Saty ATR Levels<button class="eye" data-ind="saty" data-pane="0" title="Saty ATR Levels"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini satygear" data-pane="0" style="padding:0 5px;margin-left:2px">&#9881;</button></span><span class="indtog" id="rblab0">Saty Pivot Ribbon<button class="eye" data-ind="ribbon" data-pane="0" title="Saty Pivot Ribbon"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini rbgear" data-pane="0" style="padding:0 5px;margin-left:2px">&#9881;</button></span><span class="indtog" id="stlab0">Market Structure<button class="eye" data-ind="struct" data-pane="0" title="Swing structure &amp; patterns"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini stgear" data-pane="0" style="padding:0 5px;margin-left:2px">⚙</button></span><span class="indtog" id="kclab0">Keltner Channels<button class="eye" data-ind="kc" data-pane="0" title="Keltner Channels"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini kcgear" data-pane="0" style="padding:0 5px;margin-left:2px">&#9881;</button></span><span class="indtog" id="vwlab0">VWAP<button class="eye" data-ind="vwap" data-pane="0" title="VWAP"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini vwgear" data-pane="0" style="padding:0 5px;margin-left:2px">&#9881;</button></span></div><button class="indcollapse" id="indcollapse0" title="Show/hide overlay indicators"><svg viewBox="0 0 12 12" fill="none"><path d="M2.5 4.5L6 8l3.5-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div><div class="cinner" id="pc0"></div><div class="tips" id="tips0"></div><div class="cdown" id="cd0"></div><div class="tfdrop sessdrop" id="sessDrop" title="RTH = 9:30 AM–4:00 PM ET · ETH = everything Tradier serves, 4:00 AM–8:00 PM ET"><button class="tfbtn" id="sessBtn"><span id="sessBtnLabel">ETH</span><svg viewBox="0 0 12 12" fill="none"><path d="M2.5 4.5L6 8l3.5-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button><div class="tfmenu"><div class="seg" id="sessSeg"><button data-sess="rth">RTH</button><button data-sess="eth" class="on">ETH</button></div></div></div></div>
+        <div class="pchart"><div class="chartcorner" data-pane="0"><div class="indlist hide" id="indlist0"><span class="indtog" id="stylab0">Saty ATR Levels<button class="eye" data-ind="saty" data-pane="0" title="Saty ATR Levels"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini satygear" data-pane="0" style="padding:0 5px;margin-left:2px">&#9881;</button></span><span class="indtog" id="rblab0">Saty Pivot Ribbon<button class="eye" data-ind="ribbon" data-pane="0" title="Saty Pivot Ribbon"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini rbgear" data-pane="0" style="padding:0 5px;margin-left:2px">&#9881;</button></span><span class="indtog" id="stlab0">Market Structure<button class="eye" data-ind="struct" data-pane="0" title="Swing structure &amp; patterns"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini stgear" data-pane="0" style="padding:0 5px;margin-left:2px">⚙</button></span><span class="indtog" id="kclab0">Keltner Channels<button class="eye" data-ind="kc" data-pane="0" title="Keltner Channels"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini kcgear" data-pane="0" style="padding:0 5px;margin-left:2px">&#9881;</button></span><span class="indtog" id="vwlab0">VWAP<button class="eye" data-ind="vwap" data-pane="0" title="VWAP"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini vwgear" data-pane="0" style="padding:0 5px;margin-left:2px">&#9881;</button></span></div><button class="indcollapse" id="indcollapse0" title="Show/hide overlay indicators"><svg viewBox="0 0 12 12" fill="none"><path d="M2.5 4.5L6 8l3.5-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div><div class="cinner" id="pc0"></div><div class="tips" id="tips0"></div><div class="cdown" id="cd0"></div><div class="axcur" id="axcur0"></div><div class="tfdrop sessdrop" id="sessDrop" title="RTH = 9:30 AM–4:00 PM ET · ETH = everything Tradier serves, 4:00 AM–8:00 PM ET"><button class="tfbtn" id="sessBtn"><span id="sessBtnLabel">ETH</span><svg viewBox="0 0 12 12" fill="none"><path d="M2.5 4.5L6 8l3.5-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button><div class="tfmenu"><div class="seg" id="sessSeg"><button data-sess="rth">RTH</button><button data-sess="eth" class="on">ETH</button></div></div></div></div>
         <div class="phandle" data-pane="0" data-t="vol" title="Drag to resize Volume panel"></div>
         <div class="subpane" id="volc0wrap"><span class="ptag">Volume <button class="mini volgear" data-pane="0" style="padding:0 5px;margin-left:4px">&#9881;</button></span><div class="cinner" id="volc0"></div></div>
         <div class="phandle" data-pane="0" data-t="rsi" title="Drag to resize RSI panel"></div>
@@ -1997,7 +2005,7 @@ table.lv td{padding:6px 10px}
         <div class="subpane" id="macdc0wrap"><span class="ptag">MACD <button class="mini macdgear" data-pane="0" style="padding:0 5px;margin-left:4px">⚙</button></span><div class="cinner" id="macdc0"></div></div>
       </div>
       <div class="panewrap" id="pw1" style="display:none">
-        <div class="pchart"><div class="chartcorner" data-pane="1"><div class="indlist hide" id="indlist1"><span class="indtog" id="stylab1">Saty ATR Levels<button class="eye" data-ind="saty" data-pane="1" title="Saty ATR Levels"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini satygear" data-pane="1" style="padding:0 5px;margin-left:2px">&#9881;</button></span><span class="indtog" id="rblab1">Saty Pivot Ribbon<button class="eye" data-ind="ribbon" data-pane="1" title="Saty Pivot Ribbon"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini rbgear" data-pane="1" style="padding:0 5px;margin-left:2px">&#9881;</button></span><span class="indtog" id="stlab1">Market Structure<button class="eye" data-ind="struct" data-pane="1" title="Swing structure &amp; patterns"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini stgear" data-pane="1" style="padding:0 5px;margin-left:2px">⚙</button></span><span class="indtog" id="kclab1">Keltner Channels<button class="eye" data-ind="kc" data-pane="1" title="Keltner Channels"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini kcgear" data-pane="1" style="padding:0 5px;margin-left:2px">&#9881;</button></span><span class="indtog" id="vwlab1">VWAP<button class="eye" data-ind="vwap" data-pane="1" title="VWAP"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini vwgear" data-pane="1" style="padding:0 5px;margin-left:2px">&#9881;</button></span></div><button class="indcollapse" id="indcollapse1" title="Show/hide overlay indicators"><svg viewBox="0 0 12 12" fill="none"><path d="M2.5 4.5L6 8l3.5-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div><div class="cinner" id="pc1"></div><div class="tips" id="tips1"></div><div class="cdown" id="cd1"></div></div>
+        <div class="pchart"><div class="chartcorner" data-pane="1"><div class="indlist hide" id="indlist1"><span class="indtog" id="stylab1">Saty ATR Levels<button class="eye" data-ind="saty" data-pane="1" title="Saty ATR Levels"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini satygear" data-pane="1" style="padding:0 5px;margin-left:2px">&#9881;</button></span><span class="indtog" id="rblab1">Saty Pivot Ribbon<button class="eye" data-ind="ribbon" data-pane="1" title="Saty Pivot Ribbon"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini rbgear" data-pane="1" style="padding:0 5px;margin-left:2px">&#9881;</button></span><span class="indtog" id="stlab1">Market Structure<button class="eye" data-ind="struct" data-pane="1" title="Swing structure &amp; patterns"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini stgear" data-pane="1" style="padding:0 5px;margin-left:2px">⚙</button></span><span class="indtog" id="kclab1">Keltner Channels<button class="eye" data-ind="kc" data-pane="1" title="Keltner Channels"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini kcgear" data-pane="1" style="padding:0 5px;margin-left:2px">&#9881;</button></span><span class="indtog" id="vwlab1">VWAP<button class="eye" data-ind="vwap" data-pane="1" title="VWAP"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini vwgear" data-pane="1" style="padding:0 5px;margin-left:2px">&#9881;</button></span></div><button class="indcollapse" id="indcollapse1" title="Show/hide overlay indicators"><svg viewBox="0 0 12 12" fill="none"><path d="M2.5 4.5L6 8l3.5-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div><div class="cinner" id="pc1"></div><div class="tips" id="tips1"></div><div class="cdown" id="cd1"></div><div class="axcur" id="axcur1"></div></div>
         <div class="phandle" data-pane="1" data-t="vol" title="Drag to resize Volume panel"></div>
         <div class="subpane" id="volc1wrap"><span class="ptag">Volume <button class="mini volgear" data-pane="1" style="padding:0 5px;margin-left:4px">&#9881;</button></span><div class="cinner" id="volc1"></div></div>
         <div class="phandle" data-pane="1" data-t="rsi" title="Drag to resize RSI panel"></div>
@@ -3474,6 +3482,9 @@ function makePane(idx){
   pEl.parentNode.insertBefore(axisBackR,pEl);
   pEl.parentNode.insertBefore(axisBackB,pEl);
   const chart=LightweightCharts.createChart(pEl,chartOpts());
+  // Suppress LWC's own native crosshair price label (painted inside the canvas) — #axcur{idx}
+  // (updateAxCursor, wired below) fully replaces it with our own top-layer version instead.
+  try{chart.applyOptions({crosshair:{horzLine:{labelVisible:false}}});}catch(e){}
   /* Series draw in CREATION order (first = bottom). The Saty Ribbon clouds are created BEFORE the
      candlesticks so the candles sit ON TOP of the clouds — the correct look, and it removes the
      "candle series drawn beneath a custom series" condition that made LWC drop the candles' repaint
@@ -3598,21 +3609,23 @@ function makePane(idx){
   // breaking the crosshair sync FROM the volume/RSI panels back onto the price pane (the failure is
   // swallowed by this function's own try/catch, so it would otherwise fail with no visible error).
   crossSync(pane,[{chart:chart,get series(){return pane.candles;},key:'close'},{chart:vchart,series:vol,key:'vol'},{chart:rchart,series:rsi,key:'rsi'},{chart:mchart,series:macdLine,key:'macd'}]);
-  // The cursor's own native price readout (the axis label the crosshair draws at the cursor's Y,
-  // enabled via handleScale/crosshair above) is painted INSIDE the chart's <canvas> — every one
-  // of our OWN axis badges (.axpx-lvl/.axpx-saty/GEX's own, all sharing the .axpx base class) is
-  // a plain HTML div in the .tips overlay sitting on top of that canvas (position:absolute always
-  // paints above a plain static canvas, regardless of any z-index value — nothing was ever
-  // deliberately "pushing" one or the other, our badges just always won that pixel by default).
-  // On request the cursor's own label should always be the thing you see there instead. Only
-  // STORES the crosshair's current Y on the pane here — syncAxpxCrosshair() (top-level, shared
-  // with positionLvlTags/positionSatyLabels/renderGexLevels — see its own comment for why) is
-  // what actually applies it, so a badge rebuilt by any of those three while the cursor is
-  // sitting still re-asserts the hidden state the instant it's rebuilt, not just on the next
-  // mouse pixel of movement.
+  // TradingView's own crosshair price label always paints over every other axis label near it —
+  // verified live by extracting its price-axis canvases: the crosshair label sits ALONE on a
+  // separate top layer above the one holding its static line/last-price labels, so it continuously
+  // covers whatever it overlaps as the mouse moves, with the covered label never itself changing
+  // state. Our own axis badges (.axpx-lvl/.axpx-saty/GEX's own, .cdown) are plain HTML divs, and
+  // LWC's NATIVE crosshair price label is painted inside the chart's <canvas>, which those divs
+  // always sit on top of regardless of z-index (position:absolute beats a plain static canvas by
+  // DOM order alone) — so the native label always lost to them. An earlier fix here toggled
+  // visibility:hidden on nearby badges past a distance threshold, which looked like those badges
+  // popping in and out rather than being smoothly covered. Replicating the real mechanism instead:
+  // LWC's own native horzLine label is disabled right after chart creation below, and #axcur{idx}
+  // (.axcur, a z-index above every other axis badge) is our own top-layer stand-in, continuously
+  // repositioned/relabeled here so it covers whatever it overlaps exactly like TradingView's —
+  // no hide/show on the covered badges themselves, ever.
   chart.subscribeCrosshairMove(param=>{
     pane._crosshairY=param&&param.point?param.point.y:null;
-    syncAxpxCrosshair(pane);
+    updateAxCursor(pane,param&&param.point?param.point.y:null);
   });
   trackOverlays(pane);
   applyRsiBands(pane);
@@ -5946,46 +5959,23 @@ function axisPxLabel(host,price,y,color,fam,key){
   d.style.background=color;d.style.top=y+'px';
   host.appendChild(d);
 }
-// Re-applies the crosshair-hide state (see makePane's own subscribeCrosshairMove, which only
-// STORES pane._crosshairY — this is what actually reads it) to every one of a pane's own axis
-// badges. Top-level and called from THREE places — the end of positionLvlTags/positionSatyLabels
-// below and inside renderGexLevels' own per-pane loop further down — because a crosshair-move
-// event is not the only thing that touches these badges: positionSatyLabels in particular wipes
-// and recreates its own .axpx-saty nodes on EVERY call (see its own "FLICKER FIX" precedent
-// comment on positionLvlTags just below, which fixed the identical issue for level badges by
-// diffing instead — Saty never got the same treatment), and it's called from several places
-// besides the crosshair-agnostic positionTips ticker (satyRedraw, the real-time HOD/LOD-style
-// "the tick that moved the extreme triggers the recompute directly" paths). A freshly-created
-// node has no inline visibility of its own, so without this, a badge the crosshair had hidden
-// reverted to visible the moment ANY of those unrelated triggers next fired - reproduced live,
-// holding the cursor still over a Saty rung's own badge: it went from hidden back to fully
-// visible within about a second with no mouse movement at all, while a Level badge (already
-// diffed, patched in place rather than recreated) sitting under the same cursor position stayed
-// correctly hidden for the same 3+ seconds. Calling this again right after ANY of those three
-// functions finishes rebuilding is what closes that gap regardless of which one caused it - cheap
-// (a handful of badges, one Y comparison each) and idempotent, so calling it slightly more than
-// strictly necessary (e.g. once from positionLvlTags even though only Saty was ever provably
-// affected) costs nothing and keeps all three badge families under the same guarantee.
-const AXPX_HIDE_DIST=9;   // roughly half a badge's own rendered height
-const CDOWN_HIDE_DIST=14;   // .cdown is a taller two-line badge (~26px) than .axpx (~15px) — half its own height
-function syncAxpxCrosshair(pane){
-  if(!pane)return;
-  const host=$('#tips'+pane.idx);if(!host)return;
-  const y=pane._crosshairY==null?null:pane._crosshairY;
-  host.querySelectorAll('.axpx').forEach(b=>{
-    const by=parseFloat(b.style.top);
-    b.style.visibility=(y!=null&&!isNaN(by)&&Math.abs(by-y)<AXPX_HIDE_DIST)?'hidden':'';
-  });
-  // The countdown badge (.cdown, always full-opacity/z-index 7 — see updateCountdown's own
-  // comment) was never part of this hide treatment, so it kept winning the pixel over the
-  // cursor's own native price label exactly like the .axpx badges used to before this function
-  // existed. TradingView's own crosshair price label wins over EVERY axis label near it,
-  // including its own last-price/bar marker — same rule applied here.
-  const cd=$('#cd'+pane.idx);
-  if(cd&&cd.style.display!=='none'){
-    const cy=parseFloat(cd.style.top);
-    cd.style.visibility=(y!=null&&!isNaN(cy)&&Math.abs(cy-y)<CDOWN_HIDE_DIST)?'hidden':'';
-  }
+// Replaced by a dedicated top-layer cursor price badge (.axcur — see makePane's own
+// subscribeCrosshairMove and updateAxCursor) that continuously paints over whatever axis label
+// it happens to overlap, the same way TradingView's own crosshair label sits on a separate top
+// canvas layer above its static ones (verified live: extracted TradingView's own price-axis
+// canvases and found the crosshair label alone on the higher one). The previous approach here
+// toggled visibility:hidden on nearby .axpx/.cdown badges past a distance threshold, which read
+// as those badges popping in and out rather than smoothly being covered — this file's own
+// comment above (now removed) documented exactly that hide/show relationship, which is the
+// behavior being replaced.
+function updateAxCursor(pane,y){
+  const el=$('#axcur'+pane.idx);if(!el)return;
+  if(y==null||!pane.candles){el.style.display='none';return;}
+  let price=null;try{price=pane.candles.coordinateToPrice(y);}catch(e){}
+  if(price==null||!isFinite(price)){el.style.display='none';return;}
+  el.textContent=price.toFixed(2);
+  el.style.top=y+'px';
+  el.style.display='block';
 }
 // FLICKER FIX: this used to wipe and recreate every .lvltag/.axpx-lvl node on every call — fine
 // at drawLevelsOn's own change-driven cadence, but this function is ALSO called every second by
@@ -6050,7 +6040,6 @@ function positionLvlTags(p){
     // The visible line is drawn in drawLevelSegments — AFTER deoverlapLabels has placed the labels —
     // so its break follows each label to its final position (no orphan gap, no strike-through).
   });
-  syncAxpxCrosshair(p);   // re-assert crosshair-hide over whichever badges this pass just touched — see its own comment
 }
 // Draw a level line as two HTML segments that break for its label. Shared by all level families.
 // ownerKey is stamped onto each segment (data-ownerkey) purely so a live colour-picker DRAG can
@@ -7779,7 +7768,6 @@ function updateCountdown(p){
   const vcol=rem==null?'style="color:#ffffff"':'';
   el.innerHTML='<div class="v" '+vcol+'>'+p.lastClose.toFixed(2)+'</div><div class="t" '+vcol+'>'+fmtCd(rem)+'</div>';
   el.style.display='block';el.style.top=y+'px';
-  syncAxpxCrosshair(p);   // re-assert crosshair-hide at the countdown's (possibly just-moved) new Y — same reasoning as positionLvlTags/positionSatyLabels/renderGexLevels
 }
 // alt=true reads Pane 2's own show/hide memory (lvlOn2) instead of the shared lvlSty[key].on —
 // color/width/style/size stay shared by key across both boards (see LS.lvlOn2's own comment for
@@ -8746,7 +8734,6 @@ function positionSatyLabels(p){
     d.__line={y,color:l.color,w:l.w,style:l.style};
     host.appendChild(d);
   });
-  syncAxpxCrosshair(p);   // this function wipes+recreates .axpx-saty every call — see syncAxpxCrosshair's own comment for why that specifically needs this
 }
 // Live-drag preview for a Saty rung: patches the handful of DOM nodes this one key owns directly
 // (its on-chart name colour, its axis-price badge fill, and its own line segments) instead of
@@ -9363,7 +9350,6 @@ function renderGexLevels(lv,targetPanes,alt){
       if(badge){badge.style.display='';badge.style.top=y+'px';badge.textContent=priceKey;badge.style.background=st.color;}
       gexRedrawSeg(host,x.key,tagEl,plotW,st);   // segments follow the same y; also regap for the (possibly resized/relocated) label
     });
-    syncAxpxCrosshair(p);   // re-assert crosshair-hide over this pane's own GEX badges — see syncAxpxCrosshair's own comment
   });
 }
 // Draws one GEX level's line as two segments that stop short of its own label on either side,
