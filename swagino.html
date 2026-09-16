@@ -10129,13 +10129,34 @@ async function scanComputeGex(sym){
     const jc=await tradier(`/v1/markets/options/chains?symbol=${sym}&expiration=${ex}`);
     let os=jc.options&&jc.options.option;os=Array.isArray(os)?os:os?[os]:[];
     const byStrike={};let totalVol=0,totalOi=0,callVol=0,putVol=0,atmSigma=null,atmDist=Infinity;
+    // Two different distance rules, on purpose — they were sharing one 4% cutoff before, which
+    // was correct for neither. Verified live (2026-09-16) across all 9 scanner symbols, two ways:
+    // 1) Options vol/OI/put-call-vol are RAW COUNTS — every contract skipped understates them
+    //    directly, regardless of moneyness. At the old 4% cutoff that meant real gaps (NVDA 41%
+    //    of its own chain's OI captured, META 33%, TSLA 40%); even 8% still leaves some names
+    //    materially short (NVDA 57%, META 64%, TSLA 69%) because several of these chains carry a
+    //    lot of effectively-dead deep-OTM legacy OI that no reasonable band ever fully captures —
+    //    chasing that with a wider cutoff has no real ceiling. Summing OI/volume is also cheap
+    //    (no IV solve, just arithmetic already sitting in the fetched response), so there's no
+    //    cost to just not limiting it: summed over the WHOLE chain below, unconditionally.
+    // 2) Net GEX / Gamma Flip are GAMMA-WEIGHTED, and for a ~1-day option gamma decays fast with
+    //    distance — a big OI count far from spot can carry almost none of the real gamma exposure.
+    //    Measured the actual dollar-gamma captured at each width against the FULL chain's real
+    //    total (via the same bsGamma/solveIV this file already uses): 8% captures 97.9-100% of it
+    //    on every one of the 9 symbols (worst: TSLA 97.9%, META/NVDA 98.8%) — genuinely adequate,
+    //    unlike the raw-OI figure for the same names. Widening further only adds IV solves (each
+    //    one timed at a fraction of a ms, so cost isn't the constraint) without moving the number.
+    const GEX_STRIKE_BAND=0.08;
+    os.forEach(o=>{
+      const oi=+o.open_interest,vol=+o.volume||0;
+      totalVol+=vol;totalOi+=isFinite(oi)?oi:0;
+      if(o.option_type==='put')putVol+=vol;else callVol+=vol;
+    });
     os.forEach(o=>{
       const k=+o.strike;if(!isFinite(k))return;
       const dist=Math.abs(k-spot)/spot;
-      if(dist>0.04)return;
-      const oi=+o.open_interest,vol=+o.volume||0,isPut=o.option_type==='put';
-      totalVol+=vol;totalOi+=isFinite(oi)?oi:0;
-      if(isPut)putVol+=vol;else callVol+=vol;
+      if(dist>GEX_STRIKE_BAND)return;
+      const oi=+o.open_interest,isPut=o.option_type==='put';
       if(!isFinite(oi)||!oi)return;
       const bid=+o.bid,ask=+o.ask;
       if(!(bid>0)||!(ask>0)||bid>ask)return;
