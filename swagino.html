@@ -10001,7 +10001,11 @@ async function scanFetchQuotes(){
       }else{
         d.change=+q.change;d.changePct=+q.change_percentage;
       }
-      d.volume=+q.volume;d.avgVolume=+q.average_volume;
+      d.volume=+q.volume;
+      // d.avgVolume itself comes from scanFetchBars' own trailing-20-day daily history now, not
+      // Tradier's quote-level average_volume field (see that computation's own comment for why) —
+      // this just re-derives rvol against whatever volume this fresher quote tick just reported,
+      // on the SAME already-correct average, every 2s rather than waiting for the next 3-min pass.
       d.rvol=(d.avgVolume>0&&isFinite(d.volume))?d.volume/d.avgVolume:null;
       d.prevClose=prevClose;d.bid=bid;d.ask=ask;
       d.quoteAt=now;d.quoteOk=true;
@@ -10052,6 +10056,23 @@ async function scanFetchBars(sym){
     const jd=await tradier(`/v1/markets/history?symbol=${sym}&interval=daily&start=${startD}&end=${todayYmd}`);
     let day=jd.history&&jd.history.day;day=Array.isArray(day)?day:day?[day]:[];
     const daily=day.map(r=>({time:r.date,open:+r.open,high:+r.high,low:+r.low,close:+r.close,volume:+r.volume||0}));
+    // RVOL — computed from this same daily-history pull, not Tradier's own quote-level
+    // average_volume field. Checked live across all 9 scanner symbols (2026-09-15, ~23:45 ET):
+    // that field disagreed with a real trailing-20-trading-day average by anywhere from 7% to
+    // 146% of the real figure, with no consistent direction (some 20-46% too HIGH, others 84-93%
+    // too LOW) — not "a shorter/longer window", just unreliable. GOOGL/NVDA/META were the worst
+    // (7-16% of the real figure), which is what let an ordinary GOOGL session's volume compute as
+    // a 12.9x RVOL and dominate the Scanner's own move-score ranking ahead of names with
+    // genuinely elevated volume. Excludes today explicitly by date match rather than assuming the
+    // history endpoint's last row is always today (it's the case right now, checked live, but
+    // asserting it explicitly means an early-premarket call where today's own row isn't posted
+    // yet fails safe — degrades to a shorter average instead of silently excluding YESTERDAY by
+    // mistake). Requires at least 10 real prior trading days before computing anything, same
+    // reasoning as the >=15 gate on the ATR block just below.
+    const priorDaily=(daily.length&&daily[daily.length-1].time===todayYmd)?daily.slice(0,-1):daily;
+    const volHist=priorDaily.slice(-20).map(r=>r.volume);
+    d.avgVolume=volHist.length>=10?volHist.reduce((a,b)=>a+b,0)/volHist.length:null;
+    d.rvol=(d.avgVolume>0&&isFinite(d.volume))?d.volume/d.avgVolume:null;
     if(daily.length>=15){
       const tr=new Array(daily.length).fill(null);
       for(let i=1;i<daily.length;i++)
