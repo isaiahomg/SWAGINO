@@ -491,14 +491,11 @@ input[type=checkbox]{accent-color:var(--pivot)}
    lives as a top-level sibling of .side entirely, never nested in here). */
 .pane{display:none;flex:1;overflow-y:auto;padding:12px;min-height:0;position:relative;z-index:2;
   transform:translateZ(0);contain:paint;
-  /* Thinner than the app-wide 10px default (::-webkit-scrollbar at the top of this file) —
-     that scrollbar sits flush against .side's own right edge, and at 10px wide it visibly pokes
-     past where .side's 28px corner radius curves in at the top/bottom of this pane, reading as
-     "not part of the pill". Matches .gxheatwrap's own thin scrollbar treatment just below. */
-  scrollbar-width:thin;scrollbar-color:var(--line2) transparent}
-.pane::-webkit-scrollbar{width:6px}
-.pane::-webkit-scrollbar-thumb{background:var(--line2);border-radius:999px}
-.pane::-webkit-scrollbar-track{background:transparent}
+  /* Hidden entirely on request (2026-09-16) — was a thinner 6px scrollbar before that (still
+     visibly poked past .side's own 28px corner radius at the top/bottom of this pane). overflow-y
+     stays auto so wheel/touch/drag scrolling still works; only the visible track+thumb are gone. */
+  scrollbar-width:none;-ms-overflow-style:none}
+.pane::-webkit-scrollbar{display:none}
 /* .pane's own base padding (12px, all sides, above) put every tab's actual content — the Levels
    table's swatches/labels, the GEX board, the "Market closed" placeholder text — right up against
    the edge-docked handle (see #sbBtn.sbFloat's own CSS comment), the same crowding .tabs' own 40px
