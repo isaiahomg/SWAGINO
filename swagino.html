@@ -808,9 +808,14 @@ input:disabled,select:disabled{opacity:.45;cursor:not-allowed}
   backdrop-filter:url(#liquidGlassDistort) saturate(1.3);
   -webkit-backdrop-filter:url(#liquidGlassDistort) saturate(1.3);
   border:1px solid rgba(255,255,255,.05);
+  /* Was top+bottom only (0 1px 0 / 0 -1px 0) — an inset shadow with a pure y-offset and no
+     spread only ever paints a horizontal sliver at one edge, so the capsule's curved left/right
+     ends carried zero highlight at all and the rim read as broken rather than wrapping the pill. */
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,.07),
-    inset 0 -1px 0 rgba(255,255,255,.05);
+    inset 0 -1px 0 rgba(255,255,255,.05),
+    inset 1px 0 0 rgba(255,255,255,.06),
+    inset -1px 0 0 rgba(255,255,255,.06);
   border-radius:12px;padding:3px 10px;
   white-space:nowrap;width:max-content}
 /* ---- Saty ATR Levels ----
@@ -1093,9 +1098,14 @@ input[type=checkbox]{accent-color:var(--accent)}
      values already doing the same job, compounding the exact effect being dimmed. .satyinfo
      copies these same values — see its own comment. */
   border:1px solid rgba(255,255,255,.05);
+  /* Was top+bottom only — an inset shadow with a pure y-offset and no spread only ever paints a
+     horizontal sliver at one edge, so the panel's left/right borders carried zero highlight at
+     all (see .satyinfo's own copy of this same fix, right above, for the full reasoning). */
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,.07),
-    inset 0 -1px 0 rgba(255,255,255,.05)}
+    inset 0 -1px 0 rgba(255,255,255,.05),
+    inset 1px 0 0 rgba(255,255,255,.06),
+    inset -1px 0 0 rgba(255,255,255,.06)}
 /* #sbBtn used to just sit in the topbar's icon row (.setupIconBtn styling), then floated free as
    a small glyph-in-a-square pinned to the popout's own top-left corner. It's now a solid vertical
    capsule running the full height of whichever edge of the panel faces the nearer side of the
