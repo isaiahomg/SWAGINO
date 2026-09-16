@@ -2375,7 +2375,7 @@ table.lv td{padding:6px 10px}
 </div>
 <div id="alertEditModal" style="position:fixed;inset:0;background:rgba(6,9,15,.85);z-index:130;display:none;align-items:center;justify-content:center">
   <div class="card" style="width:420px">
-    <h1><span id="alEditTitle">Create alert on</span> <select id="alEditSym" style="font:inherit;font-size:18px;font-weight:700;background:none;border:none;color:inherit;padding:0"></select></h1>
+    <h1><span id="alEditTitle">Create alert on</span> <input id="alEditSym" list="alEditSymList" size="8" autocomplete="chrome-off" autocorrect="off" autocapitalize="off" spellcheck="false" style="font:inherit;font-size:18px;font-weight:700;background:none;border:none;border-bottom:1px solid rgba(255,255,255,.25);color:inherit;padding:0;width:8ch"><datalist id="alEditSymList"></datalist></h1>
     <div class="row"><label style="min-width:70px">Condition</label>
       <select id="alCondSrc" style="flex:1"><option value="price">Price</option></select></div>
     <div class="row"><select id="alCondType" style="flex:1"></select></div>
@@ -8289,22 +8289,20 @@ function openAlertEditor(existing,prefillPrice){
   alEditingId=existing?existing.id:null;
   $('#alEditTitle').textContent=existing?'Edit alert on':'Create alert on';
   const symSel=$('#alEditSym');
-  // Mirrors TradingView's own symbol dropdown in this same dialog — verified live: with one
-  // symbol on the chart it's the sole, unremovable option, it does NOT let you type in an
-  // unrelated ticker. Here "on the chart" means pane 1's own symbol, plus pane 2's when it's
-  // genuinely showing something different (unlinked) — this is what actually lets an alert be
-  // created for the ticker sitting in pane 2 without first swapping it into pane 1.
+  // Free-typed ticker field, not locked to what's on the chart — pollBackgroundAlerts() already
+  // evaluates alerts on any symbol regardless of pane layout, so the UI shouldn't restrict entry
+  // to just cfg.sym/pane 2. cfg.sym and pane 2's symbol (when different) are offered as datalist
+  // suggestions for convenience, but any ticker can be typed and confirmed with Enter.
   if(existing){
-    symSel.innerHTML=`<option value="${existing.sym}">${existing.sym}</option>`;
     symSel.value=existing.sym;
     symSel.disabled=true;   // TradingView's Edit doesn't let you change an alert's symbol either
   }else{
     const candidates=[cfg.sym];
     const p2sym=cfg.paneN>1&&panes[1]&&panes[1].sym;
     if(p2sym&&p2sym!==cfg.sym)candidates.push(p2sym);
-    symSel.innerHTML=candidates.map(s=>`<option value="${s}">${s}</option>`).join('');
+    $('#alEditSymList').innerHTML=candidates.map(s=>`<option value="${s}">`).join('');
     symSel.value=cfg.sym;
-    symSel.disabled=candidates.length<2;
+    symSel.disabled=false;
   }
   populateCondSelect();
   const a=existing||{condition:'crossing',value:prefillPrice!=null?prefillPrice:(lastPx||0),value2:null,bars:1,interval:'chart',trigger:'once',expChoice:'1m',name:'',message:'',notify:{}};
@@ -8341,7 +8339,10 @@ function saveAlertFromEditor(){
   if(notify.browserNotif&&window.Notification&&Notification.permission==='default'){try{Notification.requestPermission();}catch(e){}}
   let a=alEditingId?alerts.find(x=>x.id===alEditingId):null;
   const isNew=!a;
-  if(isNew){a={id:newAlertId(),sym:$('#alEditSym').value||cfg.sym,createdAt:Date.now(),status:'active',prevPx:null,lastFireAt:null};alerts.push(a);}
+  if(isNew){
+    const sym=($('#alEditSym').value||'').trim().toUpperCase()||cfg.sym;
+    a={id:newAlertId(),sym,createdAt:Date.now(),status:'active',prevPx:null,lastFireAt:null};alerts.push(a);
+  }
   a.condition=type;
   a.value=v1;
   a.value2=kind==='channel'?v2:null;
@@ -12491,16 +12492,34 @@ $('#alertsListBody').addEventListener('click',e=>{
   else if(act==='del')deleteAlert(id);
 });
 $('#alCondType').onchange=syncAlertFieldsVisibility;
-$('#alEditSym').onchange=()=>{
-  if(alEditingId)return;   // disabled while editing anyway — symbol is fixed once an alert exists
+async function alEditSymPriceRefill(){
   const sym=$('#alEditSym').value;
-  let px=lastPx;
-  if(sym!==cfg.sym){
+  if(!sym)return;
+  const p2sym=cfg.paneN>1&&panes[1]&&panes[1].sym;
+  let px=null;
+  if(sym===cfg.sym){
+    px=lastPx;
+  }else if(sym===p2sym){
     const bars=altState[1]&&altState[1].data&&altState[1].data.bars5;
     px=bars&&bars.length?bars[bars.length-1].c:null;
+  }else{
+    // Typed a ticker that isn't on either pane — fetch its live quote just for the price prefill.
+    try{
+      const j=await tradier(`/v1/markets/quotes?symbols=${sym}`);
+      let q=j.quotes&&j.quotes.quote;q=Array.isArray(q)?q[0]:q;
+      const last=q&&+q.last;
+      px=isFinite(last)&&last>0?last:null;
+    }catch(e){}
   }
+  if(alEditingId||$('#alEditSym').value!==sym)return;   // editor closed or symbol changed again mid-fetch
   if(px!=null&&isFinite(px)){$('#alVal1').value=px;$('#alVal2').value=px;}
+}
+$('#alEditSym').onchange=()=>{
+  if(alEditingId)return;   // disabled while editing anyway — symbol is fixed once an alert exists
+  $('#alEditSym').value=$('#alEditSym').value.trim().toUpperCase();
+  alEditSymPriceRefill();
 };
+$('#alEditSym').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();$('#alEditSym').blur();}};
 $('#alExpChoice').onchange=()=>{$('#alExpCustomRow').style.display=$('#alExpChoice').value==='custom'?'flex':'none';};
 $('#alNotifyWebhook').onchange=()=>{$('#alWebhookUrl').style.display=$('#alNotifyWebhook').checked?'':'none';};
 $('#alCancelBtn').onclick=()=>closeAlertEditor(true);
