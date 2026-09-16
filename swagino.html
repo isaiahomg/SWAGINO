@@ -11831,7 +11831,13 @@ function startAltPane(idx){
     $('#psym'+idx).value=cfg.sym;
     panes[idx].sym=cfg.sym;
     updateSymLogo(cfg.sym,idx);
-    renderPane(panes[idx]);
+    // Same reasoning as applyPaneSym's own fix just above: a linked pane re-shown here is
+    // just re-syncing to whatever cfg.sym already is, not a real symbol change — a plain
+    // renderPane() has no _userZoomed awareness at all (unlike renderPaneKeepView, used
+    // everywhere else for exactly this), so it only preserved the view by accident whenever
+    // nothing about the re-render happened to touch the price scale's bounds. Matching the
+    // unlink branch so a pane's zoom/pan survives a show/hide toggle the same way either way.
+    renderPaneKeepView(panes[idx]);
   }
 }
 function setPaneN(n){
