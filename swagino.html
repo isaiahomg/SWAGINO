@@ -10539,6 +10539,19 @@ function wlSparkSvg(sym){
   // a true, undistorted ~2.2px regardless of preserveAspectRatio="none"'s non-uniform x/y scale
   // (viewBox is 100×40 stretched to whatever the row's real pixel width is) — without it a thin
   // stroke would come out visually thicker/thinner depending on each segment's angle.
+  //
+  // Checked TradingView's real charting engine directly (Full Chart, not the simplified Overview
+  // mini-widget — that widget's own gray-after-hours segment turned out to be that surface's own
+  // convention, not a real Line-series behavior, confirmed via the Settings dialog below) for
+  // whether Line does anything session-specific: Settings → Symbol shows exactly two knobs that
+  // touch this — "Price source" (defaults to Close, same as this file's b.c) and "Line" style,
+  // which is only ever Solid or Gradient (a plain low↔high price gradient between two picked
+  // colors — nothing session-aware). "Session" (Regular/Extended/24 hours) only controls what
+  // data is INCLUDED, not how it's colored — confirmed by switching it live: Regular mode just
+  // omits the closed-market bars entirely and connects straight across the gap with no marker,
+  // it never recolors anything. So there is no real TV behavior to replicate here beyond what
+  // this file already does (close-price plotting, continuous connection with no session gap
+  // marker, gradient line style) — the gradient below stays the plain dark→bright ramp.
   const gid=`wlspgrad-${sym}`;
   d._sparkAt=now;
   return d._sparkSvg=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
