@@ -10025,20 +10025,22 @@ let scanData={};
 SCANNER_SYMS.forEach(s=>scanData[s]={sym:s});
 let scanSlowBusy=false,scanLastFullAt=0;
 
-// Watchlist sparkline's own rolling window — a genuinely live price-action trace, not a
-// resample of 5-min bars. scanFetchQuotes() below is the actual live cadence available for
-// these 9 symbols (one batched REST poll every SCAN_QUOTE_MS — there's no per-symbol WebSocket
-// tick stream for the Watchlist the way the main chart's own symbol gets); each poll's real last
-// price is appended here and the oldest sample drops once the buffer is full, so the trace is
-// always exactly this many of the most recent REAL samples — nothing simulated, nothing smoothed.
+// Watchlist sparkline's live tail — the freshest slice of price action, ahead of whatever the
+// slow tier's last confirmed 5-min bar knows about. scanFetchQuotes() below is the actual live
+// cadence available for these 9 symbols (one batched REST poll every SCAN_QUOTE_MS — there's no
+// per-symbol WebSocket tick stream for the Watchlist the way the main chart's own symbol gets);
+// each poll's real last price is appended here, timestamped, and anything older than
+// WL_LIVE_TAIL_MS drops off. wlSparkSvg() below stitches this tail onto d.dayBars (scanFetchBars'
+// own full pre+regular+post-market close series for today) to get one genuinely chronological
+// trace spanning the whole session, not just the last few minutes — see that function's own
+// comment. WL_LIVE_TAIL_MS just needs to comfortably outlast SCAN_SLOW_BOUNDARY_SEC (the slow
+// tier's 3-min refresh cadence that supplies d.dayBars), so there's never a real gap between
+// "last confirmed bar" and "now" even if one slow-tier refresh runs late.
 // SCAN_QUOTE_MS=2000 matches cfg.quoteS's own 2s floor (see the POLL-DEFAULTS comment above) —
 // the fastest cadence already trusted elsewhere in this file for this exact Tradier quotes
-// endpoint, just applied to a 9-symbol batch instead of one. WL_LIVE_MAXPTS is derived from it,
-// not a bare literal, so the sparkline keeps covering the same real 15-minute window regardless
-// of how fast this polls; the row fills up from a shorter trace right after page load/market
-// open and behaves as a true sliding window once it reaches full length.
+// endpoint, just applied to a 9-symbol batch instead of one.
 const SCAN_QUOTE_MS=2000;
-const WL_LIVE_MAXPTS=Math.round(15*60*1000/SCAN_QUOTE_MS);
+const WL_LIVE_TAIL_MS=10*60*1000;
 async function scanFetchQuotes(){
   if(!LS.k)return;   // not connected yet — nothing to fetch, and avoids spamming an auth-error log
   try{
@@ -10078,8 +10080,9 @@ async function scanFetchQuotes(){
       d.quoteAt=now;d.quoteOk=true;
       if(isFinite(d.last)){
         if(!d.liveSeries)d.liveSeries=[];
-        d.liveSeries.push(d.last);
-        if(d.liveSeries.length>WL_LIVE_MAXPTS)d.liveSeries.shift();
+        d.liveSeries.push({t:now,v:d.last});
+        const cutoff=now-WL_LIVE_TAIL_MS;
+        while(d.liveSeries.length&&d.liveSeries[0].t<cutoff)d.liveSeries.shift();
       }
     });
   }catch(e){
@@ -10103,9 +10106,13 @@ async function scanFetchBars(sym){
     const bars5=await fetchTsRange('5min',new Date(Date.now()-5*864e5),now,sym);
     const todayYmd=nowET().ymd;
     const todayBars=bars5.filter(b=>b.etYmd===todayYmd);
-    // The Watchlist's own sparkline no longer comes from these bars at all — see
-    // scanFetchQuotes()'s own d.liveSeries, a real rolling buffer of actual quote polls, which
-    // wlSparkSvg() now renders directly. bars5/todayBars stay here for ATR/VWAP/PM-H-L below.
+    // The Watchlist's own sparkline's confirmed-history half — fetchTsRange asks with
+    // session_filter=all (see its own comment), so todayBars already spans pre-market, regular,
+    // and post-market for today in one chronological set; wlSparkSvg() stitches scanFetchQuotes'
+    // own live tail onto the end of this. Stored as real {t,v} pairs (epoch ms, close) rather than
+    // reused inline so the sparkline can render off cached data between this function's own
+    // SCAN_SLOW_BOUNDARY_SEC-second refreshes.
+    d.dayBars=todayBars.map(b=>({t:b.t*1000,v:b.c}));
     const pmBars=todayBars.filter(b=>b.etMin<SCAN_RTH_OPEN_MIN);
     d.pmHigh=pmBars.length?Math.max(...pmBars.map(b=>b.h)):null;
     d.pmLow=pmBars.length?Math.min(...pmBars.map(b=>b.l)):null;
@@ -10464,61 +10471,91 @@ function wlSortedSyms(){
 // attribute string, set fresh on every watchlistRender() call alongside everything else in the
 // row - "incremental" here means never touching lightweight-charts/renderPane at all, the same
 // isolation the Scanner section above already guarantees for the SAME reason.
-// Renders straight off d.liveSeries (scanFetchQuotes()'s own rolling buffer of real quote-poll
-// prices — see its own comment) with plain, EVEN index spacing: unlike the bar-based version this
-// replaced, every sample here really is ~5s apart by construction, so uniform spacing is the
-// correct mapping, not an approximation. No smoothing/averaging — every sample is plotted exactly
-// as polled, so a genuine spike or reversal in the real tape shows up as a genuine sharp corner
-// in the path, never rounded off.
-// Repainted at most once every 5 minutes, not on every 5s quote poll — per explicit request,
-// trading the "shape updates the instant a new sample lands" behavior for less DOM/SVG churn
-// (watchlistRender() rebuilds every row's markup on every poll; regenerating 9 sparkline SVG
-// strings 60x more often than this bought nothing visible most of the time). The DATA collection
-// itself is untouched — scanFetchQuotes() still samples every 5s into d.liveSeries in the
+// Renders off TWO real sources stitched into one chronological trace: d.dayBars (scanFetchBars'
+// own confirmed 5-min-bar closes for today, already spanning pre-market + regular + post-market
+// since that fetch uses session_filter=all — see fetchTsRange's own comment) for everything up to
+// the last completed bar, plus d.liveSeries (scanFetchQuotes' rolling buffer of real 2s quote
+// polls — see its own comment) for whatever's happened since. Only the tail of d.liveSeries PAST
+// the newest bar's own timestamp is used, so the same few minutes are never plotted twice at two
+// different resolutions. x-position is TRUE elapsed-time proportional (t, not index) — a 5-min
+// bar and a 2s tick can't share one axis by position without one badly misrepresenting elapsed
+// time, which is exactly what plain index spacing did before this and made the trace read as
+// "regular hours only": a 15-minute live-only rolling window, with no historical pre/post-market
+// data behind it at all. No smoothing/averaging either way — every plotted point is a real close
+// or a real poll, so a genuine spike or reversal in the tape shows up as a genuine sharp corner.
+// Repainted at most once every 5 minutes, not on every 2s quote poll — per explicit earlier
+// request, trading "the shape updates the instant a new sample lands" for less DOM/SVG churn
+// (watchlistRender() rebuilds every row's markup on every poll). The underlying DATA collection
+// is untouched by this cadence — both d.dayBars and d.liveSeries keep accumulating in the
 // background regardless, so the shape shown is always a real, unfabricated slice of the actual
-// rolling buffer at whatever moment it was last painted, just painted less often. The price/
-// %change pill beside it is a separate part of the row template and keeps updating every poll.
+// day's tape at whatever moment it was last painted, just painted less often. The price/%change
+// pill beside it is a separate part of the row template and keeps updating every poll.
 const WL_SPARK_REPAINT_MS=300000;
 function wlSparkSvg(sym){
   const d=scanData[sym];
   const now=Date.now();
   if(d._sparkAt!=null&&now-d._sparkAt<WL_SPARK_REPAINT_MS&&d._sparkSvg!=null)return d._sparkSvg;
-  const src=d.liveSeries;
   const prev=d.prevClose;
-  // PLOT_TOP/PLOT_BOT are symmetric around H/2 (10 and 30, both 10px from the 20 midline) on
-  // purpose - they weren't before (15/36, centered on 25.5), which put the actual visible line
-  // noticeably BELOW the row's own vertical middle even though the <svg> box itself was correctly
-  // centered by .wlrow's flexbox - the box was centered, its content wasn't.
-  const W=100,H=40,PLOT_TOP=10,PLOT_BOT=30,DOT_Y=4;
+  // PLOT_TOP/PLOT_BOT stay symmetric around H/2 (the box itself is already vertically centered
+  // by .wlrow's flexbox, so the plotted content has to be too) but now use most of the row's
+  // height (6..34, a 28px band) rather than the old cramped 10..30 — leaving just enough margin
+  // for the endpoint glow circle not to clip against the row's top/bottom edge.
+  const W=100,H=40,PLOT_TOP=6,PLOT_BOT=34,DOT_Y=4;
   const dots=[18,39,60,81].map(x=>`<circle cx="${x}" cy="${DOT_Y}" r="1.3"/>`).join('');
-  // Under 2 real samples (page just loaded, first poll hasn't landed yet) or no prevClose to
-  // anchor a direction/reference line against — genuinely nothing to plot yet. Deliberately NOT
-  // cached (no d._sparkAt/d._sparkSvg write) — this state only exists for the first few seconds
-  // after load, and caching it would freeze the placeholder in place for the full 5-minute
-  // window even after real data starts arriving moments later. Confirmed live: this is exactly
-  // what happened before this fix — d.liveSeries had real samples but the row kept showing the
-  // "not enough data" dots because the FIRST call (before any samples existed) had cached them.
-  if(!src||src.length<2||!(prev>0)){
+  const dayBars=d.dayBars||[];
+  const lastBarT=dayBars.length?dayBars[dayBars.length-1].t:-Infinity;
+  const tail=(d.liveSeries||[]).filter(p=>p.t>lastBarT);
+  const src=dayBars.concat(tail);
+  // Under 2 real samples (page just loaded, neither the slow-tier bars nor a second live poll
+  // has landed yet) or no prevClose to anchor a direction/reference line against — genuinely
+  // nothing to plot yet. Deliberately NOT cached (no d._sparkAt/d._sparkSvg write) — this state
+  // only exists for the first few seconds after load, and caching it would freeze the placeholder
+  // in place for the full 5-minute window even after real data starts arriving moments later.
+  // Confirmed live: this is exactly what happened before an earlier fix — real samples existed
+  // but the row kept showing "not enough data" because the FIRST call (before any existed) had
+  // cached it.
+  if(src.length<2||!(prev>0)){
     return`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><g class="wlspdots">${dots}</g></svg>`;
   }
-  const all=src.concat([prev]);
+  const vals=src.map(p=>p.v);
+  const all=vals.concat([prev]);
   let lo=Math.min(...all),hi=Math.max(...all);
   if(hi===lo){hi+=1;lo-=1;}
-  // Fills up from a short trace right after load/open and becomes a true fixed-width rolling
-  // window once d.liveSeries reaches WL_LIVE_MAXPTS — both cases are just "however many real
-  // samples exist right now, spread evenly across the row", the same expression either way.
-  const x=i=>src.length>1?(W-8)*i/(src.length-1)+4:W/2;
+  const t0=src[0].t,t1=src[src.length-1].t,tSpan=t1-t0||1;
+  const x=p=>3+(W-6)*(p.t-t0)/tSpan;
   const y=v=>PLOT_TOP+(PLOT_BOT-PLOT_TOP)*(1-(v-lo)/(hi-lo));
-  const up=src[src.length-1]>=prev;
+  const up=vals[vals.length-1]>=prev;
   const col=up?'var(--long)':'var(--short)';
-  const line=src.map((v,i)=>`${x(i).toFixed(2)},${y(v).toFixed(2)}`).join(' ');
+  const line=src.map(p=>`${x(p).toFixed(2)},${y(p.v).toFixed(2)}`).join(' ');
   const prevY=y(prev).toFixed(2);
-  // No endpoint dot, no glow, no fill — a bare polyline plus the one reference line that carries
-  // real meaning (prevClose), per explicit request.
+  const lastX=x(src[src.length-1]).toFixed(2),lastY=y(vals[vals.length-1]).toFixed(2);
+  // Reference-screenshot styling: a per-row linearGradient (dim→full-opacity, oldest→newest,
+  // left-to-right by construction since the path is already laid out that way) stands in for
+  // "darker old / brighter recent" instead of computing distinct hex shades from the --long/
+  // --short CSS vars — against this app's near-black card background, opacity IS darkness, and
+  // this way the gradient still tracks a theme change to either var automatically. Gradient id
+  // is per-symbol (symbols are plain [A-Z] tickers, safe as an SVG id with no escaping) so 9
+  // rows rendering side by side never collide. vector-effect="non-scaling-stroke" keeps the line
+  // a true, undistorted ~2.2px regardless of preserveAspectRatio="none"'s non-uniform x/y scale
+  // (viewBox is 100×40 stretched to whatever the row's real pixel width is) — without it a thin
+  // stroke would come out visually thicker/thinner depending on each segment's angle.
+  const gid=`wlspgrad-${sym}`;
   d._sparkAt=now;
   return d._sparkSvg=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
-    <line class="wlspref" x1="4" y1="${prevY}" x2="${W-4}" y2="${prevY}"/>
-    <polyline points="${line}" fill="none" stroke="${col}" stroke-width="1.3" stroke-linejoin="round" stroke-linecap="round"/>
+    <defs>
+      <linearGradient id="${gid}" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="${col}" stop-opacity="0.32"/>
+        <stop offset="100%" stop-color="${col}" stop-opacity="1"/>
+      </linearGradient>
+      <filter id="${gid}-glow" x="-200%" y="-200%" width="500%" height="500%">
+        <feGaussianBlur stdDeviation="1.6"/>
+      </filter>
+    </defs>
+    <line class="wlspref" x1="0" y1="${prevY}" x2="${W}" y2="${prevY}"/>
+    <polyline points="${line}" fill="none" stroke="url(#${gid})" stroke-width="2.2"
+      stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+    <circle cx="${lastX}" cy="${lastY}" r="3.4" fill="${col}" opacity="0.45" filter="url(#${gid}-glow)"/>
+    <circle cx="${lastX}" cy="${lastY}" r="1.9" fill="${col}"/>
   </svg>`;
 }
 function watchlistRender(){
