@@ -10975,6 +10975,41 @@ function cleanBadPrintRows(rows){
   }
   return rows;
 }
+// A bar's own vwap is a volume-weighted average of trades that all happened inside that bar's
+// [low,high] — it is mathematically impossible for a genuine vwap to fall outside that range, so
+// naively that alone looked like a clean tell. It ISN'T, on its own: scanning a real 2-day SPY
+// window turned up 58 bars whose vwap sat outside their range, and the overwhelming majority of
+// those had completely ordinary, locally-consistent volume (SPY 9/16 12:10 ET: vwap $758.38
+// against a real $760.17-760.52 range, but volume 373,662 — right in line with neighboring bars
+// at 204k/278k/406k). That is this data source's vwap field being imprecise on an otherwise-good
+// bar, not a corrupted one — zeroing its volume would be discarding real data on a weak signal.
+// The GENUINE corruption (SPY 2026-09-18 11:15/11:20 ET) looked different in combination: vwap
+// not just outside the range but wildly so (~$2.8 off, not ~$1-2), together with volume that was
+// itself a massive local outlier (9,145,713 / 4,128,175 vs a same-day median in the low hundred-
+// thousands — 30-45x). Requiring BOTH conditions (same >10x-local-median volume-outlier test
+// cleanBadPrintRows already trusts, for the same reason) is what actually isolates real
+// corruption from routine field noise; vwap-outside-range alone is too common to mean anything.
+// Zeroes the row's volume (not price — the OHLC here is the part that's real) so aggregate()'s
+// cur.v+=b.v never turns a whole bucket into NaN downstream.
+function cleanBadVolumeRows(rows){
+  const n=rows.length;
+  const V=rows.map(r=>+r.volume||0);
+  for(let i=0;i<n;i++){
+    const h=+rows[i].high,l=+rows[i].low,vwap=+rows[i].vwap;
+    if(!isFinite(h)||!isFinite(l)||!isFinite(vwap)||!(h>=l))continue;
+    const range=h-l,eps=Math.max(range*0.02,0.01);
+    if(!(vwap<l-eps||vwap>h+eps))continue;
+    const vwin=V.slice(Math.max(0,i-15),i).concat(V.slice(i+1,i+16));
+    if(vwin.length<10)continue;
+    const svw=[...vwin].sort((a,b)=>a-b),medianV=svw[Math.floor(svw.length/2)];
+    if(!(medianV>0)||V[i]/medianV<10)continue;
+    log('Bad volume filtered — '+(rows[i].time||rows[i].timestamp)+' volume '+V[i].toLocaleString()
+      +' ('+(medianV?Math.round(V[i]/medianV):'?')+'x local median, vwap '+vwap.toFixed(2)
+      +' outside bar range '+l.toFixed(2)+'-'+h.toFixed(2)+') zeroed','warn');
+    rows[i].volume=0;
+  }
+  return rows;
+}
 // Re-pull the dailies when the session date moves on. Cheap (one request, ~1200 rows) and
 // it only fires on the first tick of a new trading day, so it costs nothing intraday.
 let dailyYmd=null;
@@ -11085,6 +11120,14 @@ async function fetchTsRange(interval,startD,endD,sym){
   }
   // LOCAL-DIAG-ONLY
   const rows=Array.isArray(data)?data:data?[data]:[];
+  // Order matters: validate vwap against Tradier's own ORIGINAL high/low first — cleanBadPrintRows
+  // below legitimately tightens a bar's high/low to clip a stray wick, and checking vwap against
+  // that already-narrowed range would flag plenty of genuine bars whose real (wider, pre-clip)
+  // range comfortably contained their own vwap all along. Confirmed this was a real bug, not
+  // paranoia: running the volume check after the wick clip flagged 58 of 475 bars (12%) over a
+  // 2-day SPY scan — far too many to be genuine corruption; reordering dropped it back to the
+  // small number of bars that are actually wrong.
+  cleanBadVolumeRows(rows);
   cleanBadPrintRows(rows);
   const mapped=rows.map(mapTsRow);
   // LOCAL-DIAG-ONLY
