@@ -4858,28 +4858,61 @@ function bandView(){
            2. only bars inside visibleRange carry a real x (the rest are null).
            Group consecutive same-colour visible bars into one filled polygon, reaching one
            bar past each edge so the cloud runs to the sides of the pane. */
-        const ok=b=>b&&b.x!=null&&b.originalData&&b.originalData.a!=null&&b.originalData.b!=null&&b.barColor;
-        const lo=Math.max(0,_d.visibleRange.from-1),
-              hi=Math.min(bars.length-1,_d.visibleRange.to);
+        const ok=b=>b&&b.originalData&&b.originalData.a!=null&&b.originalData.b!=null&&b.barColor;
+        const vr0=_d.visibleRange,
+              lo=Math.max(0,vr0.from-1),
+              hi=Math.min(bars.length-1,vr0.to);
+        /* visibleRange.to is EXCLUSIVE and LWC only (re)computes x for bars inside [from,to).
+           A bar outside it is either NaN (never in view — NaN != null is true, so the old null
+           check let it through and canvas silently dropped it, trimming the cloud short of the
+           pane edges) or, worse, carries a FINITE x left over from an earlier pan/zoom. Trusting
+           that stale x drew the cloud's edge at an old position: the wedges/blocks you saw when
+           zooming and the flicker when panning. So x is only read for bars inside the range;
+           the bar just past each edge is placed by extrapolating on the even bar grid. */
+        let af=-1;
+        for(let k=vr0.from;k<vr0.to&&k<bars.length;k++)if(Number.isFinite(bars[k].x)){af=k;break;}
+        if(af<0)return;
+        const bsp=_d.barSpacing,ax=bars[af].x;
+        const xOf=k=>(k>=vr0.from&&k<vr0.to)?bars[k].x:ax+(k-af)*bsp;
+        /* Pixel positions of both edges for every bar in play. A bar whose price can't be
+           converted is treated like a whitespace bar (it just breaks the run). */
+        const ya=[],yb=[];
+        for(let k=lo;k<=hi;k++){
+          let A=null,B=null;
+          if(ok(bars[k])){A=toY(bars[k].originalData.a);B=toY(bars[k].originalData.b);}
+          ya[k]=A==null||B==null?null:A*vr;yb[k]=A==null||B==null?null:B*vr;
+        }
+        const good=k=>k>=lo&&k<=hi&&ya[k]!=null;
+        /* Where the two lines cross between adjacent bars p<q, in pixel space — exactly where the
+           drawn EMA lines intersect. A colour change between bars means the band flipped sign
+           somewhere in that gap; the flip is NOT at a bar. Painting the whole gap in either
+           colour (or leaving it empty) is visibly wrong once you zoom in and bars are far apart:
+           wrong-colour wedges, or a hole. So each run is bounded by the crossings on both sides:
+           it owns the stretch from the previous crossing to the next one. */
+        const cross=(p,q)=>{
+          const d0=ya[p]-yb[p],d1=ya[q]-yb[q],den=d0-d1;
+          const t=den===0?0.5:Math.max(0,Math.min(1,d0/den));
+          const xp=xOf(p)*hr,xq=xOf(q)*hr;
+          return [xp+t*(xq-xp),ya[p]+t*(ya[q]-ya[p])];
+        };
         let i=lo;
         while(i<=hi){
-          if(!ok(bars[i])){i++;continue;}
+          if(!good(i)){i++;continue;}
           const col=bars[i].barColor;
           let j=i;
-          while(j+1<=hi&&ok(bars[j+1])&&bars[j+1].barColor===col)j++;
-          if(j>i){
+          while(j+1<=hi&&good(j+1)&&bars[j+1].barColor===col)j++;
+          const c1=good(i-1)?cross(i-1,i):null,   // crossing with the previous run, if adjacent
+                c2=good(j+1)?cross(j,j+1):null;   // crossing with the next run, if adjacent
+          if(j>i||c1||c2){
             ctx.beginPath();
-            let started=false;
+            if(c1)ctx.moveTo(c1[0],c1[1]);
             for(let k=i;k<=j;k++){
-              const y=toY(bars[k].originalData.a);if(y==null)continue;
-              const x=bars[k].x*hr,yy=y*vr;
-              started?ctx.lineTo(x,yy):(ctx.moveTo(x,yy),started=true);
+              const x=xOf(k)*hr;
+              (k===i&&!c1)?ctx.moveTo(x,ya[k]):ctx.lineTo(x,ya[k]);
             }
-            for(let k=j;k>=i;k--){
-              const y=toY(bars[k].originalData.b);if(y==null)continue;
-              ctx.lineTo(bars[k].x*hr,y*vr);
-            }
-            if(started){ctx.closePath();ctx.fillStyle=col;ctx.fill();}
+            if(c2)ctx.lineTo(c2[0],c2[1]);
+            for(let k=j;k>=i;k--)ctx.lineTo(xOf(k)*hr,yb[k]);
+            ctx.closePath();ctx.fillStyle=col;ctx.fill();
           }
           i=j+1;
         }
