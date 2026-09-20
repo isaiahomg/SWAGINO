@@ -1,0 +1,2 @@
+Audit first → verify → implement → regression test → deploy only if everything passes.
+Never turn a convenient existing signal into the definition of a concept unless the code objectively establishes that relationship.
