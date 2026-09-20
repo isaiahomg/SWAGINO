@@ -200,6 +200,10 @@ input[type=checkbox]{accent-color:var(--pivot)}
    It is unnecessary now. The price lines reserve their own gap, so the line already stops before the label and picks up after it.
    Nothing needs to be painted over the chart to hide a line that is no longer there. */
 .tips{position:absolute;inset:0;pointer-events:none;z-index:6;overflow:hidden}
+/* Same box as .tips but painted UNDER the chart's transparent canvas (inserted before it in the DOM, z-index 0 so its
+   children's own z-indexes stay inside it): holds the full-width level lines and the pre/post-market shading, so the
+   opaque candle bodies are drawn over them instead of being tinted or cut by them. */
+.under{position:absolute;inset:0;pointer-events:none;z-index:0;overflow:hidden}
 .sessband{position:absolute;top:0;bottom:0;pointer-events:none;background:rgba(64,116,196,.22)}
 .sessband.post{background:rgba(64,116,196,.30)}
 .swdot{position:absolute;width:5px;height:5px;border-radius:50%;pointer-events:auto;cursor:default;
@@ -3482,6 +3486,27 @@ function makeRibbonLine(chart){
   return chart.addLineSeries({lineWidth:2,priceLineVisible:false,lastValueVisible:false,
     crosshairMarkerVisible:false,autoscaleInfoProvider:NO_SCALE});
 }
+// A pattern trendline series (same options renderPane's lazy creation always used), created here
+// so it can be placed BELOW the candles in the z-order — see the comment above the candles' creation.
+function makePatLine(chart){
+  return chart.addLineSeries({priceLineVisible:false,lastValueVisible:false,
+    crosshairMarkerVisible:false,autoscaleInfoProvider:NO_SCALE});
+}
+// Hidden carrier for the NATIVE price lines that must sit under the candle bodies (alert lines and the dotted last-price
+// line). lightweight-charts paints a series' price lines with that series, over its own bodies, so they are hosted on this
+// invisible line series instead, created just before the candles. It holds ONE point (the last bar) so its own last-price
+// line sits at the last close - see syncLvlCarrier. NO_SCALE: it can never move the price range.
+function makeLvlCarrier(chart){
+  return chart.addLineSeries({color:'rgba(0,0,0,0)',lineWidth:1,priceLineVisible:true,lastValueVisible:false,
+    crosshairMarkerVisible:false,autoscaleInfoProvider:NO_SCALE});
+}
+function syncLvlCarrier(p){
+  if(!p||!p.lvl)return;
+  const lb=p._lastBars&&p._lastBars.length?p._lastBars[p._lastBars.length-1]:null;
+  try{p.lvl.setData(lb?[{time:lb.time,value:lb.close}]:[]);}catch(e){}
+}
+// The host for everything that must paint UNDER the candles (see .under); falls back to the overlay host.
+function underHost(p){return $('#under'+p.idx)||$('#tips'+p.idx);}
 function makePane(idx){
   const pEl=$('#pc'+idx),rEl=$('#rsic'+idx),vEl=$('#volc'+idx),mEl=$('#macdc'+idx);
   $('#rsic'+idx+'wrap').style.height=(cfg['rsiH'+idx]||76)+'px';
@@ -3494,6 +3519,8 @@ function makePane(idx){
   const axisBackB=document.createElement('div');axisBackB.className='axisback axisback-b';axisBackB.id='axisBackB'+idx;
   pEl.parentNode.insertBefore(axisBackR,pEl);
   pEl.parentNode.insertBefore(axisBackB,pEl);
+  const underEl=document.createElement('div');underEl.className='under';underEl.id='under'+idx;
+  pEl.parentNode.insertBefore(underEl,pEl);   // before pEl => painted under the chart canvas (see .under)
   const chart=LightweightCharts.createChart(pEl,chartOpts());
   // Suppress LWC's own native crosshair price label (painted inside the canvas) — #axcur{idx}
   // (updateAxCursor, wired below) fully replaces it with our own top-layer version instead.
@@ -3501,28 +3528,33 @@ function makePane(idx){
   /* Series draw in CREATION order (first = bottom). The Saty Ribbon clouds are created BEFORE the
      candlesticks so the candles sit ON TOP of the clouds — the correct look, and it removes the
      "candle series drawn beneath a custom series" condition that made LWC drop the candles' repaint
-     whenever the cloud custom-series data was toggled on/off. The ribbon's own EMA lines are created
-     AFTER the candles so they stay above the price. Every ribbon series is NO_SCALE so it can never
-     rescale the candles. */
+     whenever the cloud custom-series data was toggled on/off. Every overlay LINE (the ribbon's EMA
+     lines, VWAP, Keltner, the pattern trendlines) is created before the candles too, and the candles
+     are created LAST (below): the lines are semi-transparent, and a line drawn ABOVE a candle body
+     alpha-blends into it, which made the body look see-through wherever a line crossed it. With the
+     candles on top, the bodies are painted over the lines and stay fully solid. Every ribbon series
+     is NO_SCALE so it can never rescale the candles. */
   let rbCloudFast=null,rbCloudSlow=null;
   try{
     rbCloudFast=chart.addCustomSeries(bandView(),{autoscaleInfoProvider:NO_SCALE,priceLineVisible:false,lastValueVisible:false});
     rbCloudSlow=chart.addCustomSeries(bandView(),{autoscaleInfoProvider:NO_SCALE,priceLineVisible:false,lastValueVisible:false});
   }catch(e){}
-  const candles=chart.addCandlestickSeries({lastValueVisible:false});
   const rbLine=()=>makeRibbonLine(chart);
   const rbFast=rbLine(),rbPivot=rbLine(),rbSlow=rbLine(),rbFastConv=rbLine(),rbSlowConv=rbLine();
   // VWAP: three independently-anchored lines, same shared factory (and so the same NO_SCALE /
   // no-price-line / no-crosshair-marker treatment) as the ribbon's EMAs, for the aesthetic the
   // rest of this file already establishes for an overlay line. Created after the ribbon lines so
-  // VWAP draws on top of them, which is the conventional "VWAP always visible over everything
-  // else" look.
+  // VWAP draws on top of them (the candles, created after every overlay line below, sit above both).
   const vwLine=()=>makeRibbonLine(chart);
   const vwLines=[vwLine(),vwLine(),vwLine()];
   // Keltner Channels: Upper/Lower only (Basis and Background removed per instruction), same
   // shared line factory, created after VWAP so it draws on top.
   const kcLine=()=>makeRibbonLine(chart);
   const kcLines=[kcLine(),kcLine()];
+  // Pattern trendlines (same two persistent series renderPane reuses every render) also sit under the candles.
+  const patLineA=makePatLine(chart),patLineB=makePatLine(chart);
+  const lvl=makeLvlCarrier(chart);
+  const candles=chart.addCandlestickSeries({lastValueVisible:false,priceLineVisible:false});   // its dotted last-price line lives on `lvl`
   /* Volume sits ON the price chart now, the way TradingView draws it: its own overlay
      price scale ('volume'), pushed into the bottom fifth of the pane so the bars sit under
      the candles without stealing any of their height. An overlay scale is invisible and
@@ -3614,7 +3646,7 @@ function makePane(idx){
   try{rchart.applyOptions({crosshair:{horzLine:{visible:false,labelVisible:true}}});}catch(e){}
   const pane={idx,chart,candles,vol,vchart,rchart,rsi,rsiMa,rsiFill,rsiOB,rsiOS,rsiBBu,rsiBBl,
     mchart,macdHist,macdLine,sigLine,macdZeroLine,macdTail:null,
-    rbCloudFast,rbCloudSlow,rbFast,rbPivot,rbSlow,rbFastConv,rbSlowConv,rbArrows:[],rbTail:null,vwLines,vwapTail:null,vwSets:null,vwLast:null,kcLines,kcTail:null,rsiDivLines:[],rsiBands:[],priceLines:[],alertLines:[],tf:cfg['tf'+idx]||'5',tips:{},last:{},
+    rbCloudFast,rbCloudSlow,rbFast,rbPivot,rbSlow,rbFastConv,rbSlowConv,rbArrows:[],rbTail:null,vwLines,vwapTail:null,vwSets:null,vwLast:null,kcLines,kcTail:null,patLineA,patLineB,lvl,rsiDivLines:[],rsiBands:[],priceLines:[],alertLines:[],tf:cfg['tf'+idx]||'5',tips:{},last:{},
     _chartType:'candles'};   // matches the candlestick series just created above; ensureChartType() swaps both together
   // The 'close' entry uses a LIVE getter, not the captured `candles` value: ensureChartType() can
   // later reassign pane.candles to a different series object (chart-type swap), and a plain
@@ -5410,34 +5442,39 @@ function closeKcModal(){$('#kcModal').style.display='none';}
 // Swap the pane's main series between candlestick and line, per cfg.chartType0/1 (the same
 // cfg[key+idx] pattern struct0/saty0/ribbon0 already use). lightweight-charts has no z-index/
 // move-series API (verified: neither the chart nor a series instance expose one) — series draw in
-// CREATION order only. The ribbon's 5 EMA LINES were created right after the candles specifically
-// so they draw ON TOP of price (see the comment at their creation); removeSeries+addSeries always
-// appends at the end, so swapping just the main series would silently push it above those lines,
-// burying them under an opaque candle body. Recreating the ribbon lines too, in the same order,
-// right after the new main series, keeps that stacking intact. The cloud custom-series (created
-// BEFORE the candles) are untouched — they were already below and stay there regardless.
+// CREATION order only, and removeSeries+addSeries always appends at the end. So every overlay line
+// is recreated here too, in the order that gives the right stacking for the mode being built:
+//  - CANDLES: overlay lines first, candles LAST (same order makePane builds), so the candle bodies
+//    are painted over the semi-transparent lines and stay fully solid — a line drawn above a body
+//    alpha-blends into it and makes the body look see-through.
+//  - LINE: the main line first, overlay lines after it, so the ribbon/VWAP/Keltner lines still draw
+//    ON TOP of the price line, exactly as before (there is no candle body to protect in this mode).
+// The cloud custom-series (created BEFORE everything else) are untouched — they were already below
+// and stay there regardless.
 function ensureChartType(p){
   if(!p||!p.chart)return;
   const want=cfg['chartType'+p.idx]==='line'?'line':'candles';
   if(p._chartType===want)return;
   try{p.chart.removeSeries(p.candles);}catch(e){}
+  try{if(p.lvl)p.chart.removeSeries(p.lvl);}catch(e){}
   [p.rbFast,p.rbPivot,p.rbSlow,p.rbFastConv,p.rbSlowConv].forEach(s=>{try{p.chart.removeSeries(s);}catch(e){}});
   (p.vwLines||[]).forEach(s=>{try{p.chart.removeSeries(s);}catch(e){}});
   (p.kcLines||[]).forEach(s=>{try{p.chart.removeSeries(s);}catch(e){}});
-  // Pattern trendlines are reused across renders (see renderPane), which means they can be
-  // OLDER series than a freshly re-added candle series — removeSeries+addSeries always makes
-  // the new one the topmost in z-order, so without this a chart-type swap would silently
-  // bury the trendlines behind the candles. Dropping the references here makes renderPane's
-  // own lazy "if(!p.patLineA)" check recreate them fresh on the very next render, back on top.
+  // Pattern trendlines are reused across renders (see renderPane), so they can be OLDER series
+  // than a freshly re-added main series; they are removed and recreated with the other overlays.
   [p.patLineA,p.patLineB].forEach(s=>{if(s)try{p.chart.removeSeries(s);}catch(e){}});
-  p.patLineA=p.patLineB=null;
-  p.candles=want==='line'
-    ?p.chart.addLineSeries({lastValueVisible:false,lineWidth:2})
-    :p.chart.addCandlestickSeries({lastValueVisible:false});
-  p.rbFast=makeRibbonLine(p.chart);p.rbPivot=makeRibbonLine(p.chart);p.rbSlow=makeRibbonLine(p.chart);
-  p.rbFastConv=makeRibbonLine(p.chart);p.rbSlowConv=makeRibbonLine(p.chart);
-  p.vwLines=[makeRibbonLine(p.chart),makeRibbonLine(p.chart),makeRibbonLine(p.chart)];
-  p.kcLines=[makeRibbonLine(p.chart),makeRibbonLine(p.chart)];
+  const mainSeries=()=>want==='line'
+    ?p.chart.addLineSeries({lastValueVisible:false,lineWidth:2,priceLineVisible:false})
+    :p.chart.addCandlestickSeries({lastValueVisible:false,priceLineVisible:false});
+  const overlays=()=>{
+    p.rbFast=makeRibbonLine(p.chart);p.rbPivot=makeRibbonLine(p.chart);p.rbSlow=makeRibbonLine(p.chart);
+    p.rbFastConv=makeRibbonLine(p.chart);p.rbSlowConv=makeRibbonLine(p.chart);
+    p.vwLines=[makeRibbonLine(p.chart),makeRibbonLine(p.chart),makeRibbonLine(p.chart)];
+    p.kcLines=[makeRibbonLine(p.chart),makeRibbonLine(p.chart)];
+    p.patLineA=makePatLine(p.chart);p.patLineB=makePatLine(p.chart);
+  };
+  if(want==='line'){p.candles=mainSeries();p.lvl=makeLvlCarrier(p.chart);overlays();}
+  else{overlays();p.lvl=makeLvlCarrier(p.chart);p.candles=mainSeries();}
   // makeRibbonLine() sets no color at all — every one of the lines just recreated above starts
   // out at lightweight-charts' own default line color (a blue) with zero data, until something
   // calls .applyOptions({color:...}) + .setData(...) on it again. renderVwap() always does that
@@ -5526,7 +5563,8 @@ function pushMainSeriesData(p){
   // already does this per-tick) - otherwise toggling Candle Bias or Gradient mode, or switching
   // symbol/timeframe, left the price line showing whatever colour it last had from creation
   // until the next trade tick happened to arrive.
-  if(p._liveColor)try{p.candles.applyOptions({priceLineColor:volRgba(p._liveColor,PRICE_LINE_ALPHA)});}catch(e){}
+  syncLvlCarrier(p);
+  if(p._liveColor)try{(p.lvl||p.candles).applyOptions({priceLineColor:volRgba(p._liveColor,PRICE_LINE_ALPHA)});}catch(e){}
 }
 function renderPane(p){
   if(!p||!p.candles)return;
@@ -5920,10 +5958,9 @@ function renderPane(p){
   // their right-hand endpoint inching forward one bar; addLineSeries/removeSeries makes
   // LightweightCharts rebuild a whole rendering object for that, where applyOptions+setData
   // on a series that already exists is the same visual result for a fraction of the cost.
-  if(!p.patLineA)p.patLineA=p.chart.addLineSeries({priceLineVisible:false,lastValueVisible:false,
-    crosshairMarkerVisible:false,autoscaleInfoProvider:NO_SCALE});
-  if(!p.patLineB)p.patLineB=p.chart.addLineSeries({priceLineVisible:false,lastValueVisible:false,
-    crosshairMarkerVisible:false,autoscaleInfoProvider:NO_SCALE});
+  // (both are normally created in makePane / ensureChartType, below the candles; this is only a safety net)
+  if(!p.patLineA)p.patLineA=makePatLine(p.chart);
+  if(!p.patLineB)p.patLineB=makePatLine(p.chart);
   p.patMid=null;
   const pat=p.pattern,hasBounds=pat&&pat.upper&&pat.lower,hasNeck=pat&&pat.neckline;
   if(stOn&&pat&&(hasBounds||hasNeck)){
@@ -5975,7 +6012,7 @@ function renderPane(p){
   {const plN=data.length,plLb=plN?data[plN-1]:null;
    const plUp=!plLb?true:(cs.prevClose?(plN>1?plLb.close>=data[plN-2].close:plLb.close>=plLb.open):(plLb.close>=plLb.open));
    const plCol=p._liveColor||(plUp?(cs.bodyUp||'#2dd4a7'):(cs.bodyDn||'#f0564f'));
-   try{p.candles.applyOptions({lastValueVisible:false,priceLineVisible:true,
+   try{(p.lvl||p.candles).applyOptions({lastValueVisible:false,priceLineVisible:true,
      priceLineColor:volRgba(plCol,PRICE_LINE_ALPHA)});}catch(e){}}
   p.lastOpen=data.length?data[data.length-1].open:null;
   drawLevelsOn(p);
@@ -6144,8 +6181,9 @@ function lvSeg(host,y,gaps,plotW,L,ownerKey){
 // HTML overlays only: the chart canvas and crosshair are untouched.
 function drawLevelSegments(p){
   const host=$('#tips'+p.idx);if(!host)return;
+  const under=underHost(p);   // the visible line segments live UNDER the candle canvas (see .under); labels stay in `host`
   // [data-gexkey] segments are renderGexLevels' own — see positionLvlTags' matching exclusion for why.
-  host.querySelectorAll('.lvseg:not([data-gexkey])').forEach(e=>e.remove());
+  under.querySelectorAll('.lvseg:not([data-gexkey])').forEach(e=>e.remove());
   const el=$('#pc'+p.idx);if(!el||!p.candles)return;
   let axisW=0;try{axisW=Math.round(p.chart.priceScale('right').width()||0);}catch(e){}
   if(!(axisW>10))axisW=56;
@@ -6167,7 +6205,7 @@ function drawLevelSegments(p){
   // close together without either one detouring around the other's text.
   items.forEach(it=>{
     const gaps=items.filter(o=>o.lvl===it.lvl&&Math.abs(o.L.y-it.L.y)<13).map(o=>({x0:o.x0,x1:o.x1})).sort((a,b)=>a.x0-b.x0);
-    lvSeg(host,it.L.y,gaps,plotW,it.L,it.key);
+    lvSeg(under,it.L.y,gaps,plotW,it.L,it.key);
   });   // WRITE
 }
 function positionRbArrows(p){
@@ -6518,7 +6556,7 @@ function computeSessBands(times){
   return out;
 }
 function positionSessionBands(p){
-  const host=$('#tips'+p.idx);if(!host)return;
+  const host=underHost(p);if(!host)return;   // under the candles: the shading must not tint them
   host.querySelectorAll('.sessband').forEach(e=>e.remove());
   if(cfg.sess!=='eth'||p.tf==='D'||p.tf==='W'||!p.sessBands||!p.sessBands.length)return;
   // Clipped to the PLOT width, not the pane's full width: w included the price-axis column,
@@ -7508,7 +7546,8 @@ function paneTick(p){
   // The price line marks the last close, so it tracks the SAME resolved colour as the live point
   // above — Gradient or Candle Bias when active, plain up/down otherwise (was hardcoded to plain
   // up/down here regardless, which is the exact bug the countdown badge shared - see updateCountdown).
-  try{p.candles.applyOptions({priceLineColor:volRgba(liveCol,PRICE_LINE_ALPHA)});}catch(e){}
+  try{if(p.lvl)p.lvl.update({time:bar.time,value:bar.close});}catch(e){}   // keeps the carrier's last-price line on the live close
+  try{(p.lvl||p.candles).applyOptions({priceLineColor:volRgba(liveCol,PRICE_LINE_ALPHA)});}catch(e){}
   /* Advance every moving average onto the live bar. An EMA is a one-step recursion, so
      the new value only needs the previous bar's — no re-walk of the series. It was
      stashed by the last full render. `isNew` distinguishes a tick that EXTENDS the
@@ -8285,12 +8324,12 @@ function drawAlertLines(){
     // (applyPaneSym sets p.sym directly) — an alert plots on whichever pane is actually showing
     // its symbol, which may be neither, one, or (if linked) both at once.
     const paneSym=p.idx===0?cfg.sym:(p.sym||cfg.sym);
-    p.alertLines.forEach(x=>{try{p.candles.removePriceLine(x.line);}catch(e){}});
+    p.alertLines.forEach(x=>{try{(p.lvl||p.candles).removePriceLine(x.line);}catch(e){}});
     p.alertLines=[];
     alerts.filter(a=>a.sym===paneSym&&a.status!=='expired').forEach(a=>{
       const vals=a.value2!=null?[a.value,a.value2]:[a.value];
       vals.forEach((v,vi)=>{
-        const line=p.candles.createPriceLine({price:+v,color:alertLineColor(a),lineWidth:1,
+        const line=(p.lvl||p.candles).createPriceLine({price:+v,color:alertLineColor(a),lineWidth:1,
           lineStyle:lwcStyle('dashed'),axisLabelVisible:true,
           axisLabelColor:alertLineColor(a),axisLabelTextColor:'#1a1408',
           title:vi===0?(a.message||alertDefaultMessage(a)):''});
@@ -9408,6 +9447,8 @@ function renderGexLevels(lv,targetPanes,alt){
     const host=$('#tips'+p.idx);if(!host||!p.candles)return;
     const el=$('#pc'+p.idx);if(!el)return;
     host.querySelectorAll('[data-gexkey]').forEach(e=>{if(!wantedKeys.has(e.dataset.gexkey))e.remove();});
+    const under=underHost(p);   // GEX line segments live under the candle canvas (see .under)
+    if(under!==host)under.querySelectorAll('[data-gexkey]').forEach(e=>{if(!wantedKeys.has(e.dataset.gexkey))e.remove();});
     const h=paneClipH(p,el);
     let axisW=0;try{axisW=Math.round(p.chart.priceScale('right').width()||0);}catch(e){}
     if(!(axisW>10))axisW=56;
@@ -9436,20 +9477,21 @@ function renderGexLevels(lv,targetPanes,alt){
         // updates without ever being recreated, so it never needs rebinding.
         tagEl.onclick=e=>{e.stopPropagation();openLevelStyler(tagEl,x.key,alt);};
         host.appendChild(tagEl);
-        gexRedrawSeg(host,x.key,tagEl,plotW,st);
+        gexRedrawSeg(under,x.key,tagEl,plotW,st);
         return;
       }
       // Key already has a node — patch it in place, including when the price itself moved.
       if(y==null||y<5||y>h-3){
         tagEl.style.display='none';
-        host.querySelectorAll('.lvseg[data-gexkey="'+x.key+'"],.axpx-lvl[data-gexkey="'+x.key+'"]').forEach(e=>e.style.display='none');
+        host.querySelectorAll('.axpx-lvl[data-gexkey="'+x.key+'"]').forEach(e=>e.style.display='none');
+        under.querySelectorAll('.lvseg[data-gexkey="'+x.key+'"]').forEach(e=>e.style.display='none');
         return;
       }
       tagEl.style.display='';tagEl.style.color=st.tc;tagEl.style.top=y+'px';tagEl.dataset.y=y;tagEl.dataset.price=priceKey;
       tagEl.textContent=x.label;
       const badge=host.querySelector('.axpx-lvl[data-gexkey="'+x.key+'"]');
       if(badge){badge.style.display='';badge.style.top=y+'px';badge.textContent=priceKey;badge.style.background=st.color;}
-      gexRedrawSeg(host,x.key,tagEl,plotW,st);   // segments follow the same y; also regap for the (possibly resized/relocated) label
+      gexRedrawSeg(under,x.key,tagEl,plotW,st);   // segments follow the same y; also regap for the (possibly resized/relocated) label
     });
   });
 }
