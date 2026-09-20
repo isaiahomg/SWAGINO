@@ -16,6 +16,40 @@
      ensureLWC()'s dormant charting-library fallback, which isn't worth a warm connection since it
      almost never actually fires. -->
 <link rel="preconnect" href="https://financialmodelingprep.com" crossorigin>
+<!-- Detects a software (non-GPU) rendering path — e.g. Edge/Chrome with "Use hardware acceleration
+     when available" turned off — and marks <html class="no-gpu"> before anything else in this file
+     ever paints, so the CSS below can fall back to cheap alternatives instead of ever rendering the
+     expensive version even once. There is no direct "is hardware acceleration on" API; the
+     established technique (used by browser feature-detection libraries generally) is to open a
+     throwaway WebGL context and read its UNMASKED_RENDERER_WEBGL string via the
+     WEBGL_debug_renderer_info extension — a real GPU reports its own name (e.g. "ANGLE (NVIDIA...",
+     "ANGLE (Intel..."), while a software fallback reports a known software-rasterizer name instead
+     (SwiftShader is Chromium's own bundled one; llvmpipe/softpipe are Mesa's; "Microsoft Basic
+     Render Driver" is Windows' own driver-less fallback the GPU process lands on when it can't get
+     a real adapter). WebGL context creation failing outright is treated the same way — on a normal
+     GPU-backed browser it always succeeds, so a null context here already means something is
+     blocking hardware access before the renderer string is even in play. Synchronous and blocking
+     by design (a few ms at most, WebGL context creation is fast) — this must finish before the
+     glass/blur rules a few hundred lines down get their first chance to paint, or the point of
+     detecting early is lost to one expensive frame anyway. Wrapped in try/catch: any failure here
+     (WebGL fully unavailable, extension missing, a browser that throws instead of returning null)
+     is itself further evidence of a constrained rendering path, so it also lands in no-gpu rather
+     than silently assuming full acceleration by default. -->
+<script>
+(function(){
+  try{
+    var c=document.createElement('canvas');
+    var gl=c.getContext('webgl2')||c.getContext('webgl')||c.getContext('experimental-webgl');
+    var soft=!gl;
+    if(gl){
+      var dbg=gl.getExtension('WEBGL_debug_renderer_info');
+      var renderer=dbg?String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)||''):'';
+      if(/swiftshader|llvmpipe|softpipe|software|basic render driver|microsoft basic/i.test(renderer))soft=true;
+    }
+    if(soft)document.documentElement.classList.add('no-gpu');
+  }catch(e){document.documentElement.classList.add('no-gpu');}
+})();
+</script>
 <!-- lightweight-charts v4.2.3 — vendored locally (not a CDN) to drop the cdnjs dependency
      (upstream: standalone.production, byte-for-byte); split into vendor/lwc.min.js 2026-09-15
      to shrink this file and let the browser cache the (never-changing) library separately from
@@ -261,6 +295,11 @@ input[type=checkbox]{accent-color:var(--pivot)}
 .lvltag{position:absolute;transform:translateY(-50%);z-index:6;pointer-events:auto;cursor:pointer;
   font-family:var(--lab);font-size:9.5px;font-weight:400;letter-spacing:.02em;
   white-space:nowrap;background:transparent;
+  /* 5px each side, same as .satylab: lvSeg runs a line right up to a label's measured rect, so the
+     breathing room between a line and its text has to live INSIDE the rect as padding (that is
+     where Saty labels have always had it). Callers subtract the 5px from their `right` offset so
+     the text itself does not move. */
+  padding:0 5px;
   text-shadow:0 1px 1px rgba(0,0,0,.85)}
 /* price reading in the price-axis column, drawn as a compact filled badge — the charting library
    always fills its axis-label plate opaquely (axisLabelColor ignores alpha), so level / Saty /
@@ -433,12 +472,12 @@ input[type=checkbox]{accent-color:var(--pivot)}
 .cdown .t{font-size:9px;padding:0 6px 1px;color:#050505;font-weight:400;text-align:center}
 /* The cursor's own price readout — z-index above every other axis badge (.axpx:6, .cdown:7) so it
    continuously paints over whatever it overlaps as the mouse moves, exactly like TradingView's own
-   crosshair label on its separate top canvas layer (see updateAxCursor's own comment). Same neutral
-   grey fill as .cdown's CLOSED state, but white text — #050505 (right for .cdown's light/colored
-   fills) read as too low-contrast against this flat grey. */
+   crosshair label on its separate top canvas layer (see updateAxCursor's own comment). Always solid
+   black with white text — a fixed colour, never derived from the page/theme background — since
+   #050505 text (right for .cdown's light/colored fills) is unreadable on it. */
 .axcur{position:absolute;right:0;z-index:8;font-family:var(--lab);font-size:11px;font-weight:400;
   letter-spacing:.01em;white-space:nowrap;font-variant-numeric:tabular-nums;text-align:center;
-  color:#fff;background:#3a3a3a;padding:2px 6px;border-radius:2px;transform:translateY(-50%);
+  color:#fff;background:#000;padding:2px 6px;border-radius:2px;transform:translateY(-50%);
   display:none;pointer-events:none;box-sizing:border-box}
 .phandle{height:5px;cursor:ns-resize;background:var(--panel);touch-action:none}
 .phandle:hover{background:var(--line)}
@@ -832,6 +871,13 @@ input:disabled,select:disabled{opacity:.45;cursor:not-allowed}
   -webkit-backdrop-filter:url(#liquidGlassDistort) saturate(1.3);
   border-radius:12px;padding:3px 10px;
   white-space:nowrap;width:max-content}
+/* No-GPU: the look is kept exactly as-is (same .3 fill, same 3px blur + saturate, same inset sheen
+   below); ONLY the url(#liquidGlassDistort) reference is swapped for its plain-blur twin. That SVG
+   chain (feImage -> blur -> feDisplacementMap -> blur) is the one genuinely unaffordable part of the
+   glass in software rendering - a per-pixel displacement resample of everything behind the element
+   on the CPU - while a 3px blur is a small fixed kernel. What is lost is only the faint edge
+   refraction the displacement map adds; fill, blur, saturation and highlights are untouched. */
+.no-gpu .satyinfo{backdrop-filter:blur(3px) saturate(1.3);-webkit-backdrop-filter:blur(3px) saturate(1.3)}
 /* ---- Saty ATR Levels ----
    Was TradingView's three-tab Inputs / Style / Visibility dialog, which made it the odd one
    out here: every other indicator opens the plain .card with h3 section headings. It now
@@ -938,6 +984,20 @@ input:disabled,select:disabled{opacity:.45;cursor:not-allowed}
    Paused via this class, toggled by the visibilitychange hook in the backdrop-controller script
    (see visTick(), top of <body>). */
 body.tab-hidden .tbheart,body.tab-hidden .tbjet,body.tab-hidden .bspin{animation-play-state:paused}
+/* No-GPU only. Two more cuts to the decorative topbar animations, neither of which changes the
+   still look:
+   1) heartGlow animates `filter: drop-shadow(...)` - a main-thread animation the browser must
+      re-rasterise every frame in software (and which keeps style dirty every frame). Here the glow
+      is a fixed mid-strength drop-shadow and only opacity pulses, which the compositor can do
+      without repainting the heart.
+   2) Both animations pause while this window is not focused (win-blur, toggled from the
+      focus/blur listeners below) - e.g. while a video is playing in another window. Software
+      compositing shares the same CPU as video decode, so animation frames nobody is looking at
+      directly take frames from the video. They resume the moment the window regains focus. */
+@keyframes heartPulseCheap{0%,100%{opacity:.82}50%{opacity:1}}
+.no-gpu .tbheart{animation-name:heartPulseCheap;
+  filter:drop-shadow(0 0 4px rgba(255,105,190,.75)) drop-shadow(0 0 8px rgba(255,79,163,.45))}
+.no-gpu.win-blur .tbheart,.no-gpu.win-blur .tbjet,.no-gpu.win-blur .mphase.open .mpi{animation-play-state:paused}
 .tbpic{height:28px;width:28px;flex:0 0 28px;display:block;
   border:none;border-radius:6px;background:transparent}
 .tbpic-photo{object-fit:cover}
@@ -1124,6 +1184,15 @@ input[type=checkbox]{accent-color:var(--accent)}
     inset 0 -4px 7px rgba(255,255,255,.04),
     inset 4px 0 7px rgba(255,255,255,.05),
     inset -4px 0 7px rgba(255,255,255,.05)}
+/* No-GPU: the side panel drops backdrop-filter altogether (the small .satyinfo pill above keeps its
+   plain blur - its area is tiny). Measured by the user on real hardware-acceleration-off Edge: video
+   playback lagged with the panel enlarged and was fine when shrunk, i.e. the cost scales with the
+   panel's AREA, which is exactly what a software backdrop blur does (re-sample every pixel behind
+   it, every time anything behind it repaints - and the live chart repaints constantly). Plain alpha
+   compositing is the cheapest possible translucency. Fill goes .3 -> .4 to stand in for the blur's
+   job of keeping the chart behind it from competing with the panel's own text; border and inset
+   sheen are untouched. */
+.no-gpu .side,.no-gpu #side2{background:rgba(20,21,25,.4);backdrop-filter:none;-webkit-backdrop-filter:none}
 /* #sbBtn used to just sit in the topbar's icon row (.setupIconBtn styling), then floated free as
    a small glyph-in-a-square pinned to the popout's own top-left corner. It's now a solid vertical
    capsule running the full height of whichever edge of the panel faces the nearer side of the
@@ -1162,21 +1231,34 @@ input[type=checkbox]{accent-color:var(--accent)}
 /* Subtle at-rest chevron on the capsule handle, on request (2026-09-16) — the capsule shape
    alone read as ambiguous, not clearly an affordance. A small CSS-drawn arrow (no SVG, no extra
    asset) rather than reviving the old compress/expand glyph above, which is sized and shaped for
-   a small square button, not a thin full-height bar. Points toward whichever edge the panel will
-   open from (.dockLeft, set alongside the handle's own position in applyPos()) — same direction
-   regardless of hidden/shown state, since that's simpler and still reads correctly either way:
-   "the panel lives/opens this way." Faint at rest, brightens with the same hover the capsule
-   itself already gets. */
+   a small square button, not a thin full-height bar. Faint at rest, brightens with the same hover
+   the capsule itself already gets.
+   Centering was translate(-35%,-50%) — a hand-tuned deviation from the standard -50%/-50% center
+   trick, presumably chasing the arrow glyph's own visual weight (only two of its four sides are
+   drawn, so its ink isn't symmetric within its 6px box) rather than centering the box itself. On
+   a 16px-wide pill that left it only ~2px from one edge (measured live via a proxy element mirroring
+   the pseudo-element's exact computed box+transform) — reported as "touching the border." Plain
+   -50%/-50% is the standard trick precisely because it's rotation-invariant: left:50%;top:50%
+   places the box's own top-left at the anchor point, rotate() about the box's own center (the
+   default transform-origin) never moves that center regardless of angle, and translate(-50%,-50%)
+   of the box's OWN dimensions then lands that same center exactly on the anchor — true for any
+   rotation, not just 45°/225°, so it can't drift off-true the way a hand-picked percentage can.
+   Re-measured after the change: 3.05px clearance on both sides, provably equal rather than eyeballed. */
 #sbBtn.sbFloat::after,#sbBtn2.sbFloat::after{
   content:'';position:absolute;top:50%;left:50%;width:6px;height:6px;
   border-top:1.5px solid rgba(255,255,255,.4);border-right:1.5px solid rgba(255,255,255,.4);
-  transition:border-color .12s ease;pointer-events:none}
-/* dockLeft = handle sits at the panel's own LEFT edge, so the panel body opens to the RIGHT of
-   it — chevron points right (›) to match. A right-docked handle opens leftward, chevron flipped
-   to match (‹). Confirmed the un-swapped mapping visually at 6x zoom first: dockLeft rendering as
-   ‹ pointed away from where the panel actually opens, backwards from the intent. */
-#sbBtn.sbFloat.dockLeft::after,#sbBtn2.sbFloat.dockLeft::after{transform:translate(-35%,-50%) rotate(45deg)}
-#sbBtn.sbFloat:not(.dockLeft)::after,#sbBtn2.sbFloat:not(.dockLeft)::after{transform:translate(-65%,-50%) rotate(225deg)}
+  transform:translate(-50%,-50%) rotate(var(--arrowDeg,45deg));
+  transition:border-color .12s ease,transform .22s cubic-bezier(.4,0,.2,1);pointer-events:none}
+/* Direction/angle used to be two fixed CSS classes (.dockLeft/.sbHid) picking between two fixed
+   rotate() values — worked for "point here vs point there" but couldn't express "always turn the
+   same way to get there": a transition between two fixed values necessarily walks the same gap
+   forwards once and backwards the next, so show/hide alternated CCW then CW. On request, EVERY
+   toggle — open or close alike — now spins 180 counter-clockwise, never reversing, so two clicks in
+   a row read as one continuous 360. That needs a running literal angle rather than a fixed pair, so
+   this is now driven entirely from JS via the --arrowDeg custom property (set in applyPos(), the
+   one place that already knows both dockLeft and hidden) — see its own comment there for exactly
+   how the running value is chosen and why repeatedly subtracting 180 still always lands on the
+   correct resting angle (45 or 225) for whichever state is now current. */
 #sbBtn.sbFloat:hover::after,#sbBtn2.sbFloat:hover::after{border-color:rgba(255,255,255,.85)}
 /* ── buttons ── */
 .tbtn{
@@ -1471,7 +1553,11 @@ table.lv td{padding:6px 10px}
 /* Was 9.5px - actually SMALLER than the 11.5px row text sitting right under it (table.lv), which
    undercut the bold/uppercase/wide-tracking treatment's own job of reading as a section header
    rather than a caption. Bumped past the row text instead of just up to it. */
-.catlabel{font-size:12px;letter-spacing:.13em;text-transform:uppercase;font-weight:700;
+.catlabel{font-size:12px;letter-spacing:.09em;text-transform:uppercase;font-weight:700;
+  /* No text-shadow at all: the panel's inherited one (0 1px 2px, blurred) haloes a heavy face, and
+     a hard 1px offset just reads as a doubled, blurry copy at 12px. Bold white on the glass holds
+     up fine without one. */
+  text-shadow:none;
   cursor:pointer;padding:2px 4px;border-radius:4px;transition:color .15s ease}
 .catlabel:hover{background:rgba(255,255,255,.06)}
 .catlabel.on{color:var(--axistext)}
@@ -1480,7 +1566,7 @@ table.lv td{padding:6px 10px}
    category header's small-caps uppercase treatment — this replaced the per-level checkbox
    entirely, the label text itself is now the toggle. */
 .lvlabel{cursor:pointer;display:inline-block;border-radius:3px;padding:1px 3px;margin:-1px -3px;
-  transition:color .15s ease}
+  font-style:italic;transition:color .15s ease}
 .lvlabel:hover{background:rgba(255,255,255,.06)}
 .lvlabel.on{color:var(--axistext)}
 .lvlabel:not(.on){color:var(--axistext);opacity:.45}
@@ -1918,6 +2004,8 @@ table.lv td{padding:6px 10px}
      tab is hidden (see the body.tab-hidden rule in <style>) — an off-screen page should not keep
      the compositor busy running them. Independent of backdrop mode. */
   function visTick(){ document.body.classList.toggle('tab-hidden', document.hidden); }
+  function blurTick(){ document.documentElement.classList.toggle('win-blur', !document.hasFocus()); }
+  window.addEventListener('focus', blurTick); window.addEventListener('blur', blurTick); blurTick();
   document.addEventListener('visibilitychange', visTick);
   visTick();
   window.applyBackdrop();
@@ -6128,7 +6216,7 @@ function positionLvlTags(p){
     d.style.display=visible?'':'none';
     if(visible){
       d.style.color=t.tc||'var(--axistext)';d.style.fontSize=(t.size||10)+'px';d.style.top=y+'px';
-      d.style.right=(axisW+22)+'px';d.dataset.y=y;
+      d.style.right=(axisW+17)+'px';d.dataset.y=y;   // +22 minus .lvltag's own 5px side padding
       d.textContent=t.name;d.__line=L;
     }
     if(t.axisOn!==false){
@@ -6162,13 +6250,12 @@ function lvSeg(host,y,gaps,plotW,L,ownerKey){
   // so the line steps around ALL of them: two colliding labels slide apart HORIZONTALLY onto the
   // SAME row (deoverlapLabels/deoverlapLevelLabels never move a label off its own price), so a
   // line that only cleared its own label would still run straight through whichever neighbour
-  // just slid in next to it. LVL_GAP_PAD applies to every family alike (level tags AND Saty) —
-  // both now use Saty's original 5px breathing room. 0px and 1px were both tried first and looked
-  // wrong: with that little clearance the line reads as touching/cutting into the text instead of
-  // visibly stopping for it, on request.
-  const LVL_GAP_PAD=5;
+  // just slid in next to it. No padding around a label's own rect any more (used to be a 5px
+  // LVL_GAP_PAD, briefly 0px as an explicit constant — removed outright on further request rather
+  // than kept as a value that does nothing): the line now runs right up to and resumes right from
+  // each label's exact measured edge, touching but never overlapping its text.
   let cursor=0;
-  gaps.forEach(gp=>{ bar(cursor,Math.max(cursor,gp.x0-LVL_GAP_PAD)); cursor=Math.max(cursor,gp.x1+LVL_GAP_PAD); });
+  gaps.forEach(gp=>{ bar(cursor,Math.max(cursor,gp.x0)); cursor=Math.max(cursor,gp.x1); });
   bar(cursor,plotW);
 }
 // Every level / Saty / structure-break / alert line, drawn AFTER deoverlapLabels so each line's
@@ -6616,6 +6703,20 @@ function anyModalOpen(){
 }
 function trackOverlays(p){
   let sig='';
+  // The pane's size used to be read every frame via el.clientWidth/clientHeight. A layout read in a
+  // rAF callback forces the browser to flush pending style/layout right there, and any main-thread
+  // animation running (the topbar's jet/heart) keeps style dirty every frame - measured live, that
+  // one probe cost ~0.35ms per frame (~58ms of main-thread time per second at 165Hz) while doing
+  // almost nothing itself; the same calls measured in isolation cost ~0.002ms. A ResizeObserver
+  // delivers the identical size change without ever touching layout from inside the loop.
+  let sz='-';
+  try{
+    const host=$('#pc'+p.idx);
+    if(host&&window.ResizeObserver){
+      sz=host.clientWidth+'x'+host.clientHeight;
+      new ResizeObserver(()=>{sz=host.clientWidth+'x'+host.clientHeight;}).observe(host);
+    }
+  }catch(e){}
   const tick=()=>{
     if(!p.chart){return;}
     if(anyModalOpen()){requestAnimationFrame(tick);return;}
@@ -6623,9 +6724,7 @@ function trackOverlays(p){
     try{
       const r=p.chart.timeScale().getVisibleLogicalRange();
       const y=p.candles.priceToCoordinate(100);         // any fixed price: its screen y
-      const el=$('#pc'+p.idx);                           // moves whenever the scale does
-      s=(r?r.from.toFixed(2)+','+r.to.toFixed(2):'-')+'|'+(y==null?'-':y.toFixed(1))
-        +'|'+(el?el.clientWidth+'x'+el.clientHeight:'-');
+      s=(r?r.from.toFixed(2)+','+r.to.toFixed(2):'-')+'|'+(y==null?'-':y.toFixed(1))+'|'+sz;
     }catch(e){}
     if(s&&s!==sig){sig=s;try{positionTips(p);updateCountdown(p);}catch(e){}}
     requestAnimationFrame(tick);
@@ -7908,6 +8007,12 @@ function updateCountdown(p){
   const vcol=rem==null?'style="color:#ffffff"':'';
   el.innerHTML='<div class="v" '+vcol+'>'+p.lastClose.toFixed(2)+'</div><div class="t" '+vcol+'>'+fmtCd(rem)+'</div>';
   el.style.display='block';el.style.top=y+'px';
+  // Same fix as updateAxCursor: shrink-wrapped at right:0 left a gap between the plot edge (where
+  // the last-price line ends) and the badge whenever the axis is wider than the badge's min-width.
+  // Span the full axis width (border-box) so the badge butts directly against the line's end.
+  let axisW=0;try{axisW=Math.round(p.chart.priceScale('right').width()||0);}catch(e){}
+  if(!(axisW>10))axisW=58;
+  el.style.boxSizing='border-box';el.style.width=axisW+'px';
 }
 // alt=true reads Pane 2's own show/hide memory (lvlOn2) instead of the shared lvlSty[key].on —
 // color/width/style/size stay shared by key across both boards (see LS.lvlOn2's own comment for
@@ -9471,7 +9576,7 @@ function renderGexLevels(lv,targetPanes,alt){
         tagEl=document.createElement('div');
         tagEl.className='lvltag';tagEl.dataset.gexkey=x.key;tagEl.dataset.price=priceKey;
         tagEl.style.color=st.tc;tagEl.style.fontSize=(st.size||10)+'px';tagEl.style.top=y+'px';
-        tagEl.style.right=(axisW+22)+'px';tagEl.dataset.y=y;
+        tagEl.style.right=(axisW+17)+'px';tagEl.dataset.y=y;   // +22 minus .lvltag's own 5px side padding
         tagEl.textContent=x.label;
         // Click-to-style, bound once here — this node persists across future price/magnitude
         // updates without ever being recreated, so it never needs rebinding.
@@ -12266,6 +12371,10 @@ function initSidePopout(o){
   // that follows pointerup either way still fires, so this is what tells the onclick handler
   // below "that was a drag just now, not a click" and to skip the toggle once.
   let btnDragged=false;
+  // The handle's own chevron degree — a running literal value, not a fixed pair picked by CSS
+  // class, so it can keep spinning the SAME direction on every single toggle (both show and hide)
+  // instead of alternating there-and-back. See its own use in applyPos() for why.
+  let chevDeg=null,lastHidden=null,lastDockLeft=null;
   // Shared across all three gesture types below (header drag, button drag, resize) — only one can
   // ever be live at a time on a given popout, so one variable is enough. Fast/erratic mouse
   // movement can fire pointermove far more often than the screen repaints (well past 60/sec on a
@@ -12334,7 +12443,6 @@ function initSidePopout(o){
     }
     const hidden=cfg[o.cfgHidden]===0;
     const x=Math.round(cfg[o.cfgX]),y=Math.round(cfg[o.cfgY]),w=cfg[o.cfgW],h=cfg[o.cfgH];
-    side.style.width=w+'px';side.style.height=h+'px';
     const boundsLeft=bx?bx.left:0,boundsRight=bx?bx.right:vw;
     // Defaults to the panel's LEFT edge always, on request — no longer flips just because the
     // panel's CENTER crosses the midpoint of its bounds, which read as arbitrary (dragging one
@@ -12352,42 +12460,85 @@ function initSidePopout(o){
     // stale.
     const EDGE_INSET=8;
     const dockLeft=(x+EDGE_INSET)>=boundsLeft;
-    // Slide (both the "past its own width" version and the later pure-transform/no-fade version)
-    // read as "ugly" on request — reverted to the original shrink-toward-the-button fade: translate
-    // 8px, scale .97, opacity fade, .16s plain ease, the exact numbers .tfmenu/.ctmenu/.scanmenu
-    // already use elsewhere in this file. transform-origin now tracks the handle's OWN edge
-    // (dockLeft) instead of a fixed top-left corner the way the very first version of this did —
-    // the handle itself can dock to either side of the panel now, and "genie into the button" only
-    // reads correctly when the shrink actually points at wherever the button currently is.
-    const SLIDE_EASE='cubic-bezier(.4,0,.2,1)';   // still used below, for the handle's OWN reposition transition only
-    side.style.transformOrigin=(dockLeft?30:w-30)+'px 30px';
-    side.style.transform=hidden
-      ?`translate3d(${x}px,${y+8}px,0) scale(.97)`
-      :`translate3d(${x}px,${y}px,0) scale(1)`;
-    side.style.opacity=hidden?'0':'1';
-    side.style.pointerEvents=hidden?'none':'auto';
-    side.style.transition=dragCount>0?'none':'transform .16s ease, opacity .16s ease';
+    const SLIDE_EASE='cubic-bezier(.4,0,.2,1)';   // shared by the pull below and the handle's OWN reposition transition
     // The handle sits INSIDE the panel's own rounded edge, not protruding past it — EDGE_INSET
     // clears it from the panel's true left/right boundary. TOP_CLEAR/BOTTOM_CLEAR are symmetric
-    // now (both sized only for the panel's own 28px corner radius — at 16px down from a 28px
-    // corner the curve has only encroached ~2.7px past the flat edge, comfortably inside
-    // EDGE_INSET's own 8px), on request — extending the handle up as close to the header as the
-    // corner itself allows, rather than clearing the WHOLE header the way an earlier pass did.
-    // That earlier pass (TOP_CLEAR=48) was covering for a DIFFERENT gap: at the time, .tabs had
-    // only its base 4px padding, so the active tab's own sliding highlight pill started almost
-    // flush with the panel edge — close enough to the handle's own column that a 20px-only top
-    // clearance put the handle's top ~24px genuinely under the pill's colour. .tabs's own 40px
-    // padding (see its CSS rule's comment) is the actual fix for that now: with the tab row itself
-    // pushed well clear of both edges, the handle and the pill no longer share ANY x-range at all
-    // (verified live), so there is nothing left for a tall top clearance to protect against; a plain
-    // corner-radius-sized gap is enough on both ends.
+    // (both sized only for the panel's own 28px corner radius — at 16px down from a 28px corner the
+    // curve has only encroached ~2.7px past the flat edge, comfortably inside EDGE_INSET's own 8px).
     const TOP_CLEAR=16,BOTTOM_CLEAR=16;
-    btn.style.width=SIDE_HANDLE_W+'px';btn.style.height=Math.max(20,h-TOP_CLEAR-BOTTOM_CLEAR)+'px';
-    btn.style.transform=`translate3d(${dockLeft?x+EDGE_INSET:x+w-SIDE_HANDLE_W-EDGE_INSET}px,${y+TOP_CLEAR}px,0)`;
-    // Drives the handle's own at-rest chevron (::after, see its CSS) — which way it points
-    // depends only on which edge the handle is docked to, not on hidden/shown state, so a single
-    // class here is enough; no JS chevron-swap logic needed.
-    btn.classList.toggle('dockLeft',dockLeft);
+    // The handle's own target rect — used both to size/position the REAL handle button below and,
+    // while hidden, to size/position the panel itself, so the two are pixel-identical by
+    // construction rather than two separately-tuned computations that can drift apart.
+    const handleX=dockLeft?x+EDGE_INSET:x+w-SIDE_HANDLE_W-EDGE_INSET,handleY=y+TOP_CLEAR;
+    const handleW=SIDE_HANDLE_W,handleH=Math.max(20,h-TOP_CLEAR-BOTTOM_CLEAR);
+    // History on this one: slide reads "ugly" (rejected), a fade reads as fading not pulling
+    // (rejected), a uniform scale(.04) around the handle's center imploded to a point instead of
+    // the whole pill (rejected), scale(scaleX,scaleY) sized to the handle's rect got the geometry
+    // right but a center-anchored origin only lands exactly on target when scale is near 1 (true
+    // for Y, false for X — left a ~7px sliver), and fixing the origin to the true affine fixed
+    // point finally made the collapsed BOX geometrically exact — verified via getBoundingClientRect,
+    // zero delta on every edge. But a transform:scale() only ever squashes content thinner; it does
+    // NOT shrink the box overflow:hidden clips against, which still reflects the panel's real,
+    // UNSCALED layout size — so the entire panel's content stayed visible the whole time, just
+    // squeezed into the smaller on-screen area. That's what kept reading as "still see parts of the
+    // pop-out" no matter how exactly the outer box lined up. The actual fix has to shrink the REAL
+    // width/height (not a cosmetic transform), so overflow:hidden re-clips content away as it goes —
+    // by the time it's fully collapsed the box genuinely IS handle-sized, nothing left outside it to
+    // leak through. Costs a real layout reflow instead of a pure compositor scale, but this only
+    // ever runs on an explicit user click, not per-frame, so that's not a real tradeoff here.
+    side.style.width=(hidden?handleW:w)+'px';
+    side.style.height=(hidden?handleH:h)+'px';
+    side.style.transform=`translate3d(${hidden?handleX:x}px,${hidden?handleY:y}px,0)`;
+    side.style.opacity='1';
+    side.style.pointerEvents=hidden?'none':'auto';
+    side.style.transition=dragCount>0?'none':`width .22s ${SLIDE_EASE}, height .22s ${SLIDE_EASE}, transform .22s ${SLIDE_EASE}`;
+    // The outer box's width animating for real (not a transform) is what fixed the content-leak
+    // above — but head/.pane have no width of their own, so as their FLEX PARENT (.side) narrows
+    // they narrow right along with it, and every intermediate width mid-transition forces a real
+    // text reflow at that odd width — reported live as "GEX text is blurry" (really: word-wrap
+    // collapsing words down to one character per line as the box passes through ~40-80px). Pinning
+    // head/.pane to a fixed pixel width equal to the panel's own OPEN width, always, regardless of
+    // hidden state, means their internal layout never changes — the text is laid out once, at full
+    // width, and stays that way. (Only width needs pinning here, no flex-shrink involved: .side is
+    // a column flex container, so width is the CROSS axis, where an explicit width simply overrides
+    // the default stretch-to-container behavior; flex-shrink only ever governs the main/height axis
+    // in a column container, which should and still does keep shrinking normally with the outer
+    // box.) The outer .side's own overflow:hidden still clips whatever of that fixed-width content
+    // pokes past its current (possibly much narrower) box, exactly like a curtain closing over a
+    // fixed backdrop — progressively hidden, never rewrapped, never blurry.
+    head.style.width=w+'px';
+    side.querySelectorAll('.pane').forEach(p=>{p.style.width=w+'px';});
+    btn.style.width=handleW+'px';btn.style.height=handleH+'px';
+    btn.style.transform=`translate3d(${handleX}px,${handleY}px,0)`;
+    // Drives the handle's own at-rest chevron (::after, see its CSS): which way it points depends
+    // on both dockLeft (which edge the panel lives on) and hidden (click = open it that way, or
+    // collapse it back), and on request the ANGLE ITSELF now keeps spinning the same direction —
+    // 180 counter-clockwise on every single toggle, open or close alike, not an open/close pair
+    // that reverses. A fixed CSS class pair can express "point here vs point there" but can't
+    // express "always turn this way to get there," since a transition between two fixed rotate()
+    // values necessarily walks the same numeric gap forwards one time and backwards the next. So
+    // this keeps a running literal degree (chevDeg, closed over per-popout-instance above) instead
+    // of picking between two fixed values: base is the correct RESTING angle for the current
+    // (dockLeft,hidden) pair (45 or 225, same mapping as before); every time hidden actually
+    // changes (an actual toggle, not just a reposition/drag call) chevDeg is pushed another -180
+    // from wherever it already was, continuing counter-clockwise regardless of prior direction —
+    // and since 45 and 225 are exactly 180 apart, repeatedly subtracting 180 lands back on a value
+    // congruent to the correct base every time, mod 360, without ever needing to reverse. Fed to
+    // the CSS chevron as a custom property (--arrowDeg) rather than a class, since pseudo-elements
+    // can't be driven by inline style directly. A dock-side change with no hidden toggle (dragged
+    // across the screen) is the one case this can't cover with a plain -180 step — resnapped to the
+    // nearest congruent value instead of forcing an unrelated spin.
+    const chevBase=(dockLeft===hidden)?45:225;
+    if(chevDeg==null){
+      chevDeg=chevBase;
+    }else if(hidden!==lastHidden){
+      chevDeg-=180;
+    }else if(dockLeft!==lastDockLeft){
+      let delta=(chevBase-chevDeg+180)%360;if(delta<0)delta+=360;delta-=180;
+      chevDeg+=delta;
+    }
+    lastHidden=hidden;lastDockLeft=dockLeft;
+    btn.style.setProperty('--arrowDeg',chevDeg+'deg');
     btn.style.transition=dragCount>0?'none':`transform .3s ${SLIDE_EASE}, opacity .12s ease`;
   }
   function setHidden(hidden){
