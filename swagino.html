@@ -896,7 +896,7 @@ input:disabled,select:disabled{opacity:.45;cursor:not-allowed}
   gap:8px;min-height:30px;font-size:12px}
 .vwsr .n{color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .vwsr input[type=checkbox]{margin:0}
-#vwapModal .vwsr .sw,#kcModal .vwsr .sw{width:22px;height:16px;border-radius:4px}
+#vwapModal .vwsr .sw{width:22px;height:16px;border-radius:4px}
 .satysty{border:none;border-radius:8px;padding:8px 10px;
   max-height:250px;overflow-y:auto;background:rgba(0,0,0,.22)}
 /* market phase pill: sits between the price and the Tradier connection state */
@@ -1691,10 +1691,10 @@ table.lv td{padding:6px 10px}
    checkbox/select/.sw markup verbatim. Saty's own dense 31-row rung grid (.satysr, a 16px
    checkbox column) is the one exception carved back out below -- a full-size toggle switch
    would blow out that grid, so it keeps a small styled checkbox instead. ═══════════════════ */
-#rsiModal h3,#stModal h3,#satyModal h3,#rbModal h3,#alertEditModal h3,#vwapModal h3,#kcModal h3{
+#rsiModal h3,#stModal h3,#satyModal h3,#rbModal h3,#alertEditModal h3,#vwapModal h3{
   display:flex;align-items:center;gap:8px;color:var(--faint)!important;
 }
-#rsiModal h3::after,#stModal h3::after,#satyModal h3::after,#rbModal h3::after,#alertEditModal h3::after,#vwapModal h3::after,#kcModal h3::after{
+#rsiModal h3::after,#stModal h3::after,#satyModal h3::after,#rbModal h3::after,#alertEditModal h3::after,#vwapModal h3::after{
   content:'';flex:1;
 }
 
@@ -1703,21 +1703,20 @@ table.lv td{padding:6px 10px}
 #satyModal input:not([type=checkbox]):not([type=file]),#satyModal select,
 #rbModal input:not([type=checkbox]):not([type=file]),#rbModal select,
 #alertEditModal input:not([type=checkbox]):not([type=file]),#alertEditModal select,#alertEditModal textarea,
-#vwapModal input:not([type=checkbox]):not([type=file]),#vwapModal select,
-#kcModal input:not([type=checkbox]):not([type=file]),#kcModal select{
+#vwapModal input:not([type=checkbox]):not([type=file]),#vwapModal select{
   background:#0a0b0d;
   border-radius:9px;
 }
 #rsiModal input:focus,#rsiModal select:focus,#stModal input:focus,#stModal select:focus,
 #satyModal input:focus,#satyModal select:focus,#rbModal input:focus,#rbModal select:focus,
 #alertEditModal input:focus,#alertEditModal select:focus,#alertEditModal textarea:focus,
-#vwapModal input:focus,#vwapModal select:focus,#kcModal input:focus,#kcModal select:focus{
+#vwapModal input:focus,#vwapModal select:focus{
   box-shadow:0 0 0 3px rgba(10,132,255,.18);
 }
 
 #rsiModal input[type=checkbox],#stModal input[type=checkbox],
 #satyModal input[type=checkbox],#rbModal input[type=checkbox],#alertEditModal input[type=checkbox],
-#vwapModal input[type=checkbox],#kcModal input[type=checkbox]{
+#vwapModal input[type=checkbox]{
   appearance:none;-webkit-appearance:none;margin:0;padding:0;position:relative;flex:none;
   width:38px;height:22px;border-radius:12px;cursor:pointer;vertical-align:middle;
   background:#26282e;
@@ -1725,35 +1724,30 @@ table.lv td{padding:6px 10px}
 }
 #rsiModal input[type=checkbox]::after,#stModal input[type=checkbox]::after,
 #satyModal input[type=checkbox]::after,#rbModal input[type=checkbox]::after,#alertEditModal input[type=checkbox]::after,
-#vwapModal input[type=checkbox]::after,#kcModal input[type=checkbox]::after{
+#vwapModal input[type=checkbox]::after{
   content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;
   background:#fff;
   transition:left .18s cubic-bezier(.2,.8,.3,1);
 }
 #rsiModal input[type=checkbox]:checked,#stModal input[type=checkbox]:checked,
 #satyModal input[type=checkbox]:checked,#rbModal input[type=checkbox]:checked,#alertEditModal input[type=checkbox]:checked,
-#vwapModal input[type=checkbox]:checked,#kcModal input[type=checkbox]:checked{
+#vwapModal input[type=checkbox]:checked{
   background:#0a84ff;
 }
 #rsiModal input[type=checkbox]:checked::after,#stModal input[type=checkbox]:checked::after,
 #satyModal input[type=checkbox]:checked::after,#rbModal input[type=checkbox]:checked::after,#alertEditModal input[type=checkbox]:checked::after,
-#vwapModal input[type=checkbox]:checked::after,#kcModal input[type=checkbox]:checked::after{left:19px}
-/* VWAP/Keltner's per-row checkboxes are compact (fit the .vwsr grid's 16px column), same idiom
+#vwapModal input[type=checkbox]:checked::after{left:19px}
+/* VWAP's per-row checkboxes are compact (fit the .vwsr grid's 16px column), same idiom
    as Saty ATR Levels' .satysr rows use for the same reason. */
-#vwapModal .vwsr input[type=checkbox],#kcModal .vwsr input[type=checkbox]{
+#vwapModal .vwsr input[type=checkbox]{
   appearance:none;-webkit-appearance:none;width:15px;height:15px;border-radius:4px;margin:0;padding:0;
   background:#1a1c22;cursor:pointer;position:relative;
 }
-#vwapModal .vwsr input[type=checkbox]:checked,#kcModal .vwsr input[type=checkbox]:checked{background:#0a84ff}
-#vwapModal .vwsr input[type=checkbox]:checked::after,#kcModal .vwsr input[type=checkbox]:checked::after{
+#vwapModal .vwsr input[type=checkbox]:checked{background:#0a84ff}
+#vwapModal .vwsr input[type=checkbox]:checked::after{
   content:'';position:absolute;left:4px;top:1px;width:4px;height:8px;
   border:solid #fff;border-width:0 1.6px 1.6px 0;transform:rotate(45deg);
 }
-/* Keltner's own six "Automated" fields (Length/Multiplier/Source/Use Exponential MA/Bands Style/
-   ATR Length) — shown so the values driving the calculation stay visible, but permanently
-   disabled since none of them are user-editable per instruction. */
-#kcModal .kcauto{opacity:.5}
-#kcModal .kcauto input,#kcModal .kcauto select{cursor:not-allowed}
 
 /* ── Alerts (topbar bell + list/log panel + create/edit dialog) ── */
 #alertBellBtn{position:relative}
@@ -1791,7 +1785,7 @@ table.lv td{padding:6px 10px}
   width:24px;height:24px;border-radius:8px;
   transition:transform .12s cubic-bezier(.2,.8,.3,1);
 }
-#rsiModal .sw:hover,#stModal .sw:hover,#rbModal .sw:hover,#satyModal .sw:hover,#vwapModal .sw:hover,#kcModal .sw:hover{transform:translateY(-1px) scale(1.06)}
+#rsiModal .sw:hover,#stModal .sw:hover,#rbModal .sw:hover,#satyModal .sw:hover,#vwapModal .sw:hover{transform:translateY(-1px) scale(1.06)}
 /* Same hover animation as the Saty ATR Levels & Style table's swatches, applied to the Levels
    table's own (only the transform+transition — .lvsw keeps its existing compact 18x14 size,
    this doesn't pull in the modals' 24x24 sizing rule above). */
@@ -1865,7 +1859,7 @@ table.lv td{padding:6px 10px}
   background:none!important;border:none!important;box-shadow:none!important;border-radius:0!important}
 /* Indicator gear icons (Saty ATR/Ribbon/Market Structure, plus Volume/RSI) match the same
    chart/axis text color as the labels next to them, instead of the generic .mini dim gray. */
-.satygear,.rbgear,.stgear,.volgear,.rsigear,.vwgear,.kcgear,.macdgear{color:var(--axistext)}
+.satygear,.rbgear,.stgear,.volgear,.rsigear,.vwgear,.macdgear{color:var(--axistext)}
 .satygear:hover,.rbgear:hover,.stgear:hover,.volgear:hover,.rsigear:hover,.macdgear:hover{color:var(--axistext)}
 .indcollapse{width:23px;height:18px}
 .indcollapse svg{width:11px;height:11px}
@@ -2101,7 +2095,7 @@ table.lv td{padding:6px 10px}
     <div class="chartcol">
      <div class="panerow" id="panerow">
       <div class="panewrap" id="pw0">
-        <div class="pchart"><div class="chartcorner" data-pane="0"><div class="indlist hide" id="indlist0"><span class="indtog" id="stylab0">Saty ATR Levels<button class="eye" data-ind="saty" data-pane="0" title="Saty ATR Levels"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini satygear" data-pane="0" style="padding:0 5px;margin-left:2px">&#9881;</button></span><span class="indtog" id="rblab0">Saty Pivot Ribbon<button class="eye" data-ind="ribbon" data-pane="0" title="Saty Pivot Ribbon"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini rbgear" data-pane="0" style="padding:0 5px;margin-left:2px">&#9881;</button></span><span class="indtog" id="stlab0">Market Structure<button class="eye" data-ind="struct" data-pane="0" title="Swing structure &amp; patterns"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini stgear" data-pane="0" style="padding:0 5px;margin-left:2px">⚙</button></span><span class="indtog" id="kclab0">Keltner Channels<button class="eye" data-ind="kc" data-pane="0" title="Keltner Channels"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini kcgear" data-pane="0" style="padding:0 5px;margin-left:2px">&#9881;</button></span><span class="indtog" id="vwlab0">VWAP<button class="eye" data-ind="vwap" data-pane="0" title="VWAP"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini vwgear" data-pane="0" style="padding:0 5px;margin-left:2px">&#9881;</button></span></div><button class="indcollapse" id="indcollapse0" title="Show/hide overlay indicators"><svg viewBox="0 0 12 12" fill="none"><path d="M2.5 4.5L6 8l3.5-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div><div class="cinner" id="pc0"></div><div class="tips" id="tips0"></div><div class="cdown" id="cd0"></div><div class="axcur" id="axcur0"></div><div class="tfdrop sessdrop" id="sessDrop" title="RTH = 9:30 AM–4:00 PM ET · ETH = everything Tradier serves, 4:00 AM–8:00 PM ET"><button class="tfbtn" id="sessBtn"><span id="sessBtnLabel">ETH</span><svg viewBox="0 0 12 12" fill="none"><path d="M2.5 4.5L6 8l3.5-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button><div class="tfmenu"><div class="seg" id="sessSeg"><button data-sess="rth">RTH</button><button data-sess="eth" class="on">ETH</button></div></div></div></div>
+        <div class="pchart"><div class="chartcorner" data-pane="0"><div class="indlist hide" id="indlist0"><span class="indtog" id="stylab0">Saty ATR Levels<button class="eye" data-ind="saty" data-pane="0" title="Saty ATR Levels"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini satygear" data-pane="0" style="padding:0 5px;margin-left:2px">&#9881;</button></span><span class="indtog" id="rblab0">Saty Pivot Ribbon<button class="eye" data-ind="ribbon" data-pane="0" title="Saty Pivot Ribbon"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini rbgear" data-pane="0" style="padding:0 5px;margin-left:2px">&#9881;</button></span><span class="indtog" id="stlab0">Market Structure<button class="eye" data-ind="struct" data-pane="0" title="Swing structure &amp; patterns"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini stgear" data-pane="0" style="padding:0 5px;margin-left:2px">⚙</button></span><span class="indtog" id="vwlab0">VWAP<button class="eye" data-ind="vwap" data-pane="0" title="VWAP"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini vwgear" data-pane="0" style="padding:0 5px;margin-left:2px">&#9881;</button></span></div><button class="indcollapse" id="indcollapse0" title="Show/hide overlay indicators"><svg viewBox="0 0 12 12" fill="none"><path d="M2.5 4.5L6 8l3.5-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div><div class="cinner" id="pc0"></div><div class="tips" id="tips0"></div><div class="cdown" id="cd0"></div><div class="axcur" id="axcur0"></div><div class="tfdrop sessdrop" id="sessDrop" title="RTH = 9:30 AM–4:00 PM ET · ETH = everything Tradier serves, 4:00 AM–8:00 PM ET"><button class="tfbtn" id="sessBtn"><span id="sessBtnLabel">ETH</span><svg viewBox="0 0 12 12" fill="none"><path d="M2.5 4.5L6 8l3.5-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button><div class="tfmenu"><div class="seg" id="sessSeg"><button data-sess="rth">RTH</button><button data-sess="eth" class="on">ETH</button></div></div></div></div>
         <div class="phandle" data-pane="0" data-t="vol" title="Drag to resize Volume panel"></div>
         <div class="subpane" id="volc0wrap"><span class="ptag">Volume <button class="mini volgear" data-pane="0" style="padding:0 5px;margin-left:4px">&#9881;</button></span><div class="cinner" id="volc0"></div></div>
         <div class="phandle" data-pane="0" data-t="rsi" title="Drag to resize RSI panel"></div>
@@ -2110,7 +2104,7 @@ table.lv td{padding:6px 10px}
         <div class="subpane" id="macdc0wrap"><span class="ptag">MACD <button class="mini macdgear" data-pane="0" style="padding:0 5px;margin-left:4px">⚙</button></span><div class="cinner" id="macdc0"></div></div>
       </div>
       <div class="panewrap" id="pw1" style="display:none">
-        <div class="pchart"><div class="chartcorner" data-pane="1"><div class="indlist hide" id="indlist1"><span class="indtog" id="stylab1">Saty ATR Levels<button class="eye" data-ind="saty" data-pane="1" title="Saty ATR Levels"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini satygear" data-pane="1" style="padding:0 5px;margin-left:2px">&#9881;</button></span><span class="indtog" id="rblab1">Saty Pivot Ribbon<button class="eye" data-ind="ribbon" data-pane="1" title="Saty Pivot Ribbon"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini rbgear" data-pane="1" style="padding:0 5px;margin-left:2px">&#9881;</button></span><span class="indtog" id="stlab1">Market Structure<button class="eye" data-ind="struct" data-pane="1" title="Swing structure &amp; patterns"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini stgear" data-pane="1" style="padding:0 5px;margin-left:2px">⚙</button></span><span class="indtog" id="kclab1">Keltner Channels<button class="eye" data-ind="kc" data-pane="1" title="Keltner Channels"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini kcgear" data-pane="1" style="padding:0 5px;margin-left:2px">&#9881;</button></span><span class="indtog" id="vwlab1">VWAP<button class="eye" data-ind="vwap" data-pane="1" title="VWAP"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini vwgear" data-pane="1" style="padding:0 5px;margin-left:2px">&#9881;</button></span></div><button class="indcollapse" id="indcollapse1" title="Show/hide overlay indicators"><svg viewBox="0 0 12 12" fill="none"><path d="M2.5 4.5L6 8l3.5-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div><div class="cinner" id="pc1"></div><div class="tips" id="tips1"></div><div class="cdown" id="cd1"></div><div class="axcur" id="axcur1"></div></div>
+        <div class="pchart"><div class="chartcorner" data-pane="1"><div class="indlist hide" id="indlist1"><span class="indtog" id="stylab1">Saty ATR Levels<button class="eye" data-ind="saty" data-pane="1" title="Saty ATR Levels"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini satygear" data-pane="1" style="padding:0 5px;margin-left:2px">&#9881;</button></span><span class="indtog" id="rblab1">Saty Pivot Ribbon<button class="eye" data-ind="ribbon" data-pane="1" title="Saty Pivot Ribbon"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini rbgear" data-pane="1" style="padding:0 5px;margin-left:2px">&#9881;</button></span><span class="indtog" id="stlab1">Market Structure<button class="eye" data-ind="struct" data-pane="1" title="Swing structure &amp; patterns"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini stgear" data-pane="1" style="padding:0 5px;margin-left:2px">⚙</button></span><span class="indtog" id="vwlab1">VWAP<button class="eye" data-ind="vwap" data-pane="1" title="VWAP"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini vwgear" data-pane="1" style="padding:0 5px;margin-left:2px">&#9881;</button></span></div><button class="indcollapse" id="indcollapse1" title="Show/hide overlay indicators"><svg viewBox="0 0 12 12" fill="none"><path d="M2.5 4.5L6 8l3.5-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div><div class="cinner" id="pc1"></div><div class="tips" id="tips1"></div><div class="cdown" id="cd1"></div><div class="axcur" id="axcur1"></div></div>
         <div class="phandle" data-pane="1" data-t="vol" title="Drag to resize Volume panel"></div>
         <div class="subpane" id="volc1wrap"><span class="ptag">Volume <button class="mini volgear" data-pane="1" style="padding:0 5px;margin-left:4px">&#9881;</button></span><div class="cinner" id="volc1"></div></div>
         <div class="phandle" data-pane="1" data-t="rsi" title="Drag to resize RSI panel"></div>
@@ -2425,28 +2419,6 @@ table.lv td{padding:6px 10px}
       <button class="tbtn" id="vwapDefaults">Defaults</button><span style="flex:1"></span>
       <button class="tbtn" id="vwapCancel">Cancel</button>
       <button class="tbtn primary" id="vwapOk">OK</button></div>
-  </div>
-</div>
-<div id="kcModal" style="position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:120;display:none;align-items:center;justify-content:center">
-  <div class="card" style="width:420px">
-    <h1>Keltner Channels <span id="kcPaneTag"></span></h1>
-    <div class="hint" style="margin:0 0 8px">Ported from TradingView's built-in Keltner Channels. Basis (the middle EMA line) and Background (the fill) are removed entirely — only the Upper and Lower channel lines are drawn.</div>
-    <h3 class="setsub">Automated</h3>
-    <div class="hint" style="margin:0 0 8px">Length, Multiplier and ATR Length are fit automatically to THIS symbol and timeframe — re-measured every time either changes, not fixed to TradingView's static defaults — so the values below move on their own and are not user-editable.</div>
-    <div class="kcauto">
-      <div class="row"><label style="min-width:120px">Length</label><input id="kcAutoLen" value="20" disabled style="width:60px"></div>
-      <div class="row"><label style="min-width:120px">Multiplier</label><input id="kcAutoMult" value="2.0" disabled style="width:60px"></div>
-      <div class="row"><label style="min-width:120px">Source</label><input value="Close" disabled style="width:100px"></div>
-      <div class="row"><label style="min-width:0;flex:1"><input type="checkbox" checked disabled> Use Exponential MA</label></div>
-      <div class="row"><label style="min-width:120px">Bands Style</label><input value="Average True Range" disabled style="width:180px"></div>
-      <div class="row"><label style="min-width:120px">ATR Length</label><input id="kcAutoAtrLen" value="10" disabled style="width:60px"></div>
-    </div>
-    <h3 class="setsub">Lines</h3>
-    <div id="kcRows" class="vwsr-wrap"></div>
-    <div class="row" style="justify-content:flex-end;margin-top:12px">
-      <button class="tbtn" id="kcDefaults">Defaults</button><span style="flex:1"></span>
-      <button class="tbtn" id="kcCancel">Cancel</button>
-      <button class="tbtn primary" id="kcOk">OK</button></div>
   </div>
 </div>
 <div id="stModal" style="position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:120;display:none;align-items:center;justify-content:center">
@@ -2910,27 +2882,6 @@ cfg.vwap=Object.assign({
 // exists (e.g. from before width/style existed) — backfill per-line so older saved configs don't
 // end up with undefined lineWidth/lineStyle.
 cfg.vwap.lines.forEach(L=>{if(L.width==null)L.width=2;if(L.style==null)L.style='solid';});
-// Ported from TradingView's built-in "Keltner Channels" (Pine v6) — basis = EMA(close,length),
-// range = ATR(atrLength) (the only Bands Style this app ports — True Range and plain Range are
-// not exposed), upper/lower = basis +/- range*mult. Per instruction: Length, Multiplier and ATR
-// Length are NOT fixed to Pine's static defaults — they are fit per PANE (i.e. per symbol AND
-// timeframe at once, since that is exactly what a pane's own bar data already is) by
-// kcAutoParams/kcFitLength/kcFitAtrLen/kcFitMult below, the same walk-forward measured-error
-// idiom this file already uses for Saty's auto ATR length (satyAutoLen) — not stored in cfg at
-// all, since a stored number would stop being "automated" the moment it stopped tracking the
-// current symbol/timeframe. Source (close) and Use Exponential MA (true) stay fixed — this port
-// has no alternate source or SMA/EMA toggle to optimize between — and Bands Style stays fixed to
-// Average True Range, the only style this app ports. Basis (the middle line) and Background (the
-// fill) are wiped entirely, per instruction — only Upper and Lower are ever drawn.
-cfg.kc=Object.assign({
-  source:'close',useEma:true,bandsStyle:'atr',
-  lines:[
-    {on:true,color:'#2962FF',width:1,style:'solid'},   // Upper — TradingView's own default KC blue
-    {on:true,color:'#2962FF',width:1,style:'solid'}    // Lower
-  ]
-},cfg.kc||{});
-delete cfg.kc.length;delete cfg.kc.mult;delete cfg.kc.atrLen;   // migrate off any previously-saved fixed values
-cfg.kc.lines.forEach(L=>{if(L.width==null)L.width=1;if(L.style==null)L.style='solid';});
 // Ported verbatim from the user-supplied Pine v6 source ("Moving Average Convergence Divergence",
 // TradingView's own built-in MACD): fast/slow EMA(or SMA) of `src`, macd = fast-slow, signal =
 // EMA(or SMA) of macd, hist = macd-signal. Fast length 12 / Slow 26 / Signal 9 / EMA+EMA are
@@ -2961,7 +2912,7 @@ cfg.kc.lines.forEach(L=>{if(L.width==null)L.width=1;if(L.style==null)L.style='so
 // histC[0..3] is Pine's own hColor ternary, read straight off the source: histC[0] = hist>=0 &
 // rising, histC[1] = hist>=0 & falling, histC[2] = hist<0 & rising, histC[3] = hist<0 & falling.
 // macdC (#2962FF) is TradingView's own default plot colour for an unstyled plot() call — the same
-// "TradingView blue" cfg.vwap/cfg.kc already default to; sigC (#ff6d00) and the four histC entries
+// "TradingView blue" cfg.vwap already defaults to; sigC (#ff6d00) and the four histC entries
 // are the literal hex codes the Pine source itself passes to plot()/the hColor ternary. zeroC is
 // the literal hline(0,"Zero",#787b8680) colour, alpha included.
 cfg.macd=Object.assign({
@@ -3486,7 +3437,7 @@ function applyChartTheme(t){
        The RSI pane is the immune case for the same reason — its provider returns a fixed
        0-100 range and ignores the default, so its divergence markers cannot move it.
    ====================================================================================== */
-// Unconditional: every overlay series (ribbon, VWAP, Keltner, pattern trendlines, ...) is
+// Unconditional: every overlay series (ribbon, VWAP, pattern trendlines, ...) is
 // excluded from the price scale's autofit, full stop — nothing an indicator draws may ever
 // change what the chart's vertical range fits to, only the candles/line and the user's own
 // manual scale interactions do. This used to be togglable via a "Scale price chart only"
@@ -3617,7 +3568,7 @@ function makePane(idx){
      candlesticks so the candles sit ON TOP of the clouds — the correct look, and it removes the
      "candle series drawn beneath a custom series" condition that made LWC drop the candles' repaint
      whenever the cloud custom-series data was toggled on/off. Every overlay LINE (the ribbon's EMA
-     lines, VWAP, Keltner, the pattern trendlines) is created before the candles too, and the candles
+     lines, VWAP, the pattern trendlines) is created before the candles too, and the candles
      are created LAST (below): the lines are semi-transparent, and a line drawn ABOVE a candle body
      alpha-blends into it, which made the body look see-through wherever a line crossed it. With the
      candles on top, the bodies are painted over the lines and stay fully solid. Every ribbon series
@@ -3635,10 +3586,6 @@ function makePane(idx){
   // VWAP draws on top of them (the candles, created after every overlay line below, sit above both).
   const vwLine=()=>makeRibbonLine(chart);
   const vwLines=[vwLine(),vwLine(),vwLine()];
-  // Keltner Channels: Upper/Lower only (Basis and Background removed per instruction), same
-  // shared line factory, created after VWAP so it draws on top.
-  const kcLine=()=>makeRibbonLine(chart);
-  const kcLines=[kcLine(),kcLine()];
   // Pattern trendlines (same two persistent series renderPane reuses every render) also sit under the candles.
   const patLineA=makePatLine(chart),patLineB=makePatLine(chart);
   const lvl=makeLvlCarrier(chart);
@@ -3734,7 +3681,7 @@ function makePane(idx){
   try{rchart.applyOptions({crosshair:{horzLine:{visible:false,labelVisible:true}}});}catch(e){}
   const pane={idx,chart,candles,vol,vchart,rchart,rsi,rsiMa,rsiFill,rsiOB,rsiOS,rsiBBu,rsiBBl,
     mchart,macdHist,macdLine,sigLine,macdZeroLine,macdTail:null,
-    rbCloudFast,rbCloudSlow,rbFast,rbPivot,rbSlow,rbFastConv,rbSlowConv,rbArrows:[],rbTail:null,vwLines,vwapTail:null,vwSets:null,vwLast:null,kcLines,kcTail:null,patLineA,patLineB,lvl,rsiDivLines:[],rsiBands:[],priceLines:[],alertLines:[],tf:cfg['tf'+idx]||'5',tips:{},last:{},
+    rbCloudFast,rbCloudSlow,rbFast,rbPivot,rbSlow,rbFastConv,rbSlowConv,rbArrows:[],rbTail:null,vwLines,vwapTail:null,vwSets:null,vwLast:null,patLineA,patLineB,lvl,rsiDivLines:[],rsiBands:[],priceLines:[],alertLines:[],tf:cfg['tf'+idx]||'5',tips:{},last:{},
     _chartType:'candles'};   // matches the candlestick series just created above; ensureChartType() swaps both together
   // The 'close' entry uses a LIVE getter, not the captured `candles` value: ensureChartType() can
   // later reassign pane.candles to a different series object (chart-type swap), and a plain
@@ -5107,7 +5054,7 @@ function renderRibbon(p,data){
   if(!on||!data.length)return hide();
   // MEASURED: this function's own EMA math costs ~0.3ms at 8000 bars — the real cost (~20ms) is
   // entirely the .setData() calls into its six line/cloud series, paid on EVERY render
-  // regardless of whether anything ribbon-relevant changed. Skippable exactly like renderKc,
+  // regardless of whether anything ribbon-relevant changed. Skippable,
   // EXCEPT for one real side effect: when Candle Bias is on, this function rewrites
   // p._lastBars (the MAIN CANDLE series' data — see pushMainSeriesData's own comment
   // "possibly rewritten by renderRibbon's Candle Bias") as its last step, and every later
@@ -5314,219 +5261,6 @@ function openVwapModal(i){
 }
 function closeVwapModal(){$('#vwapModal').style.display='none';}
 
-/* ================================ Keltner Channels =========================================
-   Ported from TradingView's built-in "Keltner Channels" (Pine v6): basis = EMA(close,length),
-   range = ta.atr(atrLength), upper/lower = basis +/- range*mult. Reuses this app's existing
-   Pine-accurate primitives (emaCalc = ta.ema, taRma = ta.rma — both already verified elsewhere
-   in this file) rather than a bespoke implementation, so the math is provably the same one this
-   app already ports for the ribbon (emaCalc) and RSI/divergence (taRma). Basis and Background are
-   not computed at all — only the two channel lines exist, per instruction. */
-function kcTrSeries(data){
-  const out=new Array(data.length).fill(null);
-  for(let i=0;i<data.length;i++){
-    if(i===0){out[i]=data[i].high-data[i].low;continue;}
-    const pc=data[i-1].close;
-    out[i]=Math.max(data[i].high-data[i].low,Math.abs(data[i].high-pc),Math.abs(data[i].low-pc));
-  }
-  return out;
-}
-function computeKcSeries(data,length,atrLen,mult){
-  const closes=data.map(d=>d.close);
-  const ma=emaCalc(closes,length);
-  const atr=taRma(kcTrSeries(data),atrLen);
-  const n=data.length,upper=new Array(n).fill(null),lower=new Array(n).fill(null);
-  for(let i=0;i<n;i++){
-    if(ma[i]==null||atr[i]==null)continue;
-    upper[i]=ma[i]+atr[i]*mult;lower[i]=ma[i]-atr[i]*mult;
-  }
-  return{ma,atr,upper,lower,closes};
-}
-/* ---- Automated, per-symbol/per-timeframe parameter fit --------------------------------------
-   Length, ATR Length and Multiplier are fit from the PANE'S OWN bar data — which is already
-   both symbol- and timeframe-specific, so fitting against it gets "per ticker and per timeframe"
-   for free, with no separate lookup table to keep in sync.
-
-   Length and ATR Length are driven by Kaufman's EFFICIENCY RATIO — |net move| over |total path
-   length| across the trailing window, 1 = a straight-line trend, 0 = pure back-and-forth chop.
-   This is the actual mechanism behind Kaufman's Adaptive Moving Average, not a bespoke measure:
-   a trending regime can run a shorter, more responsive smoothing length without getting
-   whipsawed, while a choppy one needs a longer one to avoid reacting to every reversal — both
-   the trend-following EMA and the volatility ATR reasonably move the SAME direction together,
-   which is why one shared regime reading drives both bands.
-   A first version tried the more obvious "which candidate length best predicts the NEXT bar"
-   contest (the same idiom this file already uses for Saty's auto ATR length, satyAutoLen) —
-   verified LIVE against this app's own real QQQ/NVDA data and rejected: less lag mechanically
-   wins a one-step-ahead race almost regardless of the series, so it kept collapsing to the
-   SHORTEST candidate for every symbol and timeframe tried, which is not "per ticker, optimized"
-   at all — just a constant wearing a fitted-looking label. The Efficiency Ratio does not have
-   that failure mode since it measures the SHAPE of the recent tape, not a smoothing contest.
-   Raw ER also skews low on real tape (verified: 0.009-0.18 across QQQ 5m/1H and NVDA 1H in the
-   same live check) — sqrt-compressed before mapping to the band so realistic ER values spread
-   across the whole candidate range instead of bunching at the "choppy" end.
-
-   Multiplier has no "next value" to predict OR a trend/chop shape to read, so it is calibrated
-   on its own axis: to a coverage target, the fraction of closes that stay inside the channel —
-   the actual thing a channel multiplier controls. ~90% keeps it anchored near TradingView's own
-   mult=2 default for a typical liquid instrument while adapting to how fat- or thin-tailed THIS
-   symbol's own recent closes are. The candidate band this calibrates over (KC_MULT_BAND, just
-   below) went through the same measure-don't-assume process as Length/ATR Length — see its own
-   comment for the real coverage curves that caught a narrower band silently maxing out.
-
-   All three are cached per pane, keyed off the bar data's own shape (symbol+timeframe+bar count+
-   last bar time), so a fit computed once per closed bar is reused by every render and every tick
-   until the data actually changes — the same "refits when the series does, not on every render"
-   discipline satyLen already established. */
-const KC_LEN_BAND=[10,14,20,26,34,50];
-const KC_ATRLEN_BAND=[5,7,10,14,20];
-// Verified LIVE across QQQ/TSLA/SOFI/IWM (5m and 60m, real coverage-vs-mult curves measured, not
-// assumed): the mult that actually reaches the 90% target ranges from ~2.25 up to ~4.0 depending
-// on the symbol and timeframe. An earlier [1.5..3.0] band was too narrow to bracket that whole
-// range — coverage never reached 90% inside it for several real instruments (TSLA/IWM/SOFI on
-// 5m all measured under 86% even at the band's own ceiling of 3.0), so kcFitMult silently always
-// picked that ceiling regardless of symbol: the exact same "collapses to one edge" failure mode
-// the Length/ATR Length fit was rejected for, just showing up on the multiplier's axis instead.
-// Widened past the full observed range with headroom on both sides.
-const KC_MULT_BAND=[1.25,1.5,1.75,2.0,2.25,2.5,2.75,3.0,3.5,4.0,4.5,5.0];
-const KC_COVERAGE_TARGET=0.90;
-const KC_ER_WINDOW=30;
-function kcEfficiencyRatio(data,window){
-  const n=data.length;
-  if(n<window+1)return 0.5;
-  const closes=data.map(d=>d.close),start=n-1-window;
-  const net=Math.abs(closes[n-1]-closes[start]);
-  let path=0;
-  for(let i=start+1;i<n;i++)path+=Math.abs(closes[i]-closes[i-1]);
-  return path>0?Math.min(1,net/path):0;
-}
-function kcSnapBand(v,band){return band.reduce((a,b)=>Math.abs(b-v)<Math.abs(a-v)?b:a);}
-function kcFitLength(data){
-  const n=data.length;
-  if(n<40)return 20;
-  const er=Math.sqrt(kcEfficiencyRatio(data,Math.min(KC_ER_WINDOW,n-1)));
-  return kcSnapBand(10+(1-er)*40,KC_LEN_BAND);   // ER->1 (trend): 10; ER->0 (chop): 50
-}
-function kcFitAtrLen(data){
-  const n=data.length;
-  if(n<40)return 10;
-  const er=Math.sqrt(kcEfficiencyRatio(data,Math.min(KC_ER_WINDOW,n-1)));
-  return kcSnapBand(5+(1-er)*15,KC_ATRLEN_BAND);   // ER->1 (trend): 5; ER->0 (chop): 20
-}
-function kcFitMult(data,length,atrLen){
-  const n=data.length;
-  if(n<60)return 2;
-  const{ma,atr}=computeKcSeries(data,length,atrLen,1);   // mult=1 baseline; scale per candidate below
-  const lo=Math.max(0,n-250);
-  let best=null;
-  for(const M of KC_MULT_BAND){
-    let inside=0,c=0;
-    for(let i=lo;i<n;i++){
-      if(ma[i]==null||atr[i]==null)continue;
-      const u=ma[i]+atr[i]*M,l=ma[i]-atr[i]*M;
-      if(data[i].close<=u&&data[i].close>=l)inside++;
-      c++;
-    }
-    if(c<30)continue;
-    const cov=inside/c,d=Math.abs(cov-KC_COVERAGE_TARGET);
-    if(best===null||d<best.d)best={d,M};
-  }
-  return best?best.M:2;
-}
-function kcAutoParams(p,data){
-  const n=data.length;
-  const key=(p.sym||cfg.sym)+':'+p.tf+':'+n+':'+(n?data[n-1].time:0);
-  if(p._kcAutoCache&&p._kcAutoCache.key===key)return p._kcAutoCache.val;
-  const length=kcFitLength(data);
-  const atrLen=kcFitAtrLen(data);
-  const mult=kcFitMult(data,length,atrLen);
-  const val={length,atrLen,mult};
-  p._kcAutoCache={key,val};
-  return val;
-}
-function renderKc(p,data){
-  const K=cfg.kc,on=!!cfg['kc'+p.idx];
-  if(!p.kcLines)return;
-  const hide=()=>{p.kcLines.forEach(sr=>{try{sr.setData([]);}catch(e){}});p.kcTail=null;p.kcAuto=null;p._kcRenderCache=null;};
-  if(!on||!data.length)return hide();
-  const auto=kcAutoParams(p,data);
-  p.kcAuto=auto;
-  // MEASURED: computeKcSeries itself is cheap (~0.6ms at 8000 bars) — the real cost here (~10ms)
-  // is the two .setData() calls into the charting library, called unconditionally on EVERY
-  // render regardless of whether anything KC-relevant changed (a settings toggle for something
-  // else entirely still paid this). computeKcSeries/kcTrSeries are pure functions of (data,
-  // length, atrLen, mult) with no reference to cfg or any other global (verified by reading
-  // both in full) and `auto` is itself a pure function of `data` alone via kcAutoParams (same
-  // pane, same p.sym/p.tf baked into data's own identity) — so once `data` is confirmed
-  // unchanged, `auto` cannot have changed either, and the only OTHER thing that can change what
-  // the lines should show is their own on/off/colour/width/style. renderKc has zero side effects
-  // beyond p.kcLines/p.kcAuto/p.kcTail (verified — no reference to p._lastBars/candles/vol
-  // anywhere in this function, unlike renderRibbon's Candle Bias), so skipping the redundant
-  // setData calls here is provably safe with no wedge/candle-series interaction to guard against.
-  const L0=K.lines[0],L1=K.lines[1],rc=p._kcRenderCache;
-  if(rc&&rc.data===data&&rc.l0on===!!L0.on&&rc.l0c===L0.color&&rc.l0w===L0.width&&rc.l0s===L0.style
-     &&rc.l1on===!!L1.on&&rc.l1c===L1.color&&rc.l1w===L1.width&&rc.l1s===L1.style){
-    p.kcTail=rc.kcTail;
-    return;
-  }
-  const{ma,atr,upper,lower,closes}=computeKcSeries(data,auto.length,auto.atrLen,auto.mult);
-  [upper,lower].forEach((arr,k)=>{
-    const L=K.lines[k];
-    p.kcLines[k].applyOptions({visible:!!L.on,color:L.color,lineWidth:+L.width||1,lineStyle:lwcStyle(L.style||'solid')});
-    p.kcLines[k].setData(L.on?padSeries(data,arr):[]);
-  });
-  // Tail so a live tick can advance basis (EMA) and range (Wilder RMA) each in O(1) from the
-  // last closed bar — same pair-seeded idiom as the ribbon's rbTail and VWAP's vwapTail. Uses
-  // THIS render's fitted length/atrLen/mult — a tick never re-fits mid-bar, only a full render does.
-  const n=data.length,pair=a=>[n>=2?a[n-2]:null,n>=1?a[n-1]:null];
-  p.kcTail={t:n?data[n-1].time:null,len:auto.length,atrLen:auto.atrLen,mult:auto.mult,
-    ma:pair(ma),atr:pair(atr),prevClose:pair(closes)};
-  p._kcRenderCache={data,l0on:!!L0.on,l0c:L0.color,l0w:L0.width,l0s:L0.style,
-    l1on:!!L1.on,l1c:L1.color,l1w:L1.width,l1s:L1.style,kcTail:p.kcTail};
-}
-function kcRedrawAll(){
-  saveCfg();
-  visPanes().forEach(p=>{try{renderKc(p,seriesForTF(p.tf,paneData(p)));}
-    catch(e){logDiagError('render|kc|'+p.idx,`Keltner redraw failed — pane ${p.idx+1}, ${p.sym||cfg.sym} ${p.tf==='D'?'1D':p.tf==='W'?'1W':p.tf+'m'}: ${e&&e.message||e}`);}});
-}
-// Two-row builder (Upper/Lower only — no Basis, no Background, no anchor/length picker: those six
-// inputs are fixed and shown disabled in the modal's own "Automated" block instead).
-function kcBuildRows(){
-  const host=$('#kcRows');if(!host)return;
-  const K=cfg.kc;
-  host.innerHTML='';
-  const names=['Upper','Lower'];
-  K.lines.forEach((L,k)=>{
-    const row=document.createElement('div');row.className='vwsr';
-    row.innerHTML='<input type="checkbox"'+(L.on?' checked':'')+'>'
-      +'<span class="n">'+names[k]+'</span>'
-      +'<span class="sw"></span>';
-    const [cb,,sw]=row.children;
-    bindLineSwatch(sw,()=>({color:L.color,width:L.width,style:L.style}),st=>{
-      const cc=cfg.kc;cc.lines[k]=Object.assign({},cc.lines[k],{color:st.color,width:st.width,style:st.style});kcRedrawAll();
-    });
-    cb.onchange=()=>{const cc=cfg.kc;cc.lines[k]=Object.assign({},cc.lines[k],{on:cb.checked});kcRedrawAll();};
-    host.appendChild(row);
-  });
-}
-let kcSnap=null;
-// Shows THIS pane's currently-fitted Length/Multiplier/ATR Length — not a constant, so it has to
-// be read fresh off the pane every time the modal opens rather than baked into the HTML once.
-function kcFillAuto(){
-  const p=dlgP(),auto=p&&p.kcAuto;
-  const set=(id,v)=>{const el=$(id);if(el)el.value=v;};
-  set('#kcAutoLen',auto?auto.length:'—');
-  set('#kcAutoMult',auto?auto.mult.toFixed(2):'—');
-  set('#kcAutoAtrLen',auto?auto.atrLen:'—');
-}
-function openKcModal(i){
-  if(i!=null)dlgPane=+i||0;
-  kcSnap=JSON.stringify(cfg.kc);
-  kcBuildRows();
-  kcFillAuto();
-  {const t=$('#kcPaneTag');if(t)t.innerHTML=paneTag();}
-  $('#kcModal').style.display='flex';
-}
-function closeKcModal(){$('#kcModal').style.display='none';}
-
 // Swap the pane's main series between candlestick and line, per cfg.chartType0/1 (the same
 // cfg[key+idx] pattern struct0/saty0/ribbon0 already use). lightweight-charts has no z-index/
 // move-series API (verified: neither the chart nor a series instance expose one) — series draw in
@@ -5535,7 +5269,7 @@ function closeKcModal(){$('#kcModal').style.display='none';}
 //  - CANDLES: overlay lines first, candles LAST (same order makePane builds), so the candle bodies
 //    are painted over the semi-transparent lines and stay fully solid — a line drawn above a body
 //    alpha-blends into it and makes the body look see-through.
-//  - LINE: the main line first, overlay lines after it, so the ribbon/VWAP/Keltner lines still draw
+//  - LINE: the main line first, overlay lines after it, so the ribbon/VWAP lines still draw
 //    ON TOP of the price line, exactly as before (there is no candle body to protect in this mode).
 // The cloud custom-series (created BEFORE everything else) are untouched — they were already below
 // and stay there regardless.
@@ -5547,7 +5281,6 @@ function ensureChartType(p){
   try{if(p.lvl)p.chart.removeSeries(p.lvl);}catch(e){}
   [p.rbFast,p.rbPivot,p.rbSlow,p.rbFastConv,p.rbSlowConv].forEach(s=>{try{p.chart.removeSeries(s);}catch(e){}});
   (p.vwLines||[]).forEach(s=>{try{p.chart.removeSeries(s);}catch(e){}});
-  (p.kcLines||[]).forEach(s=>{try{p.chart.removeSeries(s);}catch(e){}});
   // Pattern trendlines are reused across renders (see renderPane), so they can be OLDER series
   // than a freshly re-added main series; they are removed and recreated with the other overlays.
   [p.patLineA,p.patLineB].forEach(s=>{if(s)try{p.chart.removeSeries(s);}catch(e){}});
@@ -5558,7 +5291,6 @@ function ensureChartType(p){
     p.rbFast=makeRibbonLine(p.chart);p.rbPivot=makeRibbonLine(p.chart);p.rbSlow=makeRibbonLine(p.chart);
     p.rbFastConv=makeRibbonLine(p.chart);p.rbSlowConv=makeRibbonLine(p.chart);
     p.vwLines=[makeRibbonLine(p.chart),makeRibbonLine(p.chart),makeRibbonLine(p.chart)];
-    p.kcLines=[makeRibbonLine(p.chart),makeRibbonLine(p.chart)];
     p.patLineA=makePatLine(p.chart);p.patLineB=makePatLine(p.chart);
   };
   if(want==='line'){p.candles=mainSeries();p.lvl=makeLvlCarrier(p.chart);overlays();}
@@ -5566,17 +5298,17 @@ function ensureChartType(p){
   // makeRibbonLine() sets no color at all — every one of the lines just recreated above starts
   // out at lightweight-charts' own default line color (a blue) with zero data, until something
   // calls .applyOptions({color:...}) + .setData(...) on it again. renderVwap() always does that
-  // unconditionally on every render, so VWAP self-heals the same frame. renderRibbon() and
-  // renderKc() do NOT — both skip their own re-render (see p._rbRenderCache/p._kcRenderCache)
-  // whenever their inputs happen to be reference-equal to last time, which has nothing to do with
-  // whether their SERIES OBJECTS just got swapped out from under that cache. When that skip fires
-  // on the very next render after a chart-type toggle, the freshly-recreated ribbon/KC lines never
-  // get their real color or data — they just sit there blue, until some LATER live tick's own
-  // incremental .update() finally touches them, at which point only the few points since then
-  // exist, rendering as a short, wrongly-blue stub instead of a real line. Clearing both caches
-  // here forces the very next renderRibbon()/renderKc() call to do a real, full repaint instead
-  // of trusting a cache that describes series objects which no longer exist.
-  p._rbRenderCache=null;p._kcRenderCache=null;
+  // unconditionally on every render, so VWAP self-heals the same frame. renderRibbon() does NOT —
+  // it skips its own re-render (see p._rbRenderCache) whenever its inputs happen to be
+  // reference-equal to last time, which has nothing to do with whether its SERIES OBJECTS just
+  // got swapped out from under that cache. When that skip fires on the very next render after a
+  // chart-type toggle, the freshly-recreated ribbon lines never get their real color or data —
+  // they just sit there blue, until some LATER live tick's own incremental .update() finally
+  // touches them, at which point only the few points since then exist, rendering as a short,
+  // wrongly-blue stub instead of a real line. Clearing the cache here forces the very next
+  // renderRibbon() call to do a real, full repaint instead of trusting a cache that describes
+  // series objects which no longer exist.
+  p._rbRenderCache=null;
   p._chartType=want;
 }
 // Push p._lastBars (built fresh by renderPane, and possibly rewritten by renderRibbon's Candle
@@ -5705,12 +5437,6 @@ function renderPane(p){
   // gated on VWAP being on, rather than assuming three lines from a DIFFERENT indicator can't
   // also trigger it.
   if(cfg['vwap'+p.idx]){p.candles.setData([]);pushMainSeriesData(p);}
-  try{renderKc(p,data);}
-  catch(e){logDiagError('render|kc|'+p.idx,`Keltner render failed — pane ${p.idx+1}, ${p.sym||cfg.sym} ${p.tf==='D'?'1D':p.tf==='W'?'1W':p.tf+'m'}: ${e&&e.message||e}`);}
-  // Same wedge, same remedy, gated on Keltner being on — see the ribbon/VWAP comments above for
-  // why this is applied per-indicator rather than assumed safe just because KC only adds two
-  // lines of its own (a different indicator's lines already on the same pane can combine with it).
-  if(cfg['kc'+p.idx]){p.candles.setData([]);pushMainSeriesData(p);}
   p.tIndex=new Map();
   data.forEach((d,i)=>p.tIndex.set(typeof d.time==='string'?d.time:String(d.time),i));
   p.vals={close:data.map(d=>d.close),vol:data.map(d=>d.volume)};
@@ -5828,7 +5554,7 @@ function renderPane(p){
   // MEASURED: this block's own math (RSI/MA/stdev/divergence detection) is cheap — the real
   // cost (~35-45ms, dominated by the divergence-line churn alone at ~26ms for removing and
   // re-adding up to 20 native series) is entirely chart-library work, paid on every render
-  // regardless of what changed. Skippable the same way as renderRibbon/renderKc. The key needs
+  // regardless of what changed. Skippable the same way as renderRibbon. The key needs
   // p.sw's own reference (not a reconstruction of PP.swing) because detectDivergences reads
   // p.sw directly, and p.sw can change (via its own cache invalidating on minSwingATR/volFloor)
   // even when PP.swing itself hasn't — piggybacking on p.sw's identity is exactly as safe as
@@ -5952,7 +5678,7 @@ function renderPane(p){
       try{p.macdZeroLine.applyOptions({color:M.zeroC});}catch(e){}
       // CONFIRMED tail for paneTick's own live one-step recursion (or, for the SMA case, a
       // window re-sum) — same pair/window-seeding idiom every other per-bar recursive
-      // indicator in this file already uses (ribbon/VWAP/KC/RSI's own smoothing MA): fast and
+      // indicator in this file already uses (ribbon/VWAP/RSI's own smoothing MA): fast and
       // slow step from the raw SOURCE series, signal steps from the MACD series itself, and
       // the histogram's colour rule needs only the last two CONFIRMED hist values — never
       // touched by a tick, since that comparison is against the last CLOSED bar throughout the
@@ -7184,7 +6910,7 @@ function updateForming(px,sz,closeOnly,cvol,tradeTs){
   // GATED ON VISIBILITY (2026-09-05): this used to run unconditionally on every trade print — on a
   // liquid symbol during market hours that's several times a SECOND, each one calling paneTick()
   // for every visible pane, which is up to ~10 individual .update() calls into LightweightCharts'
-  // canvas series (candles, volume, 5 ribbon lines, 3 VWAP lines, 2 KC lines, RSI, RSI-MA) — real,
+  // canvas series (candles, volume, 5 ribbon lines, 3 VWAP lines, RSI, RSI-MA) — real,
   // continuous canvas repaints with zero regard for whether the tab was even on screen. That kept
   // the GPU/compositor pipeline busy from a BACKGROUND tab all session long, which showed up as
   // lag in OTHER tabs' high-quality video playback. bars5/bars15/
@@ -7654,7 +7380,7 @@ function paneTick(p){
      from the bar just closed). */
   {
     // Shared identifying context for every diagnostic logged out of this tick-update block —
-    // one pane/symbol/timeframe string, reused by ribbon/VWAP/KC/RSI below instead of each
+    // one pane/symbol/timeframe string, reused by ribbon/VWAP/RSI below instead of each
     // rebuilding it, so a look at the Log panel always names exactly which chart was affected.
     const tickCtx=`pane ${p.idx+1}, ${p.sym||cfg.sym} ${p.tf==='D'?'1D':p.tf==='W'?'1W':p.tf+'m'}`;
     /* Same one-step recursion for the ribbon, so the clouds and lines track the forming bar
@@ -7718,31 +7444,6 @@ function paneTick(p){
         }
       });
       VT.t=bar.time;
-    }
-    // Keltner Channels — O(1) per tick: basis (EMA) is a one-step recursion same as the ribbon's;
-    // range (Wilder RMA of True Range) is exactly as recursive, needing only the previous bar's
-    // ATR value and this bar's own True Range (which itself only needs the previous bar's CLOSE).
-    // sd picks which "previous" to seed from: 0 = still the same forming bar as last render (seed
-    // from two bars back, since the forming bar itself was tentative and must be recomputed fresh
-    // each tick, not accumulated onto), 1 = a genuinely new bar started (seed from the bar that
-    // just closed) — identical seeding rule to the ribbon's rbTail above.
-    const KT=p.kcTail;
-    if(KT&&cfg['kc'+p.idx]&&p.kcLines){
-      const sd=bar.time!==KT.t?1:0;
-      const maSeed=KT.ma[sd],atrSeed=KT.atr[sd],pcSeed=KT.prevClose[sd];
-      if(maSeed!=null&&atrSeed!=null&&pcSeed!=null){
-        const k=2/(KT.len+1);
-        const newMa=bar.close*k+maSeed*(1-k);
-        const tr=Math.max(bar.high-bar.low,Math.abs(bar.high-pcSeed),Math.abs(bar.low-pcSeed));
-        const newAtr=(tr+(KT.atrLen-1)*atrSeed)/KT.atrLen;
-        const newUpper=newMa+newAtr*KT.mult,newLower=newMa-newAtr*KT.mult;
-        const K=cfg.kc;
-        if(K.lines[0].on){try{p.kcLines[0].update({time:bar.time,value:+newUpper.toFixed(2)});}
-          catch(e){logDiagError('tick|kcUpper|'+p.idx,`Keltner upper tick update failed — ${tickCtx}: ${e&&e.message||e}`);}}
-        if(K.lines[1].on){try{p.kcLines[1].update({time:bar.time,value:+newLower.toFixed(2)});}
-          catch(e){logDiagError('tick|kcLower|'+p.idx,`Keltner lower tick update failed — ${tickCtx}: ${e&&e.message||e}`);}}
-      }
-      KT.t=bar.time;
     }
     // MODULE 2 provisional RSI — one Wilder step from the CONFIRMED snapshot (rsiTail) + the forming
     // bar's live source value. Updates ONLY the forming bar's plotted point; rsiTail is read-only
@@ -9640,7 +9341,7 @@ let gex2Busy=false,gex2LastT=0,gex2NextT=0,gex2Src='',gex2Board=null,gex2Spot=nu
 // underlying's trades. gexByStrike/gexByExp are the running aggregates parseGexRows/renderGexHeat
 // already consume; ticks update them by DELTA (subtract this contract's last value, add its new
 // one) rather than re-summing the whole board, the same O(1)-per-tick idiom this file already
-// uses for VWAP/Keltner/the ribbon. gexWsSymbols/gexStreamSid let a later bootstrap (the periodic
+// uses for VWAP/the ribbon. gexWsSymbols/gexStreamSid let a later bootstrap (the periodic
 // backstop) push an updated subscription onto the SAME already-open connection.
 let gexContracts=new Map(),gexByStrike={},gexByExp={},gexWsSymbols=[],gexStreamSid=null,gexRerenderTimer=null;
 // Pane 2's own mirror of the block above — same shapes, same O(1)-per-tick delta idiom, same
@@ -11746,7 +11447,7 @@ async function resyncOnReturn(){
   finally{resyncBusy=false;bgEvents=[];}
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){resyncOnReturn();scanCatchUpIfStale();}});
-// WATCHDOG for the live-tick render path (paneTick — RSI/Volume/MACD/ribbon/VWAP/KC, see its own
+// WATCHDOG for the live-tick render path (paneTick — RSI/Volume/MACD/ribbon/VWAP, see its own
 // call site's comment). That whole path is gated on document.hidden alone, to save GPU/compositor
 // cost while genuinely backgrounded. Confirmed live (2026-09-15, captured a 10+ minute run):
 // document.hidden can read true for extended stretches while document.hasFocus() reads true and
@@ -12974,7 +12675,7 @@ function syncIndTogs(){
     const i=+b.dataset.pane,k=b.dataset.ind;
     const on=!!cfg[k+i];
     b.classList.toggle('on',on);
-    const lab=$('#'+({struct:'stlab',saty:'stylab',ribbon:'rblab',vwap:'vwlab',kc:'kclab'})[k]+i);
+    const lab=$('#'+({struct:'stlab',saty:'stylab',ribbon:'rblab',vwap:'vwlab'})[k]+i);
     if(lab)lab.classList.toggle('on',on);
   });
 }
@@ -13265,22 +12966,6 @@ $('#vwapDefaults').onclick=()=>{
   vwapBuildRows();
   vwapRedrawAll();
 };
-$$('.kcgear').forEach(b=>b.onclick=()=>openKcModal(+b.dataset.pane||0));
-$('#kcCancel').onclick=()=>{
-  if(kcSnap)cfg.kc=JSON.parse(kcSnap);
-  kcRedrawAll();
-  closeKcModal();
-};
-$('#kcOk').onclick=closeKcModal;
-$('#kcDefaults').onclick=()=>{
-  cfg.kc=Object.assign({},cfg.kc,{lines:[
-    {on:true,color:'#2962FF',width:1,style:'solid'},
-    {on:true,color:'#2962FF',width:1,style:'solid'}
-  ]});
-  kcBuildRows();
-  kcRedrawAll();
-};
-
 /* ---------- Saty Pivot Ribbon settings ---------- */
 const RB_DEFAULTS={timeWarp:'off',fastEma:8,pivotEma:21,slowEma:34,
   bullFastCloud:'#4CAF50',bearFastCloud:'#FF5252',bullSlowCloud:'#00BCD4',bearSlowCloud:'#FF9800',
@@ -13400,7 +13085,7 @@ bindLineSwatch($('#rbSwSlowConv'),
 })();
 // Escape closes whichever indicator/settings modal is currently open — CLICKS that modal's own
 // Cancel/Close button rather than just hiding it, so modals with snapshot-revert-on-cancel
-// (Saty/Ribbon/Keltner all restore cfg from a pre-open snapshot in their own Cancel handler) get
+// (Saty/Ribbon both restore cfg from a pre-open snapshot in their own Cancel handler) get
 // that revert too, not just a silent hide that leaves a live-previewed-but-uncommitted edit in
 // place. Ordered by each modal's own z-index, descending, so the topmost open one wins on the
 // rare chance more than one is somehow open at once.
@@ -13408,7 +13093,7 @@ const ESCAPE_MODALS=[
   ['satyModal','satyCancel'],['rbModal','rbCancel'],
   ['alertEditModal','alCancelBtn'],['alertsModal','alertsCloseBtn'],
   ['rsiModal','rsCancel'],['macdModal','mcCancel'],['volModal','voCancel'],
-  ['vwapModal','vwapCancel'],['kcModal','kcCancel'],['stModal','stCancel'],
+  ['vwapModal','vwapCancel'],['stModal','stCancel'],
   ['setup','cfgCancel'],
 ];
 addEventListener('keydown',e=>{
@@ -13439,7 +13124,7 @@ addEventListener('keydown',e=>{
    and on resize so a panel can never be dragged or stranded off-screen. Only the <h1> starts a
    drag; every control below it stays fully interactive. Each modal is independent. */
 (function makePanelsDraggable(){
-  const MODALS=['rsiModal','volModal','vwapModal','kcModal','stModal','satyModal','rbModal'];
+  const MODALS=['rsiModal','volModal','vwapModal','stModal','satyModal','rbModal'];
   const MARGIN=6;                                  // keep at least this many px on-screen
   const pos=new Map();                             // modalId -> {left,top} once dragged (else absent)
   function clampLT(w,h,left,top){
