@@ -247,6 +247,9 @@ input[type=checkbox]{accent-color:var(--pivot)}
    fainter, so it reads as "still forming" next to every solid, settled swing beside it. Purely
    visual: the algorithm, its timing and its prices are unchanged either way. */
 .swdot.open{width:6px;height:6px;border:1.5px solid;box-shadow:none}
+/* Line mode only: the dot rides the plotted point (the candle's close) while the label sits at the swing's real,
+   candle-based high/low. The dotted stem joins the two, ending at the label. */
+.swstem{position:absolute;width:0;border-left:1px dotted;opacity:.6;pointer-events:none}
 .swlab.open{opacity:.7}
 /* Same "still forming" disclosure as .swdot/.swlab, on the RSI pane's own divergence markers
    (positionDivergence) — a divergence's pivot swing can still be superseded until something
@@ -367,7 +370,7 @@ input[type=checkbox]{accent-color:var(--pivot)}
 .eye .eyeic{transition:filter .2s ease,color .2s ease}
 .eye .ec{display:none} .eye:not(.on) .eo{display:none} .eye:not(.on) .ec{display:inline}
 .eye:not(.on){opacity:.5;filter:none;color:var(--faint)}
-.indtog{display:inline-flex;align-items:center;gap:2px;font-family:var(--mono);font-weight:400;font-size:10px;color:var(--faint);margin-left:8px;
+.indtog{display:inline-flex;align-items:center;gap:2px;font-family:var(--mono);font-weight:400;font-size:11px;color:var(--faint);margin-left:8px;
   text-shadow:0 1px 1px rgba(0,0,0,.85)}
 .indtog.on{color:var(--axistext)}
 /* Saty ATR Levels / Saty Pivot Ribbon / Market Structure toggles, moved off the panebar and
@@ -483,7 +486,7 @@ input[type=checkbox]{accent-color:var(--pivot)}
 .phandle:hover{background:var(--line)}
 .subpane{position:relative}
 .subpane>div.cinner{position:absolute;inset:0}
-.ptag{position:absolute;left:8px;top:4px;z-index:5;font-family:var(--mono);font-weight:400;font-size:10px;color:var(--axistext);
+.ptag{position:absolute;left:8px;top:4px;z-index:5;font-family:var(--mono);font-weight:400;font-size:11px;color:var(--axistext);
   text-shadow:0 1px 1px rgba(0,0,0,.85);
   padding:2px 4px;border-radius:4px;transition:background .12s ease}
 /* Same hover-reveal plate .indtog uses on the chart's on-chart indicator legend, applied to the
@@ -6097,11 +6100,15 @@ const SWING_TIP={
   LL:['Lower Low','This low printed below the last swing low \u2014 price is reaching new lows.',
     'Downtrend intact: expect price to keep testing lower until a low prints ABOVE the last one.']
 };
-function swingTipHtml(x){
+// x.price is ALWAYS the candle-based swing high/low, in both chart types. plotPx is passed only in Line mode, where the
+// marker is drawn on the line at that candle's close; the tip then says so, and keeps quoting the swing price.
+function swingTipHtml(x,plotPx){
   const px=(+x.price).toFixed(2),t=SWING_TIP[x.label]||[x.label,'',''];
+  const lineNote=(plotPx!=null&&Math.abs(plotPx-x.price)>=0.005)
+    ?'<br><span style="opacity:.75">Line chart: the dot is on the line at this candle’s close ('+(+plotPx).toFixed(2)+'); the dotted line leads to the swing itself, the candle’s '+(x.type==='H'?'high':'low')+', '+px+'.</span>':'';
   const openNote=x.open?'<br><b style="color:#f0b429">Not settled yet</b> — nothing has reversed off it '
     +'since, so a bigger high/low still forming nearby could replace this one before that happens.':'';
-  return '<div><b class="tiptitle">'+t[0]+' ('+x.label+') at '+px+'</b>'+t[1]+'<br>'+t[2]+openNote+'</div>';
+  return '<div><b class="tiptitle">'+t[0]+' ('+x.label+') at '+px+'</b>'+t[1]+'<br>'+t[2]+lineNote+openNote+'</div>';
 }
 function positionBreaks(p){
   const host=$('#tips'+p.idx);if(!host)return;
@@ -6188,20 +6195,35 @@ function positionStruct(p){
     const box=$('#tipbox');if(box)box.style.display='none';
     _tipOwner=null;
   }
-  host.querySelectorAll('.patlab,.swlab,.swdot,.brklab,.brkwick,.brkmark').forEach(e=>e.remove());
+  host.querySelectorAll('.patlab,.swlab,.swdot,.swstem,.brklab,.brkwick,.brkmark').forEach(e=>e.remove());
   if(!cfg['struct'+p.idx])return;
   positionBreaks(p);
   // HH / HL / LH / LL at their own swing, drawn over the chart rather than as markers
   if(p.swLabels&&p.swLabels.length){
     const w=$('#pc'+p.idx).clientWidth;
     let axisW=0;try{axisW=Math.round(p.chart.priceScale('right').width()||0);}catch(e){}
-    // In Line mode anchor to the close (the value the line actually draws); in Candle mode
-    // anchor to the wick high/low the swing was detected on.
-    const lineMode=cfg['chartType'+p.idx]==='line';
+    // ONE swing, two things that must never be confused: the swing's PRICE (x.price, the candle's high/low the
+    // swing was detected on - identical in both chart types, and what every tooltip and data-swing-price quotes)
+    // and where it is DRAWN (the anchor), which is the only thing that depends on the chart type:
+    //  - Candle mode: the wick high/low itself (anchor == swing price).
+    //  - Line mode:   the DOT is on the plotted point of that same candle, its close, but the LABEL is placed
+    //    at the swing's real candle-based price - exactly where it sits in Candle mode - with a small tick
+    //    marking that price. The swing price is not redefined. Time/X, detection, label and class never change.
+    // Line mode follows the series actually plotted (p._chartType), not the setting, which can lead
+    // it for a moment during a chart-type swap. The bar still forming is the one exception in the
+    // stored data: its close moves with every tick (p.lastClose) but x.close was captured at the
+    // last full render, so its point is taken live or the marker would trail the line's last vertex.
+    const lineMode=p._chartType==='line';
+    let hClip=0;try{hClip=paneClipH(p,$('#pc'+p.idx));}catch(e){}
+    const lastBar=p._lastBars&&p._lastBars.length?p._lastBars[p._lastBars.length-1]:null;
     p.swLabels.forEach(x=>{
-      const anchorPx=(lineMode&&isFinite(x.close))?x.close:x.price;
+      let anchorPx=x.price;
+      if(lineMode){
+        anchorPx=isFinite(x.close)?x.close:x.price;
+        if(lastBar&&x.time===lastBar.time&&isFinite(p.lastClose))anchorPx=p.lastClose;
+      }
       let y=null,cx=null;
-      try{y=pxRound(p.candles.priceToCoordinate(anchorPx));}catch(e){}
+      try{y=p.candles.priceToCoordinate(anchorPx);}catch(e){}
       // NOT pxRound()'d: timeToCoordinate() lands exactly on a half-pixel (e.g. 624.5) — the
       // canvas's own convention for centering a crisp 1px wick on that pixel column. Math.round()
       // always rounds .5 up, which pushed the dot 0.5px off the wick's true centre on every bar
@@ -6209,22 +6231,52 @@ function positionStruct(p){
       // float so the browser's own sub-pixel CSS positioning lines up with the canvas exactly.
       try{cx=p.chart.timeScale().timeToCoordinate(x.time);}catch(e){}
       if(y==null||cx==null||cx<0||cx>w-axisW)return;
-      // a dot ON the wick tip, so the swing is marked exactly where it happened even
-      // after its label has slid sideways to get out of another label's way
+      // A dot centred EXACTLY on the anchor (the wick tip in Candle mode, the line's own vertex in
+      // Line mode), so the swing is marked precisely where it is drawn even after its label has
+      // slid sideways to get out of another label's way. It used to sit 4px beyond the anchor, off
+      // both the tip and the line. y is the raw float coordinate (like cx) so it lands on the drawn
+      // point; the label below keeps the whole-pixel grid it always used.
       const dot=document.createElement('div');dot.className='swdot'+(x.open?' open':'');
       if(x.open){dot.style.borderColor=x.color;dot.style.background='transparent';}
       else dot.style.background=x.color;
       dot.style.left=cx+'px';
-      dot.style.top=(x.type==='H'?y-4:y+4)+'px';
-      tipAttach(dot,swingTipHtml(x));
+      dot.style.top=y+'px';
+      dot.dataset.swingPrice=String(x.price);dot.dataset.plotPrice=String(anchorPx);dot.dataset.swingTime=String(x.time);dot.dataset.swingLabel=x.label;
+      tipAttach(dot,swingTipHtml(x,lineMode?anchorPx:null));
       host.appendChild(dot);
       const d=document.createElement('div');d.className='swlab'+(x.open?' open':'');
       d.textContent=x.label;d.style.color=x.color;
       d.style.left=cx+'px';
-      const ty=(x.type==='H'?y-13:y+13);
+      // Where the swing's real (candle-based) price is on screen. In Candle mode that is the dot itself. In Line
+      // mode it is generally somewhere else (the line is drawn through closes), so a dotted line leads from the
+      // dot out to it and the LABEL sits at the tip of that line - the same spot the label has in Candle mode.
+      // If that price is off the visible scale (Line mode autoscales to closes, so a wick can sit outside it),
+      // or the label would be clipped by the pane edge, the label stays beside the dot and the tooltip still
+      // quotes the price.
+      const dir=x.type==='H'?-1:1;   // outward = up for a high, down for a low
+      let yp=null;if(lineMode){try{yp=p.candles.priceToCoordinate(x.price);}catch(e){}}
+      const apart=lineMode&&yp!=null&&dir*(yp-y)>3;          // the real price sits clear of the dot, on the outside
+      const room=apart&&(dir<0?yp-20>=0:yp+20<=hClip);         // and a label 13px beyond it still fits in the pane
+      const yr=pxRound(room?yp:y);
+      const ty=(x.type==='H'?yr-13:yr+13);
       d.style.top=ty+'px';d.dataset.y=ty;
-      tipAttach(d,swingTipHtml(x));
+      d.dataset.swingPrice=String(x.price);d.dataset.plotPrice=String(anchorPx);d.dataset.swingTime=String(x.time);d.dataset.swingLabel=x.label;
+      d.dataset.labelAt=room?'swing-price':'plotted-point';
+      tipAttach(d,swingTipHtml(x,lineMode?anchorPx:null));
       host.appendChild(d);
+      if(apart&&yp>=0&&yp<=hClip){
+        // The dotted stem joins the dot on the line to the swing's real price. With the label out at that price
+        // (room) the stem runs on to the label's near edge, so the label IS the tip of the line. In the fallback
+        // the label sits beside the dot, so the stem is broken around the label's box and never runs through it.
+        const o=c=>dir*c;   // maps a y to its distance-outward
+        const seg=(a,b)=>{const lo=Math.min(a,b),hi=Math.max(a,b);if(hi-lo<1.5)return;
+          const st=document.createElement('div');st.className='swstem';st.style.left=cx+'px';st.style.top=lo+'px';
+          st.style.height=(hi-lo)+'px';st.style.borderLeftColor=x.color;host.appendChild(st);};
+        if(room)seg(dir*(o(y)+3),dir*(o(yr)+6));   // 6px = half the label box, so the line ends at the label
+        else{const near=o(yr)+6,far=o(yr)+20;   // the label box: centred 13px out, ~14px tall
+          seg(dir*(o(y)+3),dir*Math.min(o(yp),near));
+          if(o(yp)>far)seg(dir*far,yp);}
+      }
     });
   }
   const S=cfg.structCfg;
