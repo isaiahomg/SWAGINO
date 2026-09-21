@@ -492,20 +492,21 @@ input[type=checkbox]{accent-color:var(--pivot)}
 /* Same hover-reveal plate .indtog uses on the chart's on-chart indicator legend, applied to the
    Volume/RSI subpane label so its gear icon reads as part of one plate on hover too. */
 .ptag:hover{background:rgba(255,255,255,.06)}
-.ptag .volgear,.ptag .rsigear,.ptag .macdgear{opacity:0;transition:opacity .15s ease;
+.ptag .volgear,.ptag .rsigear,.ptag .macdgear,.ptag .adxgear{opacity:0;transition:opacity .15s ease;
   background:none!important;border:none!important;box-shadow:none!important}
-.subpane:hover .volgear,.subpane:hover .rsigear,.subpane:hover .macdgear{opacity:1}
+.subpane:hover .volgear,.subpane:hover .rsigear,.subpane:hover .macdgear,.subpane:hover .adxgear{opacity:1}
+.ptag .adxlen{opacity:.6;margin-left:3px}   /* the pane's automatic ADX length, e.g. "ADX 16" */
 /* On a touch device there is no persistent :hover state, so these opacity:0-until-hover
    controls (the per-indicator eye toggle + its collapse control, the RSI/Volume gear icons)
    would be permanently unreachable. Forced visible only where hover genuinely can't happen —
    mouse/trackpad users see no change at all. */
 @media (hover:none),(pointer:coarse){
-  .indtog .eye,.indtog .mini,.ptag .volgear,.ptag .rsigear,.ptag .macdgear{opacity:1}
+  .indtog .eye,.indtog .mini,.ptag .volgear,.ptag .rsigear,.ptag .macdgear,.ptag .adxgear{opacity:1}
   /* Same touch-only scope enlarges the gear icons up toward the ~40-44px minimum recommended
      touch target, without changing their dense desktop sizing at all. The color-swatch size
      bump lives further down, right after the base .sw rule it overrides (same specificity,
      so it must come later in source order to win). */
-  .ctbtn,.volgear,.rsigear,.macdgear{min-width:40px;min-height:40px;display:inline-flex;align-items:center;justify-content:center}
+  .ctbtn,.volgear,.rsigear,.macdgear,.adxgear{min-width:40px;min-height:40px;display:inline-flex;align-items:center;justify-content:center}
 }
 /* The side panel is a floating window, not a docked grid column: position/size/hidden state
    all live in cfg (sideX/sideY/sideW/sideH/sb - see applySidePos()) and render onto this
@@ -1862,8 +1863,8 @@ table.lv td{padding:6px 10px}
   background:none!important;border:none!important;box-shadow:none!important;border-radius:0!important}
 /* Indicator gear icons (Saty ATR/Ribbon/Market Structure, plus Volume/RSI) match the same
    chart/axis text color as the labels next to them, instead of the generic .mini dim gray. */
-.satygear,.rbgear,.stgear,.volgear,.rsigear,.vwgear,.macdgear{color:var(--axistext)}
-.satygear:hover,.rbgear:hover,.stgear:hover,.volgear:hover,.rsigear:hover,.macdgear:hover{color:var(--axistext)}
+.satygear,.rbgear,.stgear,.volgear,.rsigear,.vwgear,.macdgear,.adxgear{color:var(--axistext)}
+.satygear:hover,.rbgear:hover,.stgear:hover,.volgear:hover,.rsigear:hover,.macdgear:hover,.adxgear:hover{color:var(--axistext)}
 .indcollapse{width:23px;height:18px}
 .indcollapse svg{width:11px;height:11px}
 
@@ -1991,7 +1992,7 @@ table.lv td{padding:6px 10px}
     // guarded rather than ordered around, since applyBackdrop() itself is called once immediately
     // below at load time.
     if(typeof panes!=='undefined'){
-      panes.forEach(function(p){if(!p)return;[p.chart,p.vchart,p.rchart,p.mchart].forEach(function(c){
+      panes.forEach(function(p){if(!p)return;[p.chart,p.vchart,p.rchart,p.mchart,p.achart].forEach(function(c){
         try{c.applyOptions({rightPriceScale:{borderColor:'transparent'},timeScale:{borderColor:'transparent'}});}catch(e){}
       });});
     }
@@ -2105,6 +2106,8 @@ table.lv td{padding:6px 10px}
         <div class="subpane" id="rsic0wrap"><span class="ptag">RSI <button class="mini rsigear" data-pane="0" style="padding:0 5px;margin-left:4px">⚙</button></span><div class="cinner" id="rsic0"></div><div class="tips" id="rtips0"></div></div>
         <div class="phandle" data-pane="0" data-t="macd" title="Drag to resize MACD panel"></div>
         <div class="subpane" id="macdc0wrap"><span class="ptag">MACD <button class="mini macdgear" data-pane="0" style="padding:0 5px;margin-left:4px">⚙</button></span><div class="cinner" id="macdc0"></div></div>
+        <div class="phandle" data-pane="0" data-t="adx" title="Drag to resize ADX panel"></div>
+        <div class="subpane" id="adxc0wrap"><span class="ptag">ADX<span class="adxlen" id="adxlen0"></span> <button class="mini adxgear" data-pane="0" style="padding:0 5px;margin-left:4px">⚙</button></span><div class="cinner" id="adxc0"></div></div>
       </div>
       <div class="panewrap" id="pw1" style="display:none">
         <div class="pchart"><div class="chartcorner" data-pane="1"><div class="indlist hide" id="indlist1"><span class="indtog" id="stylab1">Saty ATR Levels<button class="eye" data-ind="saty" data-pane="1" title="Saty ATR Levels"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini satygear" data-pane="1" style="padding:0 5px;margin-left:2px">&#9881;</button></span><span class="indtog" id="rblab1">Saty Pivot Ribbon<button class="eye" data-ind="ribbon" data-pane="1" title="Saty Pivot Ribbon"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini rbgear" data-pane="1" style="padding:0 5px;margin-left:2px">&#9881;</button></span><span class="indtog" id="stlab1">Market Structure<button class="eye" data-ind="struct" data-pane="1" title="Swing structure &amp; patterns"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini stgear" data-pane="1" style="padding:0 5px;margin-left:2px">⚙</button></span><span class="indtog" id="vwlab1">VWAP<button class="eye" data-ind="vwap" data-pane="1" title="VWAP"><svg class="eyeic" viewBox="0 0 24 16" width="15" height="10" fill="none"><g class="eo"><path d="M12 1.6C5.2 1.6 1.4 8 1.4 8S5.2 14.4 12 14.4 22.6 8 22.6 8 18.8 1.6 12 1.6Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="8" r="2.7" fill="currentColor"/></g><g class="ec"><path d="M2.2 7.2C6 11.4 18 11.4 21.8 7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M5.4 10.6l-1.3 1.8M12 12v2.3M18.6 10.6l1.3 1.8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></g></svg></button><button class="mini vwgear" data-pane="1" style="padding:0 5px;margin-left:2px">&#9881;</button></span></div><button class="indcollapse" id="indcollapse1" title="Show/hide overlay indicators"><svg viewBox="0 0 12 12" fill="none"><path d="M2.5 4.5L6 8l3.5-3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div><div class="cinner" id="pc1"></div><div class="tips" id="tips1"></div><div class="cdown" id="cd1"></div><div class="axcur" id="axcur1"></div></div>
@@ -2114,6 +2117,8 @@ table.lv td{padding:6px 10px}
         <div class="subpane" id="rsic1wrap"><span class="ptag">RSI <button class="mini rsigear" data-pane="1" style="padding:0 5px;margin-left:4px">⚙</button></span><div class="cinner" id="rsic1"></div><div class="tips" id="rtips1"></div></div>
         <div class="phandle" data-pane="1" data-t="macd" title="Drag to resize MACD panel"></div>
         <div class="subpane" id="macdc1wrap"><span class="ptag">MACD <button class="mini macdgear" data-pane="1" style="padding:0 5px;margin-left:4px">⚙</button></span><div class="cinner" id="macdc1"></div></div>
+        <div class="phandle" data-pane="1" data-t="adx" title="Drag to resize ADX panel"></div>
+        <div class="subpane" id="adxc1wrap"><span class="ptag">ADX<span class="adxlen" id="adxlen1"></span> <button class="mini adxgear" data-pane="1" style="padding:0 5px;margin-left:4px">⚙</button></span><div class="cinner" id="adxc1"></div></div>
       </div>
            </div>
     </div>
@@ -2398,6 +2403,19 @@ table.lv td{padding:6px 10px}
     <div class="row"><span style="min-width:96px;font-size:12px">Zero line</span><span class="sw" id="swMcZero"></span></div>
     <div class="hint">This is TradingView's built-in <b>Moving Average Convergence Divergence</b> indicator, ported from its Pine v6 source verbatim — fast/slow EMA (or SMA) of the source, MACD = fast &minus; slow, signal = EMA (or SMA) of MACD, histogram = MACD &minus; signal, coloured by sign and by whether it just rose or fell. Fast 12 / Slow 26 / Signal 9 / EMA+EMA are Pine's own defaults, fixed on every timeframe — unlike RSI's optional per-timeframe auto-tune, MACD has no measured basis here for retuning it per chart, so it runs the same on every timeframe the way TradingView's own version does.</div>
     <div class="row" style="justify-content:flex-end"><button class="tbtn" id="mcCancel">Close</button><button class="tbtn primary" id="mcOk">OK</button></div>
+  </div>
+</div>
+<div id="adxModal" style="position:fixed;inset:0;background:rgba(6,9,15,.85);z-index:120;display:none;align-items:center;justify-content:center">
+  <div class="card" style="width:460px">
+    <h1>ADX <span id="adxPaneTag"></span></h1>
+    <h3 class="setsub">Style</h3>
+    <div class="row"><label style="min-width:0"><input type="checkbox" id="adxAdxOn"></label><span style="min-width:96px;font-size:12px">ADX</span><span class="sw" id="swAdxAdx"></span></div>
+    <div class="row"><label style="min-width:0"><input type="checkbox" id="adxPlusOn"></label><span style="min-width:96px;font-size:12px">+DI</span><span class="sw" id="swAdxPlus"></span></div>
+    <div class="row"><label style="min-width:0"><input type="checkbox" id="adxMinusOn"></label><span style="min-width:96px;font-size:12px">&minus;DI</span><span class="sw" id="swAdxMinus"></span></div>
+    <h3 class="setsub">Length (automatic)</h3>
+    <div class="hint" id="adxAutoRows"></div>
+    <div class="hint">Wilder's Average Directional Index, exactly: True Range and +DM/&minus;DM from each bar against the one before it, Wilder's smoothing (first value = the sum of the first N, then S &minus; S/N + x), +DI/&minus;DI = 100 &times; smoothed DM / smoothed TR, DX = 100 &times; |+DI &minus; &minus;DI| / (+DI + &minus;DI), and ADX = the mean of the first N DX, then (prior ADX &times; (N&minus;1) + DX) / N. The length N is set automatically from the timeframe (Settings &gt; auto-tune to timeframe) and is recalculated whenever the timeframe changes; it is chosen so an ADX of 25 marks the same share of bars as trending on every timeframe. The in-progress bar updates live; finished bars never change.</div>
+    <div class="row" style="justify-content:flex-end"><button class="tbtn" id="adxCancel">Close</button><button class="tbtn primary" id="adxOk">OK</button></div>
   </div>
 </div>
 <div id="volModal" style="position:fixed;inset:0;background:rgba(6,9,15,.85);z-index:120;display:none;align-items:center;justify-content:center">
@@ -2738,7 +2756,7 @@ let cfg=Object.assign({proxy:true,quoteS:2,barS:10,
   // 34px taller than Pane 1's own (554 vs 520) — room for the "PANE 2" title row above its
   // Levels/GEX tabs (see #sideHead2's own max-height) so it doesn't open looking cramped.
   side2X:null,side2Y:null,side2W:380,side2H:554,
-  sym:'QQQ',sess:'eth',split:false,paneN:1,tf0:'5',tf1:'60',rsiH0:76,rsiH1:76,volH0:70,volH1:70,macdH0:90,macdH1:90,stream:true,satyCfg:null,link:true,sym1:'',tfPresets:true,struct0:false,struct1:false,saty0:false,saty1:false,ribbon0:false,ribbon1:false,
+  sym:'QQQ',sess:'eth',split:false,paneN:1,tf0:'5',tf1:'60',rsiH0:76,rsiH1:76,volH0:70,volH1:70,macdH0:90,macdH1:90,adxH0:90,adxH1:90,stream:true,satyCfg:null,link:true,sym1:'',tfPresets:true,struct0:false,struct1:false,saty0:false,saty1:false,ribbon0:false,ribbon1:false,
   chartType0:'candles',chartType1:'candles',  // per-pane main series type, same cfg[key+i] pattern as struct0/saty0/ribbon0
   axisTextColor:'#ffffff',  // price/volume/RSI axis tick-label colour (all three share one lightweight-charts layout.textColor)
   // Line chart type's own colour mode, mirrors TradingView's real Settings > Line control
@@ -2926,6 +2944,94 @@ cfg.macd=Object.assign({
   zeroC:'#787b8680'
 },cfg.macd||{});
 if(!Array.isArray(cfg.macd.histC)||cfg.macd.histC.length!==4)cfg.macd.histC=['#26a69a','#b2dfdb','#ffcdd2','#ff5252'];
+
+/* ADX (Wilder's Average Directional Index) - its own subpane, directly below MACD.
+   MATH: adxStep()/adxSeries() below are the ONE implementation; the batch series (every render) and the live-tick update (paneTick)
+   both call adxStep(), so a live value can never disagree with what a re-render would draw, and a finished bar's value depends only on bars up to itself.
+   Verified before shipping against two independent implementations written from the definition (60-digit-decimal textbook Wilder, and the Pine ta.rma form)
+   on 51,412 real bars (SPY/QQQ/AAPL/TSLA x all 8 timeframes): max difference 1.8e-11 and 7e-14, with identical warm-up boundaries; plus property tests
+   (no lookahead, live step == batch, seed immutability, warm-up boundaries, range 0..100, bad-bar handling) and a hand-worked example.
+
+   LENGTH is set per timeframe (ADX_PRESETS) and is NOT user-editable and NOT fitted to returns. The method is the one TF_PRESETS documents for RSI: choose the
+   length so a reading means the same thing on every chart - here, so the share of bars at or above ADX 25 (Wilder's own "trending" line) equals the share on
+   the canonical chart (daily, Wilder's 14: 39.8% on the 9-symbol tuning set, 40.8% on the 5 held-out symbols). Measured on SPY/QQQ/AAPL/MSFT/GOOGL/AMZN/NVDA/
+   META/TSLA and held out on AMD/NFLX/JPM/XOM/DIS, regular-session bars, ~34-40 sessions of intraday history and 14 years of daily. At a flat 14 the share was
+   35% (1m), 44% (5m), 53% (10m), 58% (15m), 60% (1H), 42% (4H), 49% (1W) - so "ADX above 25" meant very different things depending on the chart. The
+   final lengths cut the total mismatch (summed over timeframes and over thresholds 20/25/30) from 196.6 to 38.9 points on the tuning set and from 217.5 to
+   85.9 on the held-out symbols. Two timeframes keep Wilder's 14 on purpose: 4H (only ~270 bars exist, so the data cannot tell any length from any other -
+   the share at 14 is within 0.2 standard errors of the target) and 1m (the tuning set preferred 13, the held-out set preferred 14, and only ~8 sessions of
+   1-minute history exist). 1m and 15m are listed so ADX is ready for them, but SWAGINO does not currently offer them as chart timeframes.
+   With auto-tune to timeframe OFF (cfg.tfPresets === false) every timeframe uses Wilder's standard 14, exactly as RSI falls back to its own gear values.
+   Session basis: calibrated on regular-session bars; the same length is used whatever the RTH/ETH toggle shows, so a length never depends on that toggle.
+
+   TIES: when a bar's up-move equals its down-move exactly (an outside bar extending both ways by the same amount - common with prices in cents), Wilder
+   counts neither as directional movement. A bare `up > down` in floating point flips at random there (it is off by up to 2 ADX points on real bars), so
+   the comparison uses a tolerance far above float noise and far below any price increment. */
+cfg.adx=Object.assign({
+  adxOn:true,adxC:'#ffb74d',adxW:2,adxSt:'solid',
+  plusOn:true,plusC:'#26a69a',plusW:1,plusSt:'solid',
+  minusOn:true,minusC:'#ff5252',minusW:1,minusSt:'solid'
+},cfg.adx||{});
+const ADX_PRESETS={'1':14,'5':16,'10':22,'15':22,'60':20,'240':14,'D':14,'W':18};
+const ADX_STANDARD=14;   // Wilder's own length: used when auto-tune to timeframe is off, and for any timeframe not in the table
+function adxParams(p){
+  const L=(cfg.tfPresets!==false&&ADX_PRESETS[p&&p.tf])||ADX_STANDARD;
+  return{len:L};
+}
+
+/* The math, exactly as Wilder defines it (New Concepts in Technical Trading Systems, 1978):
+     TR      = max(High - Low, |High - prevClose|, |Low - prevClose|)
+     +DM     = (High - prevHigh) > (prevLow - Low) && (High - prevHigh) > 0 ? High - prevHigh : 0
+     -DM     = (prevLow - Low) > (High - prevHigh) && (prevLow - Low) > 0 ? prevLow - Low : 0
+     (an exact tie between the two moves gives 0 for both)
+     Smoothing (N = len): the first smoothed value is the SUM of the first N values, then
+               S = S - S/N + x            (Wilder's smoothing; identical to an N-period RMA up to that constant factor,
+                                           which cancels in every ratio below)
+     +DI = 100 * smooth(+DM) / smooth(TR)          -DI = 100 * smooth(-DM) / smooth(TR)
+     DX  = 100 * |+DI - -DI| / (+DI + -DI)         (0 when both DI are 0)
+     ADX = the first ADX is the mean of the first N DX values, then ADX = (prevADX*(N-1) + DX) / N
+   Values start at the 2nd bar (TR/DM need a previous bar): +DI/-DI are first valid at the (N+1)th bar, ADX at the (2N)th.
+   A bar with a non-finite high/low/close is skipped (state unchanged, outputs null). */
+// `ax` is the running ADX STATE (the recursion's base); plus/minus/adx are only the OUTPUTS of the last step (null while warming up or on a skipped bar).
+function adxNewState(){return{n:0,h:null,l:null,c:null,sTR:0,sP:0,sM:0,dxSum:0,dxN:0,ax:null,plus:null,minus:null,adx:null};}
+function adxCopyState(s,d){d.n=s.n;d.h=s.h;d.l=s.l;d.c=s.c;d.sTR=s.sTR;d.sP=s.sP;d.sM=s.sM;d.dxSum=s.dxSum;d.dxN=s.dxN;d.ax=s.ax;d.plus=s.plus;d.minus=s.minus;d.adx=s.adx;return d;}
+// s = state after the previous bar (never modified); d = a DIFFERENT state object that receives the state after this bar.
+function adxStep(s,h,l,c,len,d){
+  if(!isFinite(h)||!isFinite(l)||!isFinite(c)){adxCopyState(s,d);d.plus=d.minus=d.adx=null;return d;}   // state (incl. ax) untouched
+  d.n=s.n+1;d.h=h;d.l=l;d.c=c;
+  if(s.n===0){d.sTR=0;d.sP=0;d.sM=0;d.dxSum=0;d.dxN=0;d.ax=null;d.adx=null;d.plus=null;d.minus=null;return d;}   // first bar: nothing to compare with
+  const up=h-s.h,down=s.l-l;
+  // Exact ties (an outside bar whose up-move equals its down-move, common when prices move in cents) count as neither, per Wilder.
+  // In floating point 700.03-700.00 and 700.05-700.02 differ by ~1e-14 in random directions, so a bare `up>down` would flip at random;
+  // the tolerance is far above that noise (1e-16 relative) and far below any real price increment (>=1e-4 on a >=1 price).
+  const eps=1e-9*Math.max(1,Math.abs(h),Math.abs(s.h));
+  const pdm=(up-down>eps&&up>0)?up:0,mdm=(down-up>eps&&down>0)?down:0;
+  const tr=Math.max(h-l,Math.abs(h-s.c),Math.abs(l-s.c));
+  const k=s.n;   // this is the k-th bar that has a predecessor
+  if(k<=len){d.sTR=s.sTR+tr;d.sP=s.sP+pdm;d.sM=s.sM+mdm;}
+  else{d.sTR=s.sTR-s.sTR/len+tr;d.sP=s.sP-s.sP/len+pdm;d.sM=s.sM-s.sM/len+mdm;}
+  if(k<len){d.dxSum=0;d.dxN=0;d.ax=null;d.adx=null;d.plus=null;d.minus=null;return d;}
+  const plus=d.sTR>0?100*d.sP/d.sTR:0,minus=d.sTR>0?100*d.sM/d.sTR:0;
+  const dsum=plus+minus,dx=dsum>0?100*Math.abs(plus-minus)/dsum:0;
+  d.plus=plus;d.minus=minus;
+  if(k<2*len-1){d.dxSum=s.dxSum+dx;d.dxN=s.dxN+1;d.ax=null;d.adx=null;}
+  else if(k===2*len-1){d.dxSum=s.dxSum+dx;d.dxN=len;d.ax=d.dxSum/len;d.adx=d.ax;}
+  else{d.dxSum=s.dxSum;d.dxN=s.dxN;d.ax=(s.ax*(len-1)+dx)/len;d.adx=d.ax;}
+  return d;
+}
+// Whole series over bars [{high,low,close}...]. Also returns the states after the last two bars (the live tick's seeds: [before the last bar, after it]).
+function adxSeries(data,len){
+  const n=data.length,plus=new Array(n).fill(null),minus=new Array(n).fill(null),adx=new Array(n).fill(null);
+  let a=adxNewState(),b=adxNewState(),prev2=adxNewState(),prev1=adxNewState();
+  for(let i=0;i<n;i++){
+    if(i===n-1)adxCopyState(a,prev2);                 // state after bar n-2
+    const d=data[i];adxStep(a,d.high,d.low,d.close,len,b);
+    plus[i]=b.plus;minus[i]=b.minus;adx[i]=b.adx;
+    if(i===n-1)adxCopyState(b,prev1);                 // state after bar n-1
+    const t=a;a=b;b=t;
+  }
+  return{plus,minus,adx,seeds:[prev2,prev1]};
+}
 const LSTYLE={solid:0,dotted:1,dashed:2};
 
 /* ---------- time ---------- */
@@ -3382,13 +3488,13 @@ function chartOpts(extra){
 function applyCrosshairCfg(){
   const opt={vertLine:{color:cfg.crosshair.color,style:lwcStyle(cfg.crosshair.style)},
              horzLine:{color:cfg.crosshair.color,style:lwcStyle(cfg.crosshair.style)}};
-  panes.forEach(p=>{if(!p)return;[p.chart,p.vchart,p.rchart,p.mchart].forEach(c=>{try{c.applyOptions({crosshair:opt});}catch(e){}});});
+  panes.forEach(p=>{if(!p)return;[p.chart,p.vchart,p.rchart,p.mchart,p.achart].forEach(c=>{try{c.applyOptions({crosshair:opt});}catch(e){}});});
 }
 // Live-updates the axis tick-label colour (price/volume/RSI y-axis numbers AND the time axis)
 // on every already-created chart, same pattern as applyCrosshairCfg. lightweight-charts only
 // exposes ONE text colour for both axes here (layout.textColor) - no separate y-axis-only knob.
 function applyAxisTextColor(){
-  panes.forEach(p=>{if(!p)return;[p.chart,p.vchart,p.rchart,p.mchart].forEach(c=>{try{c.applyOptions({layout:{textColor:cfg.axisTextColor}});}catch(e){}});});
+  panes.forEach(p=>{if(!p)return;[p.chart,p.vchart,p.rchart,p.mchart,p.achart].forEach(c=>{try{c.applyOptions({layout:{textColor:cfg.axisTextColor}});}catch(e){}});});
   // --axistext: the ticker box, timeframe label, market-phase pill, Levels/GEX/Log tabs, ETH/RTH
   // chip, and the Levels table's own text all reference this one variable — see its definition.
   document.documentElement.style.setProperty('--axistext',cfg.axisTextColor);
@@ -3550,10 +3656,11 @@ function syncLvlCarrier(p){
 // The host for everything that must paint UNDER the candles (see .under); falls back to the overlay host.
 function underHost(p){return $('#under'+p.idx)||$('#tips'+p.idx);}
 function makePane(idx){
-  const pEl=$('#pc'+idx),rEl=$('#rsic'+idx),vEl=$('#volc'+idx),mEl=$('#macdc'+idx);
+  const pEl=$('#pc'+idx),rEl=$('#rsic'+idx),vEl=$('#volc'+idx),mEl=$('#macdc'+idx),aEl=$('#adxc'+idx);
   $('#rsic'+idx+'wrap').style.height=(cfg['rsiH'+idx]||76)+'px';
   $('#volc'+idx+'wrap').style.height=(cfg['volH'+idx]||70)+'px';
   $('#macdc'+idx+'wrap').style.height=(cfg['macdH'+idx]||90)+'px';
+  $('#adxc'+idx+'wrap').style.height=(cfg['adxH'+idx]||90)+'px';
   // Solid backing for the price/time axis strips — see .axisback's own comment above.
   // Inserted BEFORE pEl so plain DOM paint order puts them underneath the chart's own
   // (transparent) canvas once LWC injects it into pEl below; no z-index juggling needed.
@@ -3674,16 +3781,25 @@ function makePane(idx){
   const macdZeroLine=macdLine.createPriceLine({price:0,color:cfg.macd.zeroC,lineWidth:1,
     lineStyle:LightweightCharts.LineStyle.Solid,axisLabelVisible:false,title:''});
   try{mchart.applyOptions({crosshair:{horzLine:{visible:false,labelVisible:true}}});}catch(e){}
-  linkCharts([chart,rchart,vchart,mchart]);
+  // ADX: Wilder's Average Directional Index (see cfg.adx's comment for the math, its verification and the per-timeframe length). Its own subpane and
+  // chart instance, directly below MACD, built exactly like MACD's: own price scale (auto-fit, static), no time axis, ADX/+DI/-DI as three line series
+  // whose last value is labelled on the scale. It is never pinned to 0-100 - ADX mostly lives between 10 and 50 - so the scale fits what is visible.
+  const achart=LightweightCharts.createChart(aEl,chartOpts(Object.assign({timeScale:{visible:false},rightPriceScale:{borderColor:'transparent',scaleMargins:{top:0.1,bottom:0.1}}},STATIC_SCALE)));
+  const adxLine=achart.addLineSeries({color:cfg.adx.adxC,lineWidth:cfg.adx.adxW,lineStyle:lwcStyle(cfg.adx.adxSt),priceLineVisible:false,lastValueVisible:true,crosshairMarkerVisible:false});
+  const adxPlus=achart.addLineSeries({color:cfg.adx.plusC,lineWidth:cfg.adx.plusW,lineStyle:lwcStyle(cfg.adx.plusSt),priceLineVisible:false,lastValueVisible:true,crosshairMarkerVisible:false});
+  const adxMinus=achart.addLineSeries({color:cfg.adx.minusC,lineWidth:cfg.adx.minusW,lineStyle:lwcStyle(cfg.adx.minusSt),priceLineVisible:false,lastValueVisible:true,crosshairMarkerVisible:false});
+  try{achart.applyOptions({crosshair:{horzLine:{visible:false,labelVisible:true}}});}catch(e){}
+  linkCharts([chart,rchart,vchart,mchart,achart]);
   // crossSync is wired after the pane object exists (needs pane.tIndex)
   /* The synced crosshair drew a full-width dotted horizontal rule across the volume, RSI
-     and DMI panels at the value it was echoing. On the price chart that line is useful —
+     and MACD panels at the value it was echoing. On the price chart that line is useful —
      it is the price you are pointing at. On a panel it is just a rule through the middle of
      the histogram. The line goes; the LABEL on the axis stays, so hovering still tells you
      the RSI under the cursor. */
   try{rchart.applyOptions({crosshair:{horzLine:{visible:false,labelVisible:true}}});}catch(e){}
   const pane={idx,chart,candles,vol,vchart,rchart,rsi,rsiMa,rsiFill,rsiOB,rsiOS,rsiBBu,rsiBBl,
     mchart,macdHist,macdLine,sigLine,macdZeroLine,macdTail:null,
+    achart,adxLine,adxPlus,adxMinus,adxTail:null,_adxRenderCache:null,
     rbCloudFast,rbCloudSlow,rbFast,rbPivot,rbSlow,rbFastConv,rbSlowConv,rbArrows:[],rbTail:null,vwLines,vwapTail:null,vwSets:null,vwLast:null,patLineA,patLineB,lvl,rsiDivLines:[],rsiBands:[],priceLines:[],alertLines:[],tf:cfg['tf'+idx]||'5',tips:{},last:{},
     _chartType:'candles'};   // matches the candlestick series just created above; ensureChartType() swaps both together
   // The 'close' entry uses a LIVE getter, not the captured `candles` value: ensureChartType() can
@@ -3691,7 +3807,7 @@ function makePane(idx){
   // captured reference here would keep pointing at the OLD, by-then-removed series — silently
   // breaking the crosshair sync FROM the volume/RSI panels back onto the price pane (the failure is
   // swallowed by this function's own try/catch, so it would otherwise fail with no visible error).
-  crossSync(pane,[{chart:chart,get series(){return pane.candles;},key:'close'},{chart:vchart,series:vol,key:'vol'},{chart:rchart,series:rsi,key:'rsi'},{chart:mchart,series:macdLine,key:'macd'}]);
+  crossSync(pane,[{chart:chart,get series(){return pane.candles;},key:'close'},{chart:vchart,series:vol,key:'vol'},{chart:rchart,series:rsi,key:'rsi'},{chart:mchart,series:macdLine,key:'macd'},{chart:achart,series:adxLine,key:'adx'}]);
   // TradingView's own crosshair price label always paints over every other axis label near it —
   // verified live by extracting its price-axis canvases: the crosshair label sits ALONE on a
   // separate top layer above the one holding its static line/last-price labels, so it continuously
@@ -3723,7 +3839,7 @@ function makePane(idx){
   chart.timeScale().subscribeVisibleLogicalRangeChange(nudge);
   // Marks the chart as user-driven. Set on real interaction only — resetView and the
   // timeframe restore clear it again, so a programmatic move never counts as "you zoomed".
-  [pEl,rEl,vEl,mEl].forEach(el=>{
+  [pEl,rEl,vEl,mEl,aEl].forEach(el=>{
     if(!el)return;
     el.addEventListener('wheel',()=>{pane._userZoomed=true;},{passive:true});
     el.addEventListener('pointerdown',()=>{pane._userZoomed=true;});
@@ -3754,7 +3870,7 @@ function makePane(idx){
     });
     el.addEventListener('wheel',nudge,{passive:true});
   };
-  [pEl,rEl,vEl,mEl].forEach(holdWhileDragging);
+  [pEl,rEl,vEl,mEl,aEl].forEach(holdWhileDragging);
   // Safari (desktop AND iOS) fires its own non-standard gesturestart/gesturechange/gestureend
   // events for a trackpad/touchscreen PINCH instead of a regular wheel event with ctrlKey:true —
   // the synthetic event Chrome/Firefox send for the exact same gesture, which is what the
@@ -3788,20 +3904,21 @@ function makePane(idx){
     });
     el.addEventListener('gestureend',e=>{e.preventDefault();startSpacing=null;});
   };
-  enablePinchZoom(pEl,chart);enablePinchZoom(vEl,vchart);enablePinchZoom(rEl,rchart);enablePinchZoom(mEl,mchart);
+  enablePinchZoom(pEl,chart);enablePinchZoom(vEl,vchart);enablePinchZoom(rEl,rchart);enablePinchZoom(mEl,mchart);enablePinchZoom(aEl,achart);
   const sizeAll=()=>{
     try{
       chart.applyOptions({width:pEl.clientWidth,height:pEl.clientHeight});
       vchart.applyOptions({width:vEl.clientWidth,height:vEl.clientHeight});
       rchart.applyOptions({width:rEl.clientWidth,height:rEl.clientHeight});
       mchart.applyOptions({width:mEl.clientWidth,height:mEl.clientHeight});
+      achart.applyOptions({width:aEl.clientWidth,height:aEl.clientHeight});
       syncScaleWidths(pane);positionTips(pane);
     }catch(e){}
   };
   pane.sizeAll=sizeAll;
   let raf=0;
   const ro=new ResizeObserver(()=>{cancelAnimationFrame(raf);raf=requestAnimationFrame(sizeAll);});
-  ro.observe(pEl.parentElement);ro.observe(rEl.parentElement);ro.observe(vEl.parentElement);ro.observe(mEl.parentElement);
+  ro.observe(pEl.parentElement);ro.observe(rEl.parentElement);ro.observe(vEl.parentElement);ro.observe(mEl.parentElement);ro.observe(aEl.parentElement);
   const tipsEl=$('#tips'+idx);
   tipsEl.innerHTML=['fast','piv','slow','fc','sc'].map(k=>`<div class="tip rbtip" data-rk="${k}"></div>`).join('')
     +[0,1,2].map(k=>`<div class="tip vwtip" data-vk="${k}"></div>`).join('');
@@ -3846,7 +3963,7 @@ function syncScaleWidths(p){
     }
     const w=Math.max(56,Math.min(120,
       Math.max(need(px.toFixed(2)),need(volTxt),need('100.00'))));
-    [p.chart,p.vchart,p.rchart,p.mchart].filter(Boolean)
+    [p.chart,p.vchart,p.rchart,p.mchart,p.achart].filter(Boolean)
       .forEach(c=>c.priceScale('right').applyOptions({minimumWidth:w}));
     // Stashed so anything ELSE that needs "how wide is the axis right now" (positionSessDrop)
     // can read this instead of priceScale('right').width() — width() lags one render behind
@@ -5699,6 +5816,28 @@ function renderPane(p){
         prevHist:pair(histArr)};
       p._macdRenderCache={data,key:macdBlockKey};
     }
+  }
+  // ---- ADX (own subpane, below MACD) - see cfg.adx's comment. The length comes from the pane's CURRENT timeframe (adxParams), and it is part of the cache
+  // key together with the bar array itself, so switching timeframe/symbol (a different array) or a length change always recalculates, while an
+  // unrelated re-render skips the work. p.vals is rebuilt every render, so p.vals.adx is refilled on hit AND miss (the crosshair sync reads it).
+  {
+    const A=cfg.adx,adxLen=adxParams(p).len;
+    const adxKey=JSON.stringify(A)+'|'+adxLen;
+    let arc=p._adxRenderCache;
+    if(!(arc&&arc.data===data&&arc.key===adxKey)){
+      const r=adxSeries(data,adxLen);
+      p.adxLine.applyOptions({visible:!!A.adxOn,color:A.adxC,lineWidth:A.adxW,lineStyle:lwcStyle(A.adxSt)});
+      p.adxLine.setData(A.adxOn?padSeries(data,r.adx):[]);
+      p.adxPlus.applyOptions({visible:!!A.plusOn,color:A.plusC,lineWidth:A.plusW,lineStyle:lwcStyle(A.plusSt)});
+      p.adxPlus.setData(A.plusOn?padSeries(data,r.plus):[]);
+      p.adxMinus.applyOptions({visible:!!A.minusOn,color:A.minusC,lineWidth:A.minusW,lineStyle:lwcStyle(A.minusSt)});
+      p.adxMinus.setData(A.minusOn?padSeries(data,r.minus):[]);
+      // seeds for paneTick's live step: [state before the last bar, state after it]; tmp is scratch so a tick allocates nothing
+      p.adxTail={t:data.length?data[data.length-1].time:null,len:adxLen,seeds:r.seeds,tmp:adxNewState()};
+      arc=p._adxRenderCache={data,key:adxKey,adx:r.adx};
+    }
+    p.vals.adx=arc.adx;   // crossSync value lookup (key:'adx')
+    const lab=$('#adxlen'+p.idx);if(lab&&lab.textContent!==' '+adxLen)lab.textContent=' '+adxLen;
   }
   p.lastClose=data.length?data[data.length-1].close:null;
   p.swLabels=null;
@@ -7582,6 +7721,27 @@ function paneTick(p){
         }
       }
     }
+    // ADX - the SAME adxStep() the batch series is built from (see cfg.adx), seeded from the last render's states exactly like the tails above: seed 0 =
+    // still the bar that render saw (recomputed fresh from the state BEFORE it every tick, so repeated prints never compound), seed 1 = a new bar has started
+    // (seed from the bar that just closed). seeds are never mutated - the step writes into the tail's scratch state - so finished bars cannot change.
+    const AT=p.adxTail;
+    if(AT&&p.adxLine){
+      const A=cfg.adx,seed=AT.seeds[bar.time!==AT.t?1:0];
+      if(seed){
+        const st=adxStep(seed,bar.high,bar.low,bar.close,AT.len,AT.tmp);
+        // The chart now holds tick-derived tail values, so renderPane's "same bar array, same settings" skip must not trust its cache any more (it could
+        // otherwise leave the tail as the tick left it if the bar array comes back identical, e.g. a REST refetch that corrects a bad print). The crosshair
+        // lookup for the forming bar follows the tick too.
+        p._adxRenderCache=null;
+        if(seed===AT.seeds[0]&&p.vals&&p.vals.adx&&p.vals.adx.length&&st.adx!=null)p.vals.adx[p.vals.adx.length-1]=st.adx;
+        if(A.adxOn&&st.adx!=null){try{p.adxLine.update({time:bar.time,value:+st.adx.toFixed(2)});}
+          catch(e){logDiagError('tick|adx|'+p.idx,`ADX tick update failed \u2014 ${tickCtx}: ${e&&e.message||e}`);}}
+        if(A.plusOn&&st.plus!=null){try{p.adxPlus.update({time:bar.time,value:+st.plus.toFixed(2)});}
+          catch(e){logDiagError('tick|adxPlus|'+p.idx,`+DI tick update failed \u2014 ${tickCtx}: ${e&&e.message||e}`);}}
+        if(A.minusOn&&st.minus!=null){try{p.adxMinus.update({time:bar.time,value:+st.minus.toFixed(2)});}
+          catch(e){logDiagError('tick|adxMinus|'+p.idx,`\u2212DI tick update failed \u2014 ${tickCtx}: ${e&&e.message||e}`);}}
+      }
+    }
   }
   p.lastClose=bar.close;p.lastOpen=bar.open;
   // Market Structure (swings, HH/HL/LH/LL, BOS/CHoCH, pattern trendlines) is resolved only
@@ -8537,24 +8697,33 @@ function satyAutoLen(rows,look){
   }
   return best?best.L:5;
 }
-let satyAutoCache={key:'',len:5};
-function satyLen(rows){
+/* Memoised so the fit runs once per close, not on every render — but the key has to identify the SYMBOL
+   as well as the series, and the old one (row count + last date) identified neither.
+   Every ticker shares one trading calendar and the app fetches the same range, so the row count is
+   identical across all of them: measured 2026-09-20, all nine of SPY/QQQ/AAPL/MSFT/GOOGL/AMZN/NVDA/META/
+   TSLA had exactly 3029 daily rows ending 2026-09-18. One cache slot plus a key that could not tell them
+   apart meant the length fitted for whichever symbol was loaded BEFORE was silently reused for the next —
+   MSFT drew its ladder on AAPL's 14 instead of its own 10 — which mis-scales every rung and both triggers
+   (the previous-close anchor stays right, so it looks plausible). The date half was dead too: satyPeriods()
+   rows carry `key`, not `date`, so it always read undefined and only the row count ever invalidated it.
+   Keyed per symbol now, in a Map so two panes on different symbols don't evict each other every render;
+   capped the same way _serCache is. The explicit resets below (new session, auto-len re-ticked) clear it. */
+const satyAutoCache=new Map();
+function satyLen(rows,id){
   const C=satyC();
   if(C.autoLen===false)return Math.max(2,+C.atrLen||5);
-  // refits when the series does — i.e. once per close, not on every render
-  const k=(rows&&rows.length?rows.length+':'+rows[rows.length-1].date:'0');
-  if(satyAutoCache.key!==k){
-    const fit=satyAutoLen(rows);
-    // hysteresis: hold the incumbent unless the candidate is clearly better
-    satyAutoCache={key:k,len:fit};
+  const k=(id==null?cfg.sym:id)+'|'+(rows&&rows.length?rows.length+':'+rows[rows.length-1].key:'0');
+  if(!satyAutoCache.has(k)){
+    if(satyAutoCache.size>64)satyAutoCache.clear();
+    satyAutoCache.set(k,satyAutoLen(rows));
   }
-  return satyAutoCache.len;
+  return satyAutoCache.get(k);
 }
-function satyCompute(drows){
+function satyCompute(drows,id){
   const C=satyC();
   const mode=SATY_MODES[C.mode]?C.mode:'day';
   const rows=satyPeriods(mode,drows);
-  const len=satyLen(rows);
+  const len=satyLen(rows,id);
   if(rows.length<len+2)return null;
   const atrArr=satyATR(rows,len);
   if(!atrArr)return null;
@@ -8665,7 +8834,8 @@ function drawSatyOn(p){
   const C=satyC();
   if(C.tfs[String(p.tf)]===false)return;
   const drows=(paneData(p)||{}).daily||dailyRows;
-  const st=satyCompute(drows);
+  // pane 2 can be on its own alt symbol, so the ATR-length memo is keyed by THIS pane's symbol, not cfg.sym
+  const st=satyCompute(drows,p.sym||cfg.sym);
   if(!st){
     // say WHY nothing is drawn instead of leaving a blank chart to be puzzled over
     const need=Math.max(2,+C.atrLen||14)+2;
@@ -10952,7 +11122,7 @@ async function rollDailyIfNeeded(){
   const had=dailyYmd;
   await loadDaily();
   dailyYmd=t;
-  satyAutoCache={key:'',len:satyAutoCache.len};   // refit the ATR length on the new series
+  satyAutoCache.clear();   // refit the ATR length on the new series
   if(had){
     const st=satyCompute(dailyRows);
     log('New session '+t+' — daily series re-pulled, ATR levels re-anchored'
@@ -11625,7 +11795,7 @@ function wireHandles(){
     h.addEventListener('pointerdown',e=>{
       e.preventDefault();
       const i=+h.dataset.pane,t=h.dataset.t;
-      const wrap=$('#'+({rsi:'rsic',vol:'volc',macd:'macdc'})[t]+i+'wrap');
+      const wrap=$('#'+({rsi:'rsic',vol:'volc',macd:'macdc',adx:'adxc'})[t]+i+'wrap');
       const startY=e.clientY,startH=wrap.getBoundingClientRect().height;
       document.body.style.userSelect='none';document.body.style.cursor='ns-resize';
       // While pane 2 is showing, dragging Pane 1's handle mirrors the height to pane 2's matching
@@ -11633,7 +11803,7 @@ function wireHandles(){
       // follows; dragging pane 2's own handle does exactly what it always did (resizes that pane
       // alone, no effect on the other).
       const others=(i===0)?[1].filter(o=>o<cfg.paneN&&panes[o]):[];
-      const otherWraps=others.map(o=>$('#'+({rsi:'rsic',vol:'volc',macd:'macdc'})[t]+o+'wrap')).filter(Boolean);
+      const otherWraps=others.map(o=>$('#'+({rsi:'rsic',vol:'volc',macd:'macdc',adx:'adxc'})[t]+o+'wrap')).filter(Boolean);
       // No explicit sizeAll() here: each pane already has its own ResizeObserver on this exact
       // wrap element, rAF-throttled (see makePane) to coalesce a burst of height changes into one
       // resize per animation frame. Calling sizeAll() again here on every mousemove was doing the
@@ -11644,8 +11814,8 @@ function wireHandles(){
         let nh=startH-(ev.clientY-startY);
         nh=Math.max(48,Math.min(320,nh));
         wrap.style.height=nh+'px';
-        cfg[({rsi:'rsiH',vol:'volH',macd:'macdH'})[t]+i]=Math.round(nh);
-        otherWraps.forEach((ow,k)=>{ow.style.height=nh+'px';cfg[({rsi:'rsiH',vol:'volH',macd:'macdH'})[t]+others[k]]=Math.round(nh);});
+        cfg[({rsi:'rsiH',vol:'volH',macd:'macdH',adx:'adxH'})[t]+i]=Math.round(nh);
+        otherWraps.forEach((ow,k)=>{ow.style.height=nh+'px';cfg[({rsi:'rsiH',vol:'volH',macd:'macdH',adx:'adxH'})[t]+others[k]]=Math.round(nh);});
       };
       const up=()=>{
         document.removeEventListener('pointermove',mv);document.removeEventListener('pointerup',up);
@@ -11888,11 +12058,12 @@ function setPaneN(n){
       // rsiH1/volH1 stale, which otherwise surfaces the moment pane 2 comes back — this closes
       // that gap by re-syncing on every hidden-to-visible transition, not just during a live drag.
       if(wasN<2){
-        cfg.rsiH1=cfg.rsiH0;cfg.volH1=cfg.volH0;cfg.macdH1=cfg.macdH0;
-        const rw=$('#rsic1wrap'),vw=$('#volc1wrap'),mw=$('#macdc1wrap');
+        cfg.rsiH1=cfg.rsiH0;cfg.volH1=cfg.volH0;cfg.macdH1=cfg.macdH0;cfg.adxH1=cfg.adxH0;
+        const rw=$('#rsic1wrap'),vw=$('#volc1wrap'),mw=$('#macdc1wrap'),aw=$('#adxc1wrap');
         if(rw)rw.style.height=cfg.rsiH1+'px';
         if(vw)vw.style.height=cfg.volH1+'px';
         if(mw)mw.style.height=cfg.macdH1+'px';
+        if(aw)aw.style.height=cfg.adxH1+'px';
       }
       if(!panes[idx]&&window.LightweightCharts)panes[idx]=makePane(idx);
       // When this pane was already unlinked from before (being re-shown, not created fresh),
@@ -12620,6 +12791,40 @@ bindLineSwatch($('#swMcSig'),()=>({color:cfg.macd.sigC,width:cfg.macd.sigW,style
   st=>{cfg.macd.sigC=st.color;cfg.macd.sigW=st.width;cfg.macd.sigSt=st.style;saveCfg();scheduleRenderAll();});
 bindSwatch($('#swMcZero'),()=>cfg.macd.zeroC,c=>{cfg.macd.zeroC=c;saveCfg();scheduleRenderAll();});
 
+// ADX has no user-editable length: it is set automatically from each pane's timeframe (ADX_PRESETS / adxParams, see cfg.adx's comment), so this dialog only
+// styles the three lines and SHOWS the lengths. One shared cfg.adx drives both panes, like cfg.macd, so dlgPane only drives the pane-tag pill.
+const ADX_TF_LABEL={'1':'1m','5':'5m','10':'10m','15':'15m','60':'1H','240':'4H','D':'1D','W':'1W'};
+function adxAutoRowsHtml(){
+  const p=dlgP(),cur=p&&p.tf,auto=cfg.tfPresets!==false;
+  const cells=Object.keys(ADX_TF_LABEL).map(k=>{
+    const L=auto?ADX_PRESETS[k]:ADX_STANDARD,b=(k===cur)?'<b>'+ADX_TF_LABEL[k]+' '+L+'</b>':ADX_TF_LABEL[k]+' '+L;
+    return b;}).join(' &middot; ');
+  return (auto?'':'Auto-tune to timeframe is off \u2014 Wilder\'s standard 14 on every timeframe.<br>')+cells+(cur&&ADX_TF_LABEL[cur]?'<br>This pane ('+ADX_TF_LABEL[cur]+'): <b>'+adxParams(p).len+'</b>':'');
+}
+function openAdxModal(i){
+  if(i!=null)dlgPane=+i||0;
+  const A=cfg.adx;
+  $('#adxAdxOn').checked=!!A.adxOn;$('#adxPlusOn').checked=!!A.plusOn;$('#adxMinusOn').checked=!!A.minusOn;
+  $('#swAdxAdx').style.background=A.adxC;$('#swAdxPlus').style.background=A.plusC;$('#swAdxMinus').style.background=A.minusC;
+  $('#adxAutoRows').innerHTML=adxAutoRowsHtml();
+  {const t=$('#adxPaneTag');if(t)t.innerHTML=paneTag();}
+  $('#adxModal').style.display='flex';
+}
+function applyAdxModal(){
+  const A=cfg.adx;
+  A.adxOn=$('#adxAdxOn').checked;A.plusOn=$('#adxPlusOn').checked;A.minusOn=$('#adxMinusOn').checked;
+  saveCfg();scheduleRenderAll();
+}
+$$('.adxgear').forEach(b=>b.onclick=()=>openAdxModal(+b.dataset.pane||0));
+$('#adxCancel').onclick=()=>$('#adxModal').style.display='none';
+$('#adxOk').onclick=()=>{applyAdxModal();$('#adxModal').style.display='none';};
+bindLineSwatch($('#swAdxAdx'),()=>({color:cfg.adx.adxC,width:cfg.adx.adxW,style:cfg.adx.adxSt}),
+  st=>{cfg.adx.adxC=st.color;cfg.adx.adxW=st.width;cfg.adx.adxSt=st.style;saveCfg();scheduleRenderAll();});
+bindLineSwatch($('#swAdxPlus'),()=>({color:cfg.adx.plusC,width:cfg.adx.plusW,style:cfg.adx.plusSt}),
+  st=>{cfg.adx.plusC=st.color;cfg.adx.plusW=st.width;cfg.adx.plusSt=st.style;saveCfg();scheduleRenderAll();});
+bindLineSwatch($('#swAdxMinus'),()=>({color:cfg.adx.minusC,width:cfg.adx.minusW,style:cfg.adx.minusSt}),
+  st=>{cfg.adx.minusC=st.color;cfg.adx.minusW=st.width;cfg.adx.minusSt=st.style;saveCfg();scheduleRenderAll();});
+
 // Volume has no per-timeframe auto-tuning and no per-pane style (both panes share one
 // up/down color pair), so dlgPane only drives the pane-tag pill here, not any auto-tuned value.
 $$('.volgear').forEach(b=>b.onclick=()=>openVolModal(+b.dataset.pane||0));
@@ -13119,7 +13324,7 @@ bindLineSwatch($('#rbSwSlowConv'),
   const al=$('#syAutoLen');
   if(al)al.onchange=()=>{
     satyC().autoLen=al.checked;
-    if(al.checked)satyAutoCache={key:'',len:satyAutoCache.len};
+    if(al.checked)satyAutoCache.clear();
     satyRedraw();satyLenNote();
   };
   num('#syFast','emaFast',2);num('#syPivot','emaPivot',2);num('#sySlow','emaSlow',2);
@@ -13144,7 +13349,7 @@ bindLineSwatch($('#rbSwSlowConv'),
 const ESCAPE_MODALS=[
   ['satyModal','satyCancel'],['rbModal','rbCancel'],
   ['alertEditModal','alCancelBtn'],['alertsModal','alertsCloseBtn'],
-  ['rsiModal','rsCancel'],['macdModal','mcCancel'],['volModal','voCancel'],
+  ['rsiModal','rsCancel'],['macdModal','mcCancel'],['adxModal','adxCancel'],['volModal','voCancel'],
   ['vwapModal','vwapCancel'],['stModal','stCancel'],
   ['setup','cfgCancel'],
 ];
