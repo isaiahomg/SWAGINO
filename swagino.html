@@ -4019,7 +4019,8 @@ function resetView(p,_again){
 function sessKeep(b){
   const dow=new Date(b.etYmd+'T12:00:00Z').getUTCDay();
   if(dow===0||dow===6)return false;
-  if(cfg.sess==='rth')return b.etMin>=570&&b.etMin<960;
+  // regular session ends at that day's actual close: 13:00 on an early-close day, when 13:00-16:00 is post-market
+  if(cfg.sess==='rth')return b.etMin>=570&&b.etMin<sessionCloseMin(b.etYmd);
   return true;
 }
 // Minutes from the start of b's bucket to b itself. Tradier's timesales leaves out intervals with
@@ -4141,7 +4142,7 @@ function seriesForTFRaw(tf,D){
   // most of the morning session, and an opens-inside test would have called it overnight.
   const span=tf==='5'?5:tf==='10'?10:tf==='60'?60:240;
   return src.map(b=>({time:toChartTime(b.t),t:b.t,open:b.o,high:b.h,low:b.l,close:b.c,volume:b.v,
-    ymd:b.etYmd,etMin:b.etMin,rth:b.etMin<960&&b.etMin+span>570}));
+    ymd:b.etYmd,etMin:b.etMin,rth:b.etMin<sessionCloseMin(b.etYmd)&&b.etMin+span>570}));
 }
 
 /* ---------- indicators ---------- */
@@ -4230,9 +4231,6 @@ function rmaSeries(vals,n){
     if(r==null){sum+=v;cnt++;if(cnt===n){r=sum/n;out[i]=r;}else out[i]=null;}
     else{r=(r*(n-1)+v)/n;out[i]=r;}}
   return out;
-}
-function sessionBreaks(data){
-  return data.map((d,i)=>i>0&&d.ymd!==undefined&&data[i-1].ymd!==undefined&&d.ymd!==data[i-1].ymd);
 }
 // TradingView's built-in RSI, ported verbatim from the Pine v6 source:
 //   change = ta.change(src); up = ta.rma(max(change,0), len); down = ta.rma(-min(change,0), len)
@@ -6581,12 +6579,13 @@ function etMinOfChartTime(t){
   if(typeof t==='string')return -1;               // 1D bar: no intraday session
   const d=new Date(t*1000);return d.getUTCHours()*60+d.getUTCMinutes();
 }
-function sessClass(mm){
+function sessClass(mm,ymd){
   if(mm<0)return null;
+  const close=ymd?sessionCloseMin(ymd):960;
   // 00:00-09:30 all carries the premarket hue. The overnight lead-in (12:00-03:55) used to
   // stay black and read as regular-session tape; 04:00-09:30 is the premarket proper.
   if(mm<570)return 'pre';                          // 00:00-09:30
-  if(mm>=960&&mm<1200)return 'post';              // 16:00-20:00
+  if(mm>=close&&mm<1200)return 'post';            // 16:00-20:00 (13:00-20:00 on an early-close day)
   return null;                                     // RTH 09:30-16:00 (and the 20:00-24:00 gap)
 }
 // RSI divergence's own marker+label, over the RSI subpane — moved off LWC's native
@@ -6627,7 +6626,7 @@ function positionDivergence(p){
 function computeSessBands(times){
   const out=[];let run=null;
   for(let i=0;i<times.length;i++){
-    const cls=sessClass(etMinOfChartTime(times[i]));
+    const cls=sessClass(etMinOfChartTime(times[i]),typeof times[i]==='number'?new Date(times[i]*1000).toISOString().slice(0,10):null);
     if(cls&&run&&run.cls===cls){run.t1=times[i];}
     else{if(run)out.push(run);run=cls?{cls,t0:times[i],t1:times[i]}:null;}
   }
@@ -7041,7 +7040,7 @@ function touchSessionExtremes(px){
   const t=nowET(),mm=t.h*60+t.m;
   if(sessExt.ymd!==t.ymd)sessExt={ymd:t.ymd,hod:-Infinity,lod:Infinity,pmh:-Infinity,pml:Infinity};
   let moved=false;
-  if(mm>=570&&mm<960){
+  if(mm>=570&&mm<sessionCloseMin(t.ymd)){
     if(px>sessExt.hod){sessExt.hod=px;moved=true;}
     if(px<sessExt.lod){sessExt.lod=px;moved=true;}
   }else if(mm>=240&&mm<570){
@@ -7160,7 +7159,15 @@ function updateForming(px,sz,closeOnly,cvol,tradeTs){
   if(touchSessionExtremes(px))computeLevels();
   const t=m.ymd,r=dailyRows[dailyRows.length-1];
   let dailyExtremeMoved=false;
-  if(r&&r.date===t){
+  // Today's daily row is a REGULAR-SESSION bar: Tradier's daily history (and its own quote `last` and
+  // volume after the close) stop at the 16:00 close — verified 2026-09-28 22:00 ET, TSLA daily close /
+  // quote last 357.45 while the after-hours bid/ask sat at 358.08/358.20. Extended-hours prints used to
+  // move this row too, so after 16:00 the Daily/Weekly candle's close (and possibly high/low) drifted to
+  // post-market prices that the next day's re-pull silently took back. Only a print time-stamped inside
+  // 09:30:00-close (inclusive of the closing-auction second; 13:00 on an early-close day) may touch it.
+  const pT=etParts(new Date(now*1000)),pSec=pT.h*3600+pT.m*60+(+pT.hms.slice(6,8));
+  const inRegular=pT.ymd===t&&pSec>=570*60&&pSec<=sessionCloseMin(t)*60;
+  if(r&&r.date===t&&inRegular){
     r.close=px;
     if(px>r.high){r.high=px;dailyExtremeMoved=true;}
     if(px<r.low){r.low=px;dailyExtremeMoved=true;}
@@ -7231,7 +7238,7 @@ function applyTradeTick(px,sz,cvolNum,tradeTs){
 function filterTradeTick(px,sz,cvolNum,tradeTs,sizeSuspect){
   if(!isFinite(px)||px<=0)return;
   const mm=nowET().h*60+nowET().m;
-  if(mm>=570&&mm<960){applyTradeTick(px,sz,cvolNum,tradeTs);return;}   // RTH — unfiltered, as before
+  if(mm>=570&&mm<sessionCloseMin(nowET().ymd)){applyTradeTick(px,sz,cvolNum,tradeTs);return;}   // RTH — unfiltered, as before
   const held=_pendingTick;
   if(held){
     _pendingTick=null;
@@ -7915,6 +7922,7 @@ function easterSunday(y){
   return new Date(Date.UTC(y,mo-1,da));
 }
 const _mktCal={};
+const MKT_ONE_OFF_CLOSED=['2018-12-05','2025-01-09'];
 function marketCalendar(y){
   if(_mktCal[y])return _mktCal[y];
   const iso=d=>d.toISOString().slice(0,10);
@@ -7928,15 +7936,20 @@ function marketCalendar(y){
     return d;};
   const gf=easterSunday(y);gf.setUTCDate(gf.getUTCDate()-2);          // Good Friday
   const thx=nth(10,4,4);                                             // 4th Thu Nov
+  // Juneteenth became an exchange holiday in 2022 (real bars exist on June 19 2014-2020 and June 18
+  // 2021). The two one-off closures are national days of mourning inside the loaded daily history.
   const closed=[obs(0,1,true),nth(0,1,3),nth(1,1,3),gf,lastOf(4,1),
-                obs(5,19),obs(6,4),nth(8,1,1),thx,obs(11,25)]
-    .filter(Boolean).map(iso);
+                y>=2022?obs(5,19):null,obs(6,4),nth(8,1,1),thx,obs(11,25)]
+    .filter(Boolean).map(iso).concat(MKT_ONE_OFF_CLOSED.filter(d=>+d.slice(0,4)===y));
   // 1:00 PM ET early closes
   const early=[];
   const blackFri=new Date(thx);blackFri.setUTCDate(thx.getUTCDate()+1);early.push(iso(blackFri));
   [[6,3],[11,24]].forEach(([mo,da])=>{const d=new Date(Date.UTC(y,mo,da));
     if(d.getUTCDay()>=1&&d.getUTCDay()<=5)early.push(iso(d));});
-  return (_mktCal[y]={closed:new Set(closed),early:new Set(early)});
+  // July 3 / Dec 24 falling on the OBSERVED holiday itself (July 4 or Dec 25 on a Saturday) is a
+  // full closure, not a 1:00 PM close (Tradier: 2026-07-03 "closed for Independence Day (Observed)").
+  const closedSet=new Set(closed);
+  return (_mktCal[y]={closed:closedSet,early:new Set(early.filter(d=>!closedSet.has(d)))});
 }
 function isMarketHoliday(ymd){return marketCalendar(+String(ymd).slice(0,4)).closed.has(ymd);}
 function isEarlyClose(ymd){return marketCalendar(+String(ymd).slice(0,4)).early.has(ymd);}
@@ -8003,7 +8016,8 @@ function tfRemaining(tf){
   const p=nowET();const sec=+p.hms.split(':')[2];
   const minute=p.h*60+p.m;const s=minute*60+sec;
   if(tf==='D'){
-    if(minute>=570&&minute<960)return 960*60-s;   // counting to 4:00 PM close
+    const close=sessionCloseMin(p.ymd);
+    if(minute>=570&&minute<close)return close*60-s; // counting to the close (4:00 PM, 1:00 PM early)
     if(minute<570)return 570*60-s;                 // counting to 9:30 open
     return null;                                   // after close
   }
@@ -8825,8 +8839,9 @@ function satyAutoLen(rows,look){
    MSFT drew its ladder on AAPL's 14 instead of its own 10 — which mis-scales every rung and both triggers
    (the previous-close anchor stays right, so it looks plausible). The date half was dead too: satyPeriods()
    rows carry `key`, not `date`, so it always read undefined and only the row count ever invalidated it.
-   Keyed per symbol now, in a Map so two panes on different symbols don't evict each other every render;
-   capped the same way _serCache is. The explicit resets below (new session, auto-len re-ticked) clear it. */
+   Keyed by the rows' own content now (see satyLen), in a Map so two panes on different symbols don't evict
+   each other every render; capped the same way _serCache is. The explicit resets below (new session,
+   auto-len re-ticked) clear it. */
 const satyAutoCache=new Map();
 /* The rows the auto length is fitted on. Day mode: COMPLETED days only (strictly before today, ET).
    satyPeriods('day') keeps today's still-forming row, and fitting on it made the length depend on
@@ -8842,21 +8857,28 @@ function satyFitRows(mode,rows){
   while(n>0&&rows[n-1].key>=todayYmd)n--;
   return n===rows.length?rows:rows.slice(0,n);
 }
-function satyLen(rows,id){
+function satyLen(rows){
   const C=satyC();
   if(C.autoLen===false)return Math.max(2,+C.atrLen||5);
-  const k=(id==null?cfg.sym:id)+'|'+(rows&&rows.length?rows.length+':'+rows[rows.length-1].key:'0');
+  // The fit is a pure function of `rows`, so the key identifies the ROWS, not a ticker name. Keying on
+  // the name (plus length/last date, which every ticker shares) still leaked: a render that ran after
+  // cfg.sym had switched but before the new daily rows arrived cached the OLD symbol's fit under the
+  // NEW name, and it stuck for the session — reproduced QQQ -> TSLA: TSLA drawn on QQQ's length 5
+  // (ATR 12.10) instead of its own 14 (ATR 12.73), in 2 of 4 switches. The checksum covers every row.
+  let ck=0;
+  if(rows)for(let i=0;i<rows.length;i++){const r=rows[i];ck=(ck*31+r.high*7+r.low*3+r.close)%1e12;}
+  const k=(rows&&rows.length?rows.length+':'+rows[0].key+':'+rows[rows.length-1].key+':'+ck:'0');
   if(!satyAutoCache.has(k)){
     if(satyAutoCache.size>64)satyAutoCache.clear();
     satyAutoCache.set(k,satyAutoLen(rows));
   }
   return satyAutoCache.get(k);
 }
-function satyCompute(drows,id){
+function satyCompute(drows){
   const C=satyC();
   const mode=SATY_MODES[C.mode]?C.mode:'day';
   const rows=satyPeriods(mode,drows);
-  const len=satyLen(satyFitRows(mode,rows),id);
+  const len=satyLen(satyFitRows(mode,rows));
   if(rows.length<len+2)return null;
   const atrArr=satyATR(rows,len);
   if(!atrArr)return null;
@@ -8967,8 +8989,8 @@ function drawSatyOn(p){
   const C=satyC();
   if(C.tfs[String(p.tf)]===false)return;
   const drows=(paneData(p)||{}).daily||dailyRows;
-  // pane 2 can be on its own alt symbol, so the ATR-length memo is keyed by THIS pane's symbol, not cfg.sym
-  const st=satyCompute(drows,p.sym||cfg.sym);
+  // pane 2 can be on its own alt symbol: drows is THIS pane's daily series (the length memo keys on its content)
+  const st=satyCompute(drows);
   if(!st){
     // say WHY nothing is drawn instead of leaving a blank chart to be puzzled over
     const need=Math.max(2,+C.atrLen||14)+2;
@@ -9204,7 +9226,7 @@ function computeInstitutionalLevels(push,dailyRowsSrc,bars5Src,spotSrc){
     }
   };
   rows.forEach(r=>{
-    const dayBars=barsSrc.filter(b=>b.etYmd===r.date&&b.etMin>=570&&b.etMin<960);
+    const dayBars=barsSrc.filter(b=>b.etYmd===r.date&&b.etMin>=570&&b.etMin<sessionCloseMin(r.date));
     const dayBarVol=dayBars.reduce((s,b)=>s+(b.v||0),0);
     if(dayBars.length>=INST_MIN_RTH_BARS&&dayBarVol>0){
       // Shape from 5-min bars, rescaled to the day's true (dailyRows) total — see comment above.
@@ -9264,7 +9286,7 @@ function computeLevels(){
     prevClosePx=pd.close;
   }
   const tb=bars5.filter(b=>b.etYmd===todayYmd);
-  const pre=tb.filter(b=>b.etMin>=240&&b.etMin<570),rth=tb.filter(b=>b.etMin>=570&&b.etMin<960);
+  const pre=tb.filter(b=>b.etMin>=240&&b.etMin<570),rth=tb.filter(b=>b.etMin>=570&&b.etMin<sessionCloseMin(todayYmd));
   if(pre.length){push(Math.max(...pre.map(b=>b.h)),'PM high','session',2,'PMH');push(Math.min(...pre.map(b=>b.l)),'PM low','session',2,'PML');}
   if(rth.length){push(Math.max(...rth.map(b=>b.h)),'High of Day','session',1,'HOD');push(Math.min(...rth.map(b=>b.l)),'Low of Day','session',1,'LOD');}
   const g=LS.gex;if(g&&g.levels)g.levels.forEach(x=>push(x.price,x.label,'gex',x.w||1,x.key||x.label,x.color,x.style));
@@ -9297,7 +9319,7 @@ function computeLevels2(){
     push(pd.high,'Prev H','prev',2,'PrevH');push(pd.low,'Prev L','prev',2,'PrevL');
   }
   const tb=bars5_2.filter(b=>b.etYmd===todayYmd);
-  const pre=tb.filter(b=>b.etMin>=240&&b.etMin<570),rth=tb.filter(b=>b.etMin>=570&&b.etMin<960);
+  const pre=tb.filter(b=>b.etMin>=240&&b.etMin<570),rth=tb.filter(b=>b.etMin>=570&&b.etMin<sessionCloseMin(todayYmd));
   if(pre.length){push(Math.max(...pre.map(b=>b.h)),'PM high','session',2,'PMH');push(Math.min(...pre.map(b=>b.l)),'PM low','session',2,'PML');}
   if(rth.length){push(Math.max(...rth.map(b=>b.h)),'High of Day','session',1,'HOD');push(Math.min(...rth.map(b=>b.l)),'Low of Day','session',1,'LOD');}
   const g=gex2Board;if(g&&g.levels)g.levels.forEach(x=>push(x.price,x.label,'gex',x.w||1,x.key||x.label,x.color,x.style));
@@ -10018,6 +10040,8 @@ async function computeChainGex(){
   const rfrPct=+cfg.gexRfr;
   if(!isFinite(rfrPct)){toast('GEX','Risk-free rate not set — enter one in Settings → GEX before computing','short');return;}
   const r=rfrPct/100;
+  // SYMBOL GUARD (see loadBars5): every request and the final commit belong to the ticker this started for
+  const sym=cfg.sym;
   gexBusy=true;gexStatus();
   try{
     // §2c: spot must be tied to a live quote at COMPUTE TIME, not the cached stream value. Pull a
@@ -10042,8 +10066,8 @@ async function computeChainGex(){
     // not their sum — measured against real Tradier latency this is the single biggest lever on
     // "how long until the GEX board updates after typing a new ticker".
     const [qRes,eRes]=await Promise.allSettled([
-      tradier(`/v1/markets/quotes?symbols=${cfg.sym}`),
-      tradier(`/v1/markets/options/expirations?symbol=${cfg.sym}&includeAllRoots=true&strikes=false`)
+      tradier(`/v1/markets/quotes?symbols=${sym}`),
+      tradier(`/v1/markets/options/expirations?symbol=${sym}&includeAllRoots=true&strikes=false`)
     ]);
     if(qRes.status==='fulfilled'){
       const qj=qRes.value,qq=qj.quotes&&qj.quotes.quote,Q=Array.isArray(qq)?qq[0]:qq,qlast=Q&&+Q.last;
@@ -10074,7 +10098,7 @@ async function computeChainGex(){
       if(!(T>0))throw new Error('expiration '+ex+' has no time remaining to its market close — cannot price');
       // greeks=true dropped — the chain's own bid/ask (unconditional, not an entitlement) is now
       // the only thing this reads; Tradier's greeks object is no longer requested or used at all.
-      const jc=await tradier(`/v1/markets/options/chains?symbol=${cfg.sym}&expiration=${ex}`);
+      const jc=await tradier(`/v1/markets/options/chains?symbol=${sym}&expiration=${ex}`);
       let os=jc.options&&jc.options.option;os=Array.isArray(os)?os:os?[os]:[];
       // §1: log ONE raw option object so field names (bid, ask, open_interest, ...) can be spot-checked.
       if(!sampled&&os.length){log('GEX raw sample ('+ex+'): '+JSON.stringify(os[0]).slice(0,600),'warn');sampled=true;}
@@ -10127,6 +10151,7 @@ async function computeChainGex(){
     if(!(totalAbs>0))throw new Error('gamma is zero across every strike in range — board rejected');
     // COMMIT: every guardrail above passed, so this board replaces the live one atomically (no
     // await between here and gexResubscribe() below — nothing can observe a half-swapped state).
+    if(cfg.sym!==sym){log('GEX board for '+sym+' discarded — the chart moved to '+cfg.sym+' while it was computing','warn');return;}
     gexByStrike=byStrike;gexByExp=byExp;gexContracts=contracts;gexWsSymbols=[...contracts.keys()];
     gexHeat={exps:front.slice(),byExp,spot,t:Date.now()};
     // §2/§4 freshness surfaced to the UI (see gexStatus): spot as-of + what was excluded.
@@ -10229,6 +10254,7 @@ async function computeChainGex2(){
     // COMMIT into the PERSISTENT gex2* state (not the local byStrike/byExp above) — this is what
     // handleGex2QuoteTick's per-tick deltas patch between bootstraps, same "commit only after
     // every guardrail passed" discipline as computeChainGex()'s own gexByStrike/gexByExp commit.
+    if(!altState[1]||altState[1].sym!==sym2){log('Pane 2 GEX board for '+sym2+' discarded — the pane changed ticker while it was computing','warn');return;}   // SYMBOL GUARD
     gex2ByStrike=byStrike;gex2ByExp=byExp;gex2Contracts=contracts;gex2WsSymbols=[...contracts.keys()];
     gex2Spot=spot;
     gex2Heat={exps:front.slice(),byExp,spot,t:Date.now()};
@@ -11135,27 +11161,6 @@ function paneParams(p){
   };
 }
 
-/* ---------- 5m indicator stack (always computed on 5m, whatever is displayed) ---------- */
-let ind5={ready:false};
-function computeInd5(){
-  _computeInd5Core();
-}
-function _computeInd5Core(){
-  if(!bars5.length){ind5={ready:false};return;}
-  const d=bars5.map(b=>({high:b.h,low:b.l,close:b.c,ymd:b.etYmd}));
-  const brk5=sessionBreaks(d);
-  const trA=[];
-  for(let i=0;i<d.length;i++){
-    // Overnight gaps are ALWAYS excluded, and this is no longer a setting. ATR drives the
-    // break buffer, the retest zone, the probe pierce and the stop pad — every distance a
-    // trigger measures. Letting a 3-point Sunday-night gap into a 14-period ATR inflates all
-    // of them at Monday's open, which is exactly when the opening-range setups fire. There
-    // is no configuration of this book where including the gap is the right answer.
-    if(i===0||brk5[i]){trA.push(null);continue;}
-    trA.push(Math.max(d[i].high-d[i].low,Math.abs(d[i].high-d[i-1].close),Math.abs(d[i].low-d[i-1].close)));
-  }
-  ind5={ready:true,atr:rmaSeries(trA,14)};
-}
 function beep(kind){
   try{
     const ctx=beep.ctx||(beep.ctx=new(window.AudioContext||window.webkitAudioContext)());
@@ -11272,10 +11277,21 @@ function cleanBadVolumeRows(rows){
 }
 // Re-pull the dailies when the session date moves on. Cheap (one request, ~1200 rows) and
 // it only fires on the first tick of a new trading day, so it costs nothing intraday.
-let dailyYmd=null;
+let dailyYmd=null,_dailyTodayTryAt=0;
 async function rollDailyIfNeeded(){
   const t=nowET().ymd;
-  if(dailyYmd===t)return;
+  if(dailyYmd===t){
+    // The daily series is otherwise fetched once per ET date, so if that fetch ran before Tradier
+    // had a row for today (a pre-market start), the Daily/Weekly charts and every daily-based
+    // readout had no bar for today for the whole session — ticks only ever UPDATE an existing row.
+    // Once the regular session is open, pull again (at most once a minute) until today's row exists.
+    const L=dailyRows[dailyRows.length-1];
+    if(marketPhase()==='open'&&(!L||L.date<t)&&Date.now()-_dailyTodayTryAt>60000){
+      _dailyTodayTryAt=Date.now();
+      await loadDaily();
+    }
+    return;
+  }
   const had=dailyYmd;
   await loadDaily();
   dailyYmd=t;
@@ -11305,7 +11321,9 @@ async function loadDaily(){
   // roll daily bars up into quarterly/yearly periods, and those need real years of daily
   // history behind them to have enough periods for even the shortest auto-fit ATR length.
   const start=new Date(Date.now()-4400*864e5).toISOString().slice(0,10);
-  const j=await tradier(`/v1/markets/history?symbol=${cfg.sym}&interval=daily&start=${start}&end=${end}`);
+  const sym=cfg.sym;
+  const j=await tradier(`/v1/markets/history?symbol=${sym}&interval=daily&start=${start}&end=${end}`);
+  if(cfg.sym!==sym)return;   // the chart moved to another ticker while this was in flight (see SYMBOL GUARD)
   const day=j.history&&j.history.day;
   dailyRows=(Array.isArray(day)?day:day?[day]:[]).map(r=>({date:r.date,open:+r.open,high:+r.high,low:+r.low,close:+r.close,volume:+r.volume||0}));
   if(!dailyRows.length)throw new Error('no daily history returned');
@@ -11399,6 +11417,7 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 // Walk backwards in chunks until Tradier stops returning data or the cap is reached,
 // so each interval reaches its true retention limit instead of a guessed window.
 async function deepen(interval,chunkDays,maxDays){
+  const sym=cfg.sym;   // SYMBOL GUARD (see loadBars5): returns false if the chart changed ticker mid-backfill
   // Once Tradier's true intraday retention window for this interval is known — cached below
   // from an earlier run's discovery, or this run's own once it happens — never send a request
   // that starts before it. That is what actually eliminates the "benign" 400 the walk used to
@@ -11424,7 +11443,7 @@ async function deepen(interval,chunkDays,maxDays){
     if(knownBoundaryMs!=null&&startMs<knownBoundaryMs)startMs=knownBoundaryMs;
     const startD=new Date(startMs);
     let rows=[];
-    try{rows=await fetchTsRange(interval,startD,endD);}catch(e){
+    try{rows=await fetchTsRange(interval,startD,endD,sym);}catch(e){
       // Tradier's timesales endpoint has a hard intraday retention limit; walking back past it
       // always fails with this SPECIFIC "start: must be on or after ..." validation error — that
       // is not a problem, it is the signal this loop is DESIGNED to detect (see the comment above
@@ -11445,38 +11464,50 @@ async function deepen(interval,chunkDays,maxDays){
         }
       }else log('History backfill stopped for '+interval+': '+e.message,'warn');
       break;}
+    if(cfg.sym!==sym)return false;   // SYMBOL GUARD (see loadBars5)
     if(!rows.length)break;
     if(interval==='5min')bars5=mergeBars(rows,bars5);else bars15=mergeBars(rows,bars15);
     await sleep(200);
+    if(cfg.sym!==sym)return false;
   }
   const arr=interval==='5min'?bars5:bars15;
   if(arr.length)log(`History depth \u00b7 ${interval}: ${arr.length} bars back to ${arr[0].etYmd}`,'long');
 }
 async function deepenAll(){
   try{
-    await deepen('5min',20,400);
+    if(await deepen('5min',20,400)===false)return;
     // deepen() PREPENDS older bars to the front of bars5/bars15 \u2014 every existing bar's logical
     // index shifts by however many were added. lockView()'s index-based preservation (via
     // renderAll()) would silently relocate a user who is reading history right as a backfill
     // step lands; renderPaneKeepView's bar-spacing/scroll-position approach is immune to that.
     visPanes().forEach(renderPaneKeepView);
-    await deepen('15min',45,400);
+    if(await deepen('15min',45,400)===false)return;
     visPanes().forEach(renderPaneKeepView);
     log('Backfill complete \u2014 all timeframes now span the maximum history Tradier returns','long');
   }catch(e){log('Backfill halted: '+(e.message||e),'warn');}
 }
+/* SYMBOL GUARD. bars5/bars15/dailyRows/lastPx belong to cfg.sym, but every loader below awaits the
+   network, and a ticker switch in the meantime used to let the OLD symbol's response land on the NEW
+   symbol's arrays. Reproduced (QQQ -> TSLA the moment the first chart painted, 300ms API latency):
+   QQQ's still-running backfill merged 2,138 QQQ bars into TSLA's 5m history, and a slow QQQ 15m
+   response replaced TSLA's whole 15m history (so TSLA's 1H/4H charts drew QQQ). Each loader now
+   fetches for the symbol it started with and drops the result if the chart has moved on. */
 async function loadBars5(full){
-  const now=new Date();
-  if(full){bars5=await fetchTsRange('5min',new Date(Date.now()-20*864e5),now);return;}
-  bars5=mergeBars(bars5,await fetchTsRange('5min',new Date(Date.now()-864e5),now),300);
+  const now=new Date(),sym=cfg.sym;
+  const rows=await fetchTsRange('5min',new Date(Date.now()-(full?20:1)*864e5),now,sym);
+  if(cfg.sym!==sym)return;
+  bars5=full?rows:mergeBars(bars5,rows,300);
 }
 async function loadBars15(full){
-  const now=new Date();
-  if(full){bars15=await fetchTsRange('15min',new Date(Date.now()-45*864e5),now);return;}
-  bars15=mergeBars(bars15,await fetchTsRange('15min',new Date(Date.now()-2*864e5),now),900);
+  const now=new Date(),sym=cfg.sym;
+  const rows=await fetchTsRange('15min',new Date(Date.now()-(full?45:2)*864e5),now,sym);
+  if(cfg.sym!==sym)return;
+  bars15=full?rows:mergeBars(bars15,rows,900);
 }
 async function loadQuote(){
-  const j=await tradier(`/v1/markets/quotes?symbols=${cfg.sym}`);
+  const sym=cfg.sym;
+  const j=await tradier(`/v1/markets/quotes?symbols=${sym}`);
+  if(cfg.sym!==sym)return;   // SYMBOL GUARD (see loadBars5)
   const q=j.quotes&&j.quotes.quote;if(!q)return;
   // WS is the primary tick source, but "connected" doesn't mean "delivering" - Tradier's
   // per-symbol quote stream can go quiet for one ticker while the socket itself stays open and
@@ -11530,11 +11561,18 @@ async function loadAlt(sym,paneIdx){
   const now=new Date();
   const end=nowET().ymd;
   const startD=new Date(Date.now()-4400*864e5).toISOString().slice(0,10);   // see loadDaily()
+  // Same SYMBOL GUARD as the main loaders (see loadBars5): fetch everything first, then commit all three
+  // series together — and only if this is still the newest request for the pane. It used to write each
+  // series as it arrived while st.sym still named the previous ticker, and two overlapping loads could
+  // leave the pane holding one symbol's daily with another's intraday bars.
+  const req=st._req=(st._req||0)+1;
   const jd=await tradier(`/v1/markets/history?symbol=${sym}&interval=daily&start=${startD}&end=${end}`);
   let day=jd.history&&jd.history.day;day=Array.isArray(day)?day:day?[day]:[];
-  st.data.daily=day.map(r=>({date:r.date,open:+r.open,high:+r.high,low:+r.low,close:+r.close,volume:+r.volume||0}));
-  st.data.bars5=await fetchTsRange('5min',new Date(Date.now()-20*864e5),now,sym);
-  st.data.bars15=await fetchTsRange('15min',new Date(Date.now()-45*864e5),now,sym);
+  const daily=day.map(r=>({date:r.date,open:+r.open,high:+r.high,low:+r.low,close:+r.close,volume:+r.volume||0}));
+  const b5=await fetchTsRange('5min',new Date(Date.now()-20*864e5),now,sym);
+  const b15=await fetchTsRange('15min',new Date(Date.now()-45*864e5),now,sym);
+  if(st._req!==req)return;
+  st.data.daily=daily;st.data.bars5=b5;st.data.bars15=b15;
   st.sym=sym;
   if(!st.data.daily.length&&!st.data.bars5.length)throw new Error('no data returned for '+sym);
   log(`Pane ${paneIdx+1} loaded ${sym} \u00b7 ${st.data.bars5.length}\u00d75m, ${st.data.daily.length} daily`,'long');
@@ -11544,8 +11582,12 @@ async function refreshAlt(paneIdx){
   if(!st||!st.sym||st.sym===cfg.sym)return;
   const now=new Date();
   try{
-    st.data.bars5=mergeBars(st.data.bars5,await fetchTsRange('5min',new Date(Date.now()-864e5),now,st.sym));
-    st.data.bars15=mergeBars(st.data.bars15,await fetchTsRange('15min',new Date(Date.now()-2*864e5),now,st.sym));
+    const sym=st.sym,req=st._req;
+    const r5=await fetchTsRange('5min',new Date(Date.now()-864e5),now,sym);
+    const r15=await fetchTsRange('15min',new Date(Date.now()-2*864e5),now,sym);
+    if(st.sym!==sym||st._req!==req)return;   // SYMBOL GUARD: the pane switched ticker while this was in flight
+    st.data.bars5=mergeBars(st.data.bars5,r5);
+    st.data.bars15=mergeBars(st.data.bars15,r15);
     if(panes[paneIdx]){renderPane(panes[paneIdx]);drawAlertLines();}
     // Pane 2's own Levels ladder rides this SAME poll (no separate timer) — same idea as GEX
     // riding gexAutoTick's existing 1s ticker instead of getting one of its own.
@@ -11686,6 +11728,7 @@ async function connect(){
   clearInterval(quoteTimer);clearInterval(barTimer);stopStream();
   const prevSym=cfg.sym;
   cfg.sym=$('#symInput').value.trim().toUpperCase()||'QQQ';
+  const connSym=cfg.sym;   // SYMBOL GUARD (see loadBars5): a newer connect() for another ticker supersedes this one
   // MEASURE, DON'T GUESS: a ticker swap touches three independently-timed things — the chart
   // (daily+5m, awaited below), Levels (needs a fresh quote, fired but not awaited), and GEX (its
   // own multi-call bootstrap, also fired but not awaited) — so "how long until it's all caught up"
@@ -11730,12 +11773,19 @@ async function connect(){
        in a moment later as a cheap per-tick update. That removes one full network round trip from
        the time-to-first-chart on every ticker entry. */
     await Promise.all([loadDaily(),loadBars5(true)]);
+    if(cfg.sym!==connSym)return;
     dailyYmd=nowET().ymd;
+    // A render that runs while the previous ticker's data is still in the arrays (cfg.sym already switched)
+    // can key BOS/CHoCH's classification-freeze cache to THIS symbol with the OLD symbol's swings, and swing
+    // timestamps are shared across tickers — so start it fresh now that this symbol's own bars are in.
+    // (Defensive: not observed in the switch tests, which did reproduce the bar and Saty-length leaks.)
+    if(_isSwap)panes.forEach(pp=>{if(pp&&(!pp.sym||pp.sym===cfg.sym)){pp._bosChochSeriesKey=null;pp._bosChochKindCache=null;}});
     loadBars15(true).then(()=>{
+      if(cfg.sym!==connSym)return;
       log(`15m history ready · ${bars15.length} bars — 1H/4H now use it`,'long');
       visPanes().forEach(renderPaneKeepView);
     }).catch(()=>{});
-    computeInd5();computeLevels();
+    computeLevels();
     visPanes().forEach(renderPaneKeepView);      // FIRST PAINT — no longer waits on the quote RTT
     setStatus();
     if(_isSwap)log(`⏱ swap→chart painted: ${(performance.now()-_swapT0).toFixed(0)}ms`,'long');
@@ -11797,7 +11847,7 @@ async function connect(){
     // bar from bars5/bars15's current, just-reconciled state, so it stays correct) and reserve
     // the full render for when a bar has genuinely closed, or there was nothing to compare yet.
     const b5Len=bars5.length,b5T=b5Len?bars5[b5Len-1].t:null,b15Len=bars15.length,b15T=b15Len?bars15[b15Len-1].t:null;
-    await loadBars5(false);await loadBars15(false);computeInd5();computeLevels();
+    await loadBars5(false);await loadBars15(false);computeLevels();
     const barClosed=b5Len===0||b5Len!==bars5.length||(bars5.length&&bars5[bars5.length-1].t!==b5T)
       ||b15Len!==bars15.length||(bars15.length&&bars15[bars15.length-1].t!==b15T);
     if(!document.hidden){
@@ -11808,7 +11858,7 @@ async function connect(){
   }catch(e){fail(e);}
 }
 // Returning to the tab after it was backgrounded: pull the authoritative bars (correcting any
-// WebSocket drift), recompute the 5m indicators and levels, then render once and summarise it
+// WebSocket drift), recompute the levels, then render once and summarise it
 // in a single line.
 let resyncBusy=false;
 async function resyncOnReturn(){
@@ -11817,7 +11867,7 @@ async function resyncOnReturn(){
   try{
     bgEvents=[];catchingUp=true;
     await loadBars5(false);await loadBars15(false);
-    computeInd5();computeLevels();
+    computeLevels();
     catchingUp=false;
     renderAll();
     lastPaneTickAt=Date.now();   // a full render just caught everything up — the watchdog below shouldn't re-fire immediately
@@ -13455,7 +13505,7 @@ bindLineSwatch($('#rbSwSlowConv'),
 {
   const D=$('#rbDefaults');if(D)D.onclick=()=>{
     Object.assign(cfg.satyRibbon,RB_DEFAULTS);saveCfg();rbLoadForm();scheduleRenderAll();
-    log('Saty Pivot Ribbon reset to the Pine v6 defaults','warn');};
+    log('Saty Pivot Ribbon reset to its defaults','warn');};
   const C=$('#rbCancel');if(C)C.onclick=closeRbModal;
   const O=$('#rbOk');if(O)O.onclick=()=>{rbSaveForm();closeRbModal();};
   // live-apply the numeric and checkbox inputs so the chart follows while the panel is open
