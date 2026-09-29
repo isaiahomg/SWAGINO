@@ -376,7 +376,7 @@ input[type=checkbox]{accent-color:var(--pivot)}
 /* Saty ATR Levels / Saty Pivot Ribbon / Market Structure toggles, moved off the panebar and
    onto the chart itself (top-left, like the price-line tags). Same .indtog/.eye/.mini elements,
    same syncIndTogs()/onclick wiring below — only the container and hover reveal are new.
-   .satyinfo (the Saty Pine-table readout, positionSatyInfo() below) is appended into THIS same
+   .satyinfo (the Saty ATR Levels info readout, positionSatyInfo() below) is appended into THIS same
    flex column instead of its own absolutely-positioned corner, so collapsing .indlist reflows
    it up automatically — one flow, no manual repositioning on toggle. */
 .chartcorner{position:absolute;top:6px;left:9px;z-index:8;display:flex;flex-direction:column;
@@ -2431,7 +2431,7 @@ table.lv td{padding:6px 10px}
 <div id="vwapModal" style="position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:120;display:none;align-items:center;justify-content:center">
   <div class="card" style="width:420px">
     <h1>VWAP <span id="vwapPaneTag"></span></h1>
-    <div class="hint" style="margin:0 0 8px">Volume Weighted Average Price, cumulative since each line's own anchor resets. Ported from TradingView's built-in VWAP with its Bands removed entirely — this app keeps only the VWAP line itself, as three independently-anchored lines instead of one.</div>
+    <div class="hint" style="margin:0 0 8px">Volume Weighted Average Price, cumulative since each line's own anchor resets. Same definition as TradingView's built-in VWAP, without its Bands — this app keeps only the VWAP line itself, as three independently-anchored lines instead of one.</div>
     <div class="row"><label style="min-width:0"><input type="checkbox" id="vwapHideDWM"> Hide VWAP on 1D or above</label></div>
     <h3 class="setsub">Lines</h3>
     <div class="hint" style="margin:0 0 8px">One line per anchor — Session, Week, and Month, permanently fixed since those are the only three anchors this app supports. Toggle each on/off and style its color, width, and line style below.</div>
@@ -2858,9 +2858,9 @@ if(!cfg.failN3){
   if(!(+cfg.structCfg.failN>1))cfg.structCfg.failN=3;
   cfg.failN3=1;
 }
-/* ---- Saty Pivot Ribbon (Saty Mahajan, Pine v6) — every input from the source, same defaults.
-   Colour inputs bind to a colour-only swatch; the transparency input drives the cloud alpha
-   exactly as Pine's color.new(c, t) does. The ONE calculation path lives in renderRibbon. */
+/* ---- Saty Pivot Ribbon (Saty Mahajan's indicator; its published script defines the intended behaviour and
+   defaults). Colour inputs bind to a colour-only swatch; the transparency input (0 = opaque, 100 = invisible)
+   drives the cloud alpha. The ONE calculation path lives in renderRibbon. */
 cfg.satyRibbon=Object.assign({
   timeWarp:'off',
   fastEma:8, pivotEma:21, slowEma:34,
@@ -2874,7 +2874,7 @@ cfg.satyRibbon=Object.assign({
   showCandleBias:false, biasEma:21
 },cfg.satyRibbon||{});
 /* v6 rebuild migration (runs once): drop the retired A/B engine and the pre-v6 highlight-colour
-   and opacity keys, and re-seed the inputs whose defaults changed in the port so a returning user
+   and opacity keys, and re-seed the inputs whose defaults changed in the v6 rebuild so a returning user
    gets the visible ribbon lines and the new conviction / arrow defaults, not stale saved values. */
 if(!cfg.rbV6){
   delete cfg.satyEngine;
@@ -2883,7 +2883,7 @@ if(!cfg.rbV6){
     bullArrowC:'#4CAF50',bearArrowC:'#FF5252',showFastConv:false,fastConvC:'#FFEB3B'});
   cfg.rbV6=1;
 }
-// Ported from TradingView's built-in "Volume Weighted Average Price" indicator — stripped of its
+// Intended behaviour: TradingView's built-in "Volume Weighted Average Price" indicator — without its
 // Bands entirely (per instruction: VWAP only, no Upper/Lower/Bands anywhere) and extended from one
 // line to three, each independently anchored. Anchor Period is reduced to the three that make
 // sense without a request.* call this app has no equivalent of (Earnings/Dividends/Splits) or that
@@ -2892,7 +2892,7 @@ if(!cfg.rbV6){
 // permanently fixed to its own anchor (session/week/month) — no per-line anchor picker; only
 // on/off, colour, width and style are user-editable per line.
 cfg.vwap=Object.assign({
-  hideOnDWM:false,   // ports the original script's "Hide VWAP on 1D or Above" input verbatim
+  hideOnDWM:false,   // the reference indicator's "Hide VWAP on 1D or Above" input
   lines:[
     {on:true,anchor:'session',color:'#2962FF',width:2,style:'solid'},   // TradingView's own default VWAP blue
     {on:true,anchor:'week',   color:'#FF9800',width:2,style:'solid'},
@@ -2903,13 +2903,14 @@ cfg.vwap=Object.assign({
 // exists (e.g. from before width/style existed) — backfill per-line so older saved configs don't
 // end up with undefined lineWidth/lineStyle.
 cfg.vwap.lines.forEach(L=>{if(L.width==null)L.width=2;if(L.style==null)L.style='solid';});
-// Ported verbatim from the user-supplied Pine v6 source ("Moving Average Convergence Divergence",
-// TradingView's own built-in MACD): fast/slow EMA(or SMA) of `src`, macd = fast-slow, signal =
-// EMA(or SMA) of macd, hist = macd-signal. Fast length 12 / Slow 26 / Signal 9 / EMA+EMA are
-// Pine's own defaults — NOT re-tuned per timeframe the way cfg.rsi's length optionally is.
+// MACD, implemented natively to the intended behaviour of TradingView's built-in "Moving Average
+// Convergence Divergence" (whose source the user supplied as the reference): fast/slow EMA (or SMA)
+// of `src`, macd = fast-slow, signal = EMA (or SMA) of macd, hist = macd-signal. Fast 12 / Slow 26 /
+// Signal 9 / EMA+EMA are that indicator's defaults — NOT re-tuned per timeframe the way cfg.rsi's
+// length optionally is.
 // This WAS actually tested (not just assumed) the same way RSI's own per-timeframe length was
 // first tried and rejected (see paneParams' comment): a histogram zero-cross ("Falling to
-// rising" / "Rising to falling" — Pine's own two alertcondition()s in the ported source) was
+// rising" / "Rising to falling" — the reference indicator's own two alert conditions) was
 // backtested across the 5 preset timeframes, on a 9-symbol tuning set (QQQ/SPY/AAPL/MSFT/
 // GOOGL/AMZN/NVDA/META/TSLA) and a 5-symbol held-out set (AMD/NFLX/JPM/XOM/DIS), at 5/10/20-bar
 // horizons, as excess return over drift (same measure the RSI-divergence rejection above uses),
@@ -2923,19 +2924,19 @@ cfg.vwap.lines.forEach(L=>{if(L.width==null)L.width=2;if(L.style==null)L.style='
 // variant: unlike RSI (a bounded 0-100 oscillator whose calibrated lengths only ever move
 // between 12 and 16 bars across every timeframe), MACD's classical 26-period "slow" line spans
 // wildly different real durations depending on the very definition being tested — preserving
-// Pine's OWN 12/26/9-trading-DAYS convention onto 5-minute bars would demand a ~2000-period EMA,
+// MACD's original 12/26/9-trading-DAYS convention onto 5-minute bars would demand a ~2000-period EMA,
 // which is not a length anyone actually runs; there is no reference duration that both
 // generalizes AND stays a lengths anyone would recognize as "MACD" on an intraday chart. Both
 // lines of evidence point the same way, so MACD runs the same fixed lengths on every timeframe,
 // like TradingView's own version does, adjustable only by hand via its own gear — same
 // conclusion as RSI's own length reached the same way, just without RSI's later, DIFFERENT
 // calibration (a units fix, not a profit fit) rescuing a per-timeframe variant for MACD too.
-// histC[0..3] is Pine's own hColor ternary, read straight off the source: histC[0] = hist>=0 &
+// histC[0..3] follow the reference indicator's histogram colouring: histC[0] = hist>=0 &
 // rising, histC[1] = hist>=0 & falling, histC[2] = hist<0 & rising, histC[3] = hist<0 & falling.
 // macdC (#2962FF) is TradingView's own default plot colour for an unstyled plot() call — the same
 // "TradingView blue" cfg.vwap already defaults to; sigC (#ff6d00) and the four histC entries
-// are the literal hex codes the Pine source itself passes to plot()/the hColor ternary. zeroC is
-// the literal hline(0,"Zero",#787b8680) colour, alpha included.
+// are the reference indicator's own default colours. zeroC is its zero line's colour (#787b8680),
+// alpha included.
 cfg.macd=Object.assign({
   src:'close',fastLen:12,slowLen:26,sigLen:9,oscType:'ema',sigType:'ema',
   histOn:true,histC:['#26a69a','#b2dfdb','#ffcdd2','#ff5252'],
@@ -2948,7 +2949,7 @@ if(!Array.isArray(cfg.macd.histC)||cfg.macd.histC.length!==4)cfg.macd.histC=['#2
 /* ADX (Wilder's Average Directional Index) - its own subpane, directly below MACD.
    MATH: adxStep()/adxSeries() below are the ONE implementation; the batch series (every render) and the live-tick update (paneTick)
    both call adxStep(), so a live value can never disagree with what a re-render would draw, and a finished bar's value depends only on bars up to itself.
-   Verified before shipping against two independent implementations written from the definition (60-digit-decimal textbook Wilder, and the Pine ta.rma form)
+   Verified before shipping against two independent implementations written from the definition (60-digit-decimal textbook Wilder, and the RMA form of Wilder's smoothing)
    on 51,412 real bars (SPY/QQQ/AAPL/TSLA x all 8 timeframes): max difference 1.8e-11 and 7e-14, with identical warm-up boundaries; plus property tests
    (no lookahead, live step == batch, seed immutability, warm-up boundaries, range 0..100, bad-bar handling) and a hand-worked example.
 
@@ -3754,8 +3755,8 @@ function makePane(idx){
   const rsiBBu=mkBB(),rsiBBl=mkBB();
   const rsiMa=rchart.addLineSeries({color:cfg.rsi.maC,lineWidth:cfg.rsi.maW,priceLineVisible:false,lastValueVisible:true,crosshairMarkerVisible:false,autoscaleInfoProvider:RSI_LOCK});
   const rsi=rchart.addLineSeries({color:cfg.ind.rsi.c,lineWidth:cfg.ind.rsi.w,priceLineVisible:false,crosshairMarkerVisible:false,autoscaleInfoProvider:RSI_LOCK});
-  // MACD: TradingView's own built-in "Moving Average Convergence Divergence" (Pine v6),
-  // ported verbatim — see cfg.macd's own comment for the exact source and colour mapping.
+  // MACD: native implementation of the intended behaviour of TradingView's built-in "Moving Average
+  // Convergence Divergence" — see cfg.macd's own comment for the definition and colour mapping.
   // Its own subpane/chart, below RSI, with the same independent-scale treatment as the RSI
   // panel above (own LWC chart instance, own price scale), except its range is not pinned to a
   // fixed 0-100 like RSI's since MACD/histogram are unbounded — the scale auto-fits whichever of
@@ -3765,8 +3766,8 @@ function makePane(idx){
   // axis into a stuck manual range any more than RSI's or Volume's own.
   const mchart=LightweightCharts.createChart(mEl,chartOpts(Object.assign({timeScale:{visible:false},rightPriceScale:{borderColor:'transparent',scaleMargins:{top:0.1,bottom:0.1}}},STATIC_SCALE)));
   // lastValueVisible:true, matching macdLine/sigLine right below - TradingView's own MACD labels
-  // all three plots' current value on the price scale, histogram included, and this was ported
-  // as an exact replica of it (see the comment above). Was false here with no comment explaining
+  // all three plots' current value on the price scale, histogram included, and this panel is meant to
+  // behave like it (see the comment above). Was false here with no comment explaining
   // it as deliberate, unlike every other on-purpose asymmetry in this file - just missed when
   // the other two got theirs.
   const macdHist=mchart.addHistogramSeries({priceLineVisible:false,lastValueVisible:true,crosshairMarkerVisible:false});
@@ -3774,8 +3775,8 @@ function makePane(idx){
     priceLineVisible:false,lastValueVisible:true,crosshairMarkerVisible:false});
   const sigLine=mchart.addLineSeries({color:cfg.macd.sigC,lineWidth:cfg.macd.sigW,lineStyle:lwcStyle(cfg.macd.sigSt),
     priceLineVisible:false,lastValueVisible:true,crosshairMarkerVisible:false});
-  // hline(0, "Zero", #787b8680) — a fixed reference line with no on/off of its own in the Pine
-  // source, so it is created once here (never re-created per render, unlike the RSI bands,
+  // The zero line (#787b8680) — a fixed reference line with no on/off of its own in the reference
+  // indicator, so it is created once here (never re-created per render, unlike the RSI bands,
   // which DO need to be rebuilt whenever their own on/off/value changes) and only ever has its
   // colour re-applied later, from the settings modal's Zero swatch.
   const macdZeroLine=macdLine.createPriceLine({price:0,color:cfg.macd.zeroC,lineWidth:1,
@@ -4173,9 +4174,9 @@ function srcVal(d,src){
     case 'hl2':return (d.high+d.low)/2;case 'hlc3':return (d.high+d.low+d.close)/3;
     case 'ohlc4':return (d.open+d.high+d.low+d.close)/4;default:return d.close;}
 }
-// Pine's ta.rma: alpha = 1/length, seeded with the SMA of the first `length` valid values,
-// then Wilder-smoothed. Leading na values are skipped rather than treated as zero.
-function taRma(vals,n){
+// Wilder's moving average (RMA): alpha = 1/length, seeded with the SMA of the first `length` valid
+// values, then Wilder-smoothed. Leading null values are skipped rather than treated as zero.
+function wilderRma(vals,n){
   const out=new Array(vals.length).fill(null);
   let sum=0,cnt=0,r=null;
   for(let i=0;i<vals.length;i++){
@@ -4186,8 +4187,8 @@ function taRma(vals,n){
   }
   return out;
 }
-// Pine's ta.stdev — population standard deviation over the window (divisor N, not N-1).
-function taStdev(vals,n){
+// Population standard deviation over the window (divisor N, not N-1) — the one Bollinger Bands use.
+function popStdev(vals,n){
   const out=new Array(vals.length).fill(null);
   for(let i=0;i<vals.length;i++){
     let sum=0,ok=true;
@@ -4199,14 +4200,14 @@ function taStdev(vals,n){
   }
   return out;
 }
-// vols is only needed for VWMA (Pine's ta.vwma = sma(src*vol)/sma(vol)).
+// vols is only needed for VWMA (volume-weighted MA = sum(src*vol)/sum(vol) over the window).
 function maCalc(vals,n,type,vols){
   const out=new Array(vals.length).fill(null);
   if(type==='ema'){let e=null;let seen=0;
     for(let i=0;i<vals.length;i++){const v=vals[i];if(v==null){out[i]=null;continue;}
       seen++;const k=2/(n+1);e=e==null?v:v*k+e*(1-k);out[i]=seen>=n?e:null;}
     return out;}
-  if(type==='rma')return taRma(vals,n);
+  if(type==='rma')return wilderRma(vals,n);
   if(type==='wma'){
     for(let i=0;i<vals.length;i++){let num=0,den=0,ok=true;
       for(let j=0;j<n;j++){const v=vals[i-j];if(v==null){ok=false;break;}num+=v*(n-j);den+=(n-j);}
@@ -4232,18 +4233,17 @@ function rmaSeries(vals,n){
     else{r=(r*(n-1)+v)/n;out[i]=r;}}
   return out;
 }
-// TradingView's built-in RSI, ported verbatim from the Pine v6 source:
-//   change = ta.change(src); up = ta.rma(max(change,0), len); down = ta.rma(-min(change,0), len)
+// Wilder's RSI (the intended behaviour is TradingView's built-in RSI, which uses the same definition):
+//   change = src - src[1]; up = RMA(max(change,0), len); down = RMA(-min(change,0), len)
 //   rsi = down == 0 ? 100 : up == 0 ? 0 : 100 - (100 / (1 + up / down))
 // Two deliberate differences from the old hand-rolled version: the up==0 -> 0 branch (the
 // old code returned 100 whenever losses were zero AND never returned a true 0), and no
 // gap-awareness — TradingView does not exclude overnight gaps, so neither do we, or the
 // panel would not match the platform it is named after.
-/* ===== MODULE 1: RSI VALUE — exact Pine v6 port (Wilder RMA). =====================
-   change starts at bar 1 (bar 0's change is UNDEFINED, never seeded as 0). up/down = ta.rma(
-   ±change, n) via taRma (SMA seed at the nth value, then alpha=1/n). Exact edge cases:
-   down==0 -> 100, up==0 -> 0, else 100-(100/(1+up/down)). Gaps stay null (timeframe_gaps=true —
-   no forward-fill). Defaults length 14 / source close. rsiWithParts also returns the two running
+/* ===== MODULE 1: RSI VALUE — Wilder's RSI, native. ==================================
+   change starts at bar 1 (bar 0's change is UNDEFINED, never seeded as 0). up/down = RMA of
+   ±change over n, via wilderRma (SMA seed at the nth value, then alpha=1/n). Exact edge cases:
+   down==0 -> 100, up==0 -> 0, else 100-(100/(1+up/down)). Gaps stay null (no forward-fill). Defaults length 14 / source close. rsiWithParts also returns the two running
    RMAs (ru/rd) so MODULE 2 can carry a CONFIRMED snapshot. */
 function rsiWithParts(src,n=14){
   const len=src.length;
@@ -4253,7 +4253,7 @@ function rsiWithParts(src,n=14){
     const ch=src[i]-src[i-1];
     up[i]=Math.max(ch,0);dn[i]=-Math.min(ch,0);
   }
-  const ru=taRma(up,n),rd=taRma(dn,n);
+  const ru=wilderRma(up,n),rd=wilderRma(dn,n);
   const out=new Array(len).fill(null);
   for(let i=0;i<len;i++){
     if(ru[i]==null||rd[i]==null)continue;
@@ -4273,7 +4273,7 @@ function pivotIdx(vals,look,isHigh){
   }
   return out;
 }
-/* ==================== MODULE 3: RSI DIVERGENCE (intentionally NOT a TradingView port) =====
+/* ==================== MODULE 3: RSI DIVERGENCE (intentionally NOT TradingView's method) =====
    TradingView's built-in version finds pivots in the RSI SERIES and then reads whatever
    price happened to be doing on those bars. That is the wrong way round: RSI turns a bar
    or two either side of the price extreme, so the "higher low in price" it compares is
@@ -4299,7 +4299,7 @@ function pivotIdx(vals,look,isHigh){
        the leg being measured is then not the leg that happened
 
    DELIBERATE DEPARTURE — do NOT "restore" TradingView's fixed-lookback RSI-pivot method: this
-   swing-sourced version is lower-latency and measured POSITIVE out of sample where the ported one
+   swing-sourced version is lower-latency and measured POSITIVE out of sample where the RSI-pivot one
    is negative (t-stats above). It is DECOUPLED from Modules 1/2 — it reads only `rsi` (values) and
    `sw` (the Structure engine's confirmed swings); changing RSI smoothing or the tick engine never
    touches it, and vice versa. STRUCTURE TIMING (not instant, and that is correct): a swing at bar i
@@ -5053,7 +5053,8 @@ function padSeries(data,arr,round){
   return data.map((d,i)=>arr[i]==null?{time:d.time}:{time:d.time,value:rd(arr[i],i)});
 }
 /* ===================== Saty Pivot Ribbon =========================================
-   A port of Saty Mahajan's "Saty Pivot Ribbon" (Pine v6). Three EMAs — fast 8, pivot 21,
+   Native implementation of Saty Mahajan's "Saty Pivot Ribbon" (his published script defines the
+   intended behaviour). Three EMAs — fast 8, pivot 21,
    slow 34 — with a cloud filled between fast/pivot and another between pivot/slow, each
    coloured by which side is on top. Two more EMAs (13/48) drive conviction arrows.
 
@@ -5147,7 +5148,7 @@ function bandView(){
     defaultOptions:()=>({})
   };
 }
-// Pine's color.new(c, t): t is TRANSPARENCY (0 = opaque, 100 = invisible)
+// t is TRANSPARENCY (0 = opaque, 100 = invisible), the reference indicator's colour convention
 function rbAlpha(hex,transp){
   const m=String(hex||'').trim();
   let r=0,g=0,b=0;
@@ -5159,19 +5160,17 @@ function rbAlpha(hex,transp){
 const RB_TF={'off':0,'1m':1,'2m':2,'3m':3,'4m':4,'5m':5,'10m':10,'15m':15,'20m':20,'30m':30,
              '1h':60,'2h':120,'4h':240,'D':1440,'W':10080,'M':43200,'Y':525600};
 
-// Moderate line opacity (Pine transparency: 0 solid .. 100 invisible). The three ribbon EMAs
+// Moderate line opacity (transparency: 0 solid .. 100 invisible). The three ribbon EMAs
 // are drawn as soft accents at this transparency so they read over the candles, not through them.
 const RB_LINE_TRANSP=35;
 /* ===================== Saty Pivot Ribbon — one clean render path =========================
-   Rebuilt from Saty Mahajan's Pine v6 "Saty Pivot Ribbon". There is ONE calculation path —
-   no A/B engine. The EMAs use the app-native emaCalc (the same SMA-seeded EMA the chart's
-   other MA lines use), so the ribbon and the EMA 8/21/34 overlays agree bar-for-bar.
+   There is ONE calculation path — no A/B engine. The EMAs use the app-native emaCalc (SMA-seeded).
 
-   Anti-repaint — the JS equivalent of Pine's calc_ema(...)[barstate.isrealtime ? 1 : 0]:
-   closed bars are causal (each EMA depends only on bars up to itself, so a forming tick can
-   never rewrite finalized history), and the live tick in paneTick advances ONLY the forming
-   bar's point via a one-step recursion seeded from the LAST CLOSED bar — never from the
-   previous tick — so repeated intrabar prints can neither compound nor corrupt the series. */
+   Non-repainting, as the reference script defines it (each EMA is taken as ema[realtime ? 1 : 0]):
+   a finished bar shows its own EMA and depends only on bars up to itself, and the bar that is still
+   forming shows the EMA as of the bar before it, so intrabar prints never move the ribbon. The
+   forming bar is detected by lastBarForming(); it repeats the previous bar's values (see renderRibbon)
+   and the full render at the next bar's first tick replaces it with its own EMA. */
 /* Time Warp D/W/M/Y: calendar periods, not fixed spans. Bucketing by floor(t/span) — as the
    intraday warps below do — cut "W" into Thursday-to-Wednesday weeks (the Unix epoch fell on a
    Thursday), "M" into 30-day blocks and "Y" into 365-day blocks, none of which is a real week,
@@ -5231,7 +5230,7 @@ function rbEma(closes,len,mins,data,cal){
   return out;
 }
 function rbBiasColor(open,close,bias,cols){
-  if(open===close)return '#808080';                    // doji -> Pine color.gray
+  if(open===close)return '#808080';                    // doji -> grey
   const above=close>=bias;                             // above_pivot = close >= bias EMA
   return (open<close) ? (above?cols.bullF:cols.bearS)  // up:   above -> bull fast, below -> bear slow
                       : (above?cols.bullS:cols.bearF); // down: above -> bull slow, below -> bear fast
@@ -5263,9 +5262,14 @@ function renderRibbon(p,data){
   // period closes are part of the cache key (a daily refetch changes them with `data` unchanged).
   const calKind=RB_CAL_WARP[mins]||null;
   const cal=calKind?{kind:calKind,periods:rbCalPeriods(calKind,(paneData(p)||{}).daily)}:null;
+  // Saty's ribbon EMAs are request.security(..., ta.ema(src,len)[barstate.isrealtime ? 1 : 0]): a bar
+  // that is still forming shows the EMA as of the bar before it, a finished bar its own. On the chart's
+  // own timeframe that is exactly "the forming bar repeats the previous bar's value" (a warped series
+  // already only ever shows its last CLOSED higher-timeframe period, see rbEma).
+  const forming=!mins&&data.length>=2&&lastBarForming(p.tf,data[data.length-1]);
   let rbKey=null;
   if(!R.showCandleBias){
-    rbKey=JSON.stringify(R)+(cal?'|'+cal.periods.map(x=>x.key+':'+x.close).join(','):'');
+    rbKey=JSON.stringify(R)+(cal?'|'+cal.periods.map(x=>x.key+':'+x.close).join(','):'')+(forming?'|forming':'');
     const rc=p._rbRenderCache;
     if(rc&&rc.data===data&&rc.rbKey===rbKey)return;
   }else{
@@ -5276,8 +5280,9 @@ function renderRibbon(p,data){
         Lfc=+R.fastConvLen||13,Lsc=+R.slowConvLen||48,Lb=+R.biasEma||21;
   const fast=rbEma(closes,Lf,mins,data,cal),piv=rbEma(closes,Lp,mins,data,cal),slow=rbEma(closes,Ls,mins,data,cal),
         fc=rbEma(closes,Lfc,mins,data,cal),sc=rbEma(closes,Lsc,mins,data,cal),bias=rbEma(closes,Lb,mins,data,cal);
+  if(forming){const n=data.length;[fast,piv,slow,fc,sc].forEach(a=>{a[n-1]=a[n-2];});}
   // Clouds: fast fill = fast>=pivot ? bull:bear ; slow fill = pivot>=slow ? bull:bear (>=, ties bull),
-  // each at the shared cloud transparency, exactly as Pine's fill(color.new(cloud_color, transp)).
+  // each at the shared cloud transparency, as the reference script fills its clouds.
   const T=+R.cloudTransparency;
   const cBullF=rbAlpha(R.bullFastCloud,T),cBearF=rbAlpha(R.bearFastCloud,T);
   const cBullS=rbAlpha(R.bullSlowCloud,T),cBearS=rbAlpha(R.bearSlowCloud,T);
@@ -5286,7 +5291,7 @@ function renderRibbon(p,data){
       :{time:d.time,a:rPx(a[i]),b:rPx(b[i]),color:a[i]>=b[i]?bull:bear});
   p.rbCloudFast.setData(band(fast,piv,cBullF,cBearF));
   p.rbCloudSlow.setData(band(piv,slow,cBullS,cBearS));
-  // The three ribbon EMAs override Pine's display.none: each is drawn in the colour of the cloud
+  // The three ribbon EMAs are drawn (the reference script hides them by default): each in the colour of the cloud
   // it borders (fast & pivot -> fast cloud, slow -> slow cloud), at a moderate opacity so it reads
   // as a soft accent over the candles. Untick a highlight to hide that line.
   // Highlight opacity is user-editable (0 = invisible / fully camouflaged into the cloud, 100 =
@@ -5305,7 +5310,7 @@ function renderRibbon(p,data){
   cloudLine(p.rbPivot,piv, R.showPivotHi,fast,piv,hFB,hFR);   // pivot borders the FAST cloud
   cloudLine(p.rbSlow, slow,R.showSlowHi, piv,slow,hSB,hSR);   // slow EMA borders the SLOW cloud
   // Conviction EMAs: own colours (and, independently of every other ribbon line, their own
-  // thickness/style), plotted only when their toggle is on (Pine default: off).
+  // thickness/style), plotted only when their toggle is on (default: off).
   const line=(sr,arr,show,col,w,st)=>{
     sr.applyOptions({visible:!!show,color:col,lineWidth:+w||2,lineStyle:lwcStyle(st||'solid')});
     sr.setData(show?padSeries(data,arr,rPx):[]);
@@ -5313,7 +5318,7 @@ function renderRibbon(p,data){
   line(p.rbFastConv,fc,R.showFastConv,R.fastConvC,R.fastConvW,R.fastConvSt);
   line(p.rbSlowConv,sc,R.showSlowConv,R.slowConvC,R.slowConvW,R.slowConvSt);
   // Conviction arrows: the bar where the fast conviction EMA crosses the slow one. Computed from
-  // fc/sc regardless of whether those lines are shown (as Pine does — crossover/crossunder run on
+  // fc/sc regardless of whether those lines are shown (as the reference script does — the cross runs on
   // the raw EMAs). Drawn in the HTML overlay, never as a candle marker (marker padding would be
   // baked into autoscale and squash the candles).
   p.rbArrows=[];
@@ -5327,7 +5332,7 @@ function renderRibbon(p,data){
         color:now?R.bullArrowC:R.bearArrowC});
     }
   }
-  // Candle bias (Pine barcolor): four colours keyed on close-vs-bias AND open-vs-close, exactly as the
+  // Candle bias (candle recolouring): four colours keyed on close-vs-bias AND open-vs-close, as the
   // source (above+up bull-fast, below+up bear-slow, above+down bull-slow, below+down bear-fast, doji gray).
   // Replaces the user's candle palette while on; the forming bar is mirrored in paneTick.
   if(R.showCandleBias){
@@ -5340,15 +5345,13 @@ function renderRibbon(p,data){
     p._lastBars=rows;
     pushMainSeriesData(p);
   }
-  // Tail state so a live tick advances every ribbon value in O(1) from the LAST CLOSED bar,
-  // the same one-step recursion the app's other EMAs use. Time Warp is excluded from the tick.
+  // Tail state for the live tick. The ribbon lines and clouds never move within a forming bar (see
+  // `forming` above) and a new bar is re-rendered in full, so the tick only recolours the forming
+  // candle's Candle Bias, stepping the bias EMA one bar from the last closed value.
   const n=data.length,pair=a=>[n>=2?a[n-2]:null,n>=1?a[n-1]:null];
   p.rbTail={t:n?data[n-1].time:null,warp:mins,
-    fast:pair(fast),piv:pair(piv),slow:pair(slow),fc:pair(fc),sc:pair(sc),
     bias:pair(bias),biasNow:n?bias[n-1]:null,
-    biasOn:!!R.showCandleBias,biasLen:Lb,biasC:{bullF:R.bullFastCloud,bearF:R.bearFastCloud,bullS:R.bullSlowCloud,bearS:R.bearSlowCloud},
-    lens:{f:Lf,p:Lp,s:Ls,fc:Lfc,sc:Lsc},lineT:hiT,
-    colors:{bullF:cBullF,bearF:cBearF,bullS:cBullS,bearS:cBearS}};
+    biasOn:!!R.showCandleBias,biasLen:Lb,biasC:{bullF:R.bullFastCloud,bearF:R.bearFastCloud,bullS:R.bullSlowCloud,bearS:R.bearSlowCloud}};
   // Full series + live-edge value so the fast/pivot/slow period tags re-anchor to whatever bar
   // is right-most on screen, exactly the way the EMA tags do.
   p.rbSets={fast,piv,slow,fc,sc};
@@ -5358,11 +5361,10 @@ function renderRibbon(p,data){
 }
 
 /* ================================ VWAP ===================================================
-   Ported from TradingView's own "Volume Weighted Average Price" (Pine v6): cumulative
-   sum(hlc3*volume)/sum(volume) since the anchor's last reset, source fixed to hlc3 exactly as
-   the original script's default (it exposes a Source input; this port does not, matching the
-   instruction to keep this to VWAP itself with no extra surface). Bands are not ported at all —
-   removed per instruction, not just hidden. */
+   Native VWAP with the intended behaviour of TradingView's "Volume Weighted Average Price":
+   cumulative sum(hlc3*volume)/sum(volume) since the anchor's last reset, source fixed to hlc3 (that
+   indicator's default; it exposes a Source input, this one does not, per the instruction to keep this
+   to VWAP itself with no extra surface). No bands — removed per instruction, not just hidden. */
 // Monday-anchored week key and a plain YYYY-MM month key, from a day's own ET calendar date
 // (data[i].ymd on every intraday/daily bar seriesForTF hands back). Noon UTC sidesteps any
 // DST-boundary date-shift risk from constructing a Date at local midnight.
@@ -5406,7 +5408,7 @@ function renderVwap(p,data){
   const V=cfg.vwap,on=!!cfg['vwap'+p.idx];
   if(!p.vwLines)return;
   const hide=()=>{p.vwLines.forEach(sr=>{try{sr.setData([]);}catch(e){}});p.vwapTail=null;p.vwSets=null;p.vwLast=null;};
-  // Ports the original script's "Hide VWAP on 1D or Above" verbatim: a cumulative-since-anchor
+  // The reference indicator's "Hide VWAP on 1D or Above": a cumulative-since-anchor
   // average stops being a meaningful concept once a single bar already spans a day or more.
   if(!on||!data.length||(V.hideOnDWM&&(p.tf==='D'||p.tf==='W')))return hide();
   const computed=V.lines.map(L=>computeVwapSeries(data,L.anchor));
@@ -5687,7 +5689,7 @@ function renderPane(p){
   // work for this.
   p._structTailT=data.length?data[data.length-1].time:null;
   // MODULE 1 value. FLAG: with TF presets ON (the default), PP.rsiLen is 13/15/16/14/12 by
-  // timeframe, NOT Pine's fixed 14 — a TradingView chart on length=14 will only match when presets
+  // timeframe, NOT a fixed 14 — a TradingView chart on length=14 will only match when presets
   // are off (or set to 14). Source is cfg.rsi.src (default 'close'). Neither is silently changed.
   const srcArr=data.map(d=>srcVal(d,cfg.rsi.src));
   const _rp=rsiWithParts(srcArr,Math.max(1,PP.rsiLen));
@@ -5757,7 +5759,7 @@ function renderPane(p){
     p.rsiBBu.applyOptions({visible:isBB,color:cfg.rsi.bbC});
     p.rsiBBl.applyOptions({visible:isBB,color:cfg.rsi.bbC});
     if(isBB&&ma){
-      const sd=taStdev(rsi,smLen),mult=+cfg.rsi.bbMult||2;
+      const sd=popStdev(rsi,smLen),mult=+cfg.rsi.bbMult||2;
       p.rsiBBu.setData(padSeries(data,ma.map((v,i)=>v==null||sd[i]==null?null:v+sd[i]*mult)));
       p.rsiBBl.setData(padSeries(data,ma.map((v,i)=>v==null||sd[i]==null?null:v-sd[i]*mult)));
     }else{p.rsiBBu.setData([]);p.rsiBBl.setData([]);}
@@ -5825,8 +5827,8 @@ function renderPane(p){
     positionDivergence(p);
     p._rsiRenderCache={data,sw:p.sw,key:rBlockKey};
   }
-  // ---- MACD (own subpane, below RSI) — ported verbatim from the Pine v6 source given for
-  // this feature; see cfg.macd's own comment for the source and the exact colour mapping.
+  // ---- MACD (own subpane, below RSI) — native; see cfg.macd's own comment for the definition
+  // and the exact colour mapping.
   // Same "recompute only when data or settings actually changed" cache idiom as the RSI block
   // just above (rBlockKey/rbc), in its own cache field so the two can never invalidate each
   // other by accident.
@@ -5843,8 +5845,8 @@ function renderPane(p){
       const sigArr=maCalc(macdArr,sigLen,M.sigType);
       const histArr=macdArr.map((v,i)=>v==null||sigArr[i]==null?null:v-sigArr[i]);
       // hColor = hist>=0 ? (hist>hist[1] ? histC[0] : histC[1]) : (hist>hist[1] ? histC[2] : histC[3])
-      // — hist[1] is just the PREVIOUS bar's histogram value; na (bar 0, or any bar right after a
-      // null) compares false in Pine, which the `prevH!=null&&h>prevH` guard below reproduces.
+      // — hist[1] is the PREVIOUS bar's histogram value; with no previous value (bar 0, or any bar
+      // right after a null) the bar counts as not rising, which the `prevH!=null&&h>prevH` guard does.
       const histPts=data.map((d,i)=>{
         const h=histArr[i];
         if(h==null)return{time:d.time};
@@ -5871,7 +5873,7 @@ function renderPane(p){
       // slow step from the raw SOURCE series, signal steps from the MACD series itself, and
       // the histogram's colour rule needs only the last two CONFIRMED hist values — never
       // touched by a tick, since that comparison is against the last CLOSED bar throughout the
-      // forming bar's whole life, exactly like Pine's hist[1] on a still-forming realtime bar.
+      // forming bar's whole life: the forming bar is compared with the last finished bar.
       const n=data.length;
       const pair=a=>[n>=2?a[n-2]:null,n>=1?a[n-1]:null];
       const winAt=(arr,endIdx,winN)=>{const out=[];for(let j=0;j<winN;j++){const idx=endIdx-j;out.push(idx>=0?arr[idx]:null);}return out;};
@@ -5927,10 +5929,7 @@ function renderPane(p){
       let closedLen=data.length;
       if(data.length){
         const last=data[data.length-1];
-        const closed=p.tf==='D'?(last.ymd!==nowET().ymd)
-          :p.tf==='W'?(last.ymd!==satyPeriodKey('multiday',nowET().ymd))
-          :(last.t!=null?(Math.floor(Date.now()/1000)>=last.t+(+p.tf||5)*60):true);
-        if(!closed)closedLen=data.length-1;
+        if(lastBarForming(p.tf,last))closedLen=data.length-1;
       }
       // One BOS/CHoCH classification-freeze cache per pane (see breakEvents' own comment),
       // reset only when THIS pane's actual symbol or timeframe changes — a different series'
@@ -7598,14 +7597,14 @@ function paneTick(p){
   if(cs.prevClose){
     up=barPrevClose!=null?bar.close>=barPrevClose:bar.close>=bar.open;
   }else up=bar.close>=bar.open;
-  /* Candle Bias has to reach the forming bar as well. Pine's barcolor() runs on every
+  /* Candle Bias has to reach the forming bar as well. The recolouring applies to every
      bar including the live one, so painting the tick with the ordinary palette would make
      the last candle flick back to the default colours until the next full render. */
   let biasCol=null;
   try{
     const RT=p.rbTail;
     if(RT&&RT.biasOn&&cfg['ribbon'+p.idx]){
-      // Pine barcolor: four cases keyed on close-vs-bias and open-vs-close (see rbBiasColor). A warped
+      // Four cases keyed on close-vs-bias and open-vs-close (see rbBiasColor). A warped
       // bias only moves when its higher-timeframe bar closes; otherwise step it one bar from the
       // last closed value so the forming candle recolours live without repainting history.
       let bv=null;
@@ -7657,41 +7656,7 @@ function paneTick(p){
     // one pane/symbol/timeframe string, reused by ribbon/VWAP/RSI below instead of each
     // rebuilding it, so a look at the Log panel always names exactly which chart was affected.
     const tickCtx=`pane ${p.idx+1}, ${p.sym||cfg.sym} ${p.tf==='D'?'1D':p.tf==='W'?'1W':p.tf+'m'}`;
-    /* Same one-step recursion for the ribbon, so the clouds and lines track the forming bar
-       instead of waiting for the next full render — seeded from the LAST CLOSED bar so an
-       intrabar tick can never rewrite finalized EMA history (the anti-repaint guarantee, the
-       JS equivalent of Pine's [barstate.isrealtime?1:0]). Time Warp is excluded: a warped EMA
-       may only move when its higher-timeframe bar closes. */
-    const RT=p.rbTail;
-    if(RT&&!RT.warp&&cfg['ribbon'+p.idx]){
-      const R=cfg.satyRibbon,sd=bar.time!==RT.t?1:0,LN=RT.lens;
-      const step=(prev,len)=>{if(prev==null)return null;const k=2/(len+1);return bar.close*k+prev*(1-k);};
-      const nf=step(RT.fast[sd],LN.f),np=step(RT.piv[sd],LN.p),ns=step(RT.slow[sd],LN.s),
-            nfc=step(RT.fc[sd],LN.fc),nsc=step(RT.sc[sd],LN.sc);
-      p._rbRenderCache=null;   // tick-drawn values on the chart: see the ADX note below
-      const put=(sr,v,show,name)=>{if(v==null||!show)return;try{sr.update({time:bar.time,value:rPx(v)});}
-        catch(e){logDiagError('tick|rb'+name+'|'+p.idx,`Ribbon ${name} tick update failed — ${tickCtx}: ${e&&e.message||e}`);}};
-      const putc=(sr,v,show,col,name)=>{if(v==null||!show)return;try{sr.update({time:bar.time,value:rPx(v),color:col});}
-        catch(e){logDiagError('tick|rb'+name+'|'+p.idx,`Ribbon ${name} tick update failed — ${tickCtx}: ${e&&e.message||e}`);}};
-      putc(p.rbFast,nf,R.showFastHi,rbAlpha(nf>=np?R.bullFastCloud:R.bearFastCloud,RT.lineT),'fast');
-      putc(p.rbPivot,np,R.showPivotHi,rbAlpha(nf>=np?R.bullFastCloud:R.bearFastCloud,RT.lineT),'pivot');
-      putc(p.rbSlow,ns,R.showSlowHi,rbAlpha(np>=ns?R.bullSlowCloud:R.bearSlowCloud,RT.lineT),'slow');
-      put(p.rbFastConv,nfc,R.showFastConv,'fastConv');put(p.rbSlowConv,nsc,R.showSlowConv,'slowConv');
-      if(p.rbLast){
-        if(nf!=null)p.rbLast.fast={time:bar.time,value:+nf};
-        if(np!=null)p.rbLast.piv={time:bar.time,value:+np};
-        if(ns!=null)p.rbLast.slow={time:bar.time,value:+ns};
-        if(nfc!=null)p.rbLast.fc={time:bar.time,value:+nfc};
-        if(nsc!=null)p.rbLast.sc={time:bar.time,value:+nsc};
-      }
-      if(nf!=null&&np!=null){try{p.rbCloudFast.update({time:bar.time,a:rPx(nf),b:rPx(np),
-        color:nf>=np?RT.colors.bullF:RT.colors.bearF});}
-        catch(e){logDiagError('tick|rbCloudFast|'+p.idx,`Ribbon fast-cloud tick update failed — ${tickCtx}: ${e&&e.message||e}`);}}
-      if(np!=null&&ns!=null){try{p.rbCloudSlow.update({time:bar.time,a:rPx(np),b:rPx(ns),
-        color:np>=ns?RT.colors.bullS:RT.colors.bearS});}
-        catch(e){logDiagError('tick|rbCloudSlow|'+p.idx,`Ribbon slow-cloud tick update failed — ${tickCtx}: ${e&&e.message||e}`);}}
-    }
-    // VWAP — O(1) per tick, same reasoning as the ribbon's tail above: the forming bar's own
+    // VWAP — O(1) per tick: the forming bar's own
     // (price*volume, volume) contribution is kept apart from the anchor period's running total so
     // an intrabar tick only ever replaces that one slice instead of re-summing the whole period.
     // A genuinely NEW bar (bar.time !== VT.t) first folds the bar that JUST closed permanently
@@ -7800,7 +7765,7 @@ function paneTick(p){
       if(mv!=null){try{p.rsiMa.update({time:bar.time,value:r2(mv)});}
         catch(e){logDiagError('tick|rsiMa|'+p.idx,`RSI-MA tick update failed — ${tickCtx}: ${e&&e.message||e}`);}}
       // Bollinger variant (the MA is then an SMA): population stdev over the same window, summed in
-      // the same order as taStdev, so the forming bar's bands equal what the next full render draws.
+      // the same order as popStdev, so the forming bar's bands equal what the next full render draws.
       if(MT.bbMult!=null&&MT.kind==='sma'&&mv!=null){
         const win=MT.win[sd3];let acc=(rv-mv)*(rv-mv);
         for(let j=0;j<MT.len-1;j++){const d=win[j]-mv;acc+=d*d;}
@@ -7814,8 +7779,8 @@ function paneTick(p){
     // the bar the last render saw (still forming), sd4=1 means a genuinely new bar has started
     // since (seed from the bar that just closed). Histogram colour is fixed against the last
     // CONFIRMED bar's hist (macdTail.prevHist) — never against a tick's own live histogram value
-    // — matching Pine's hist[1] on a still-forming realtime bar, exactly like rsiTail's
-    // seed-pair convention above never lets an intrabar tick poison the running RSI RMAs.
+    // — the forming bar is compared with the last finished bar, just as rsiTail's seed-pair
+    // convention above never lets an intrabar tick poison the running RSI RMAs.
     const MC=p.macdTail;
     if(MC&&p.macdLine){
       const M=cfg.macd,sd4=bar.time!==MC.t?1:0,sv=srcVal(bar,MC.src);
@@ -8011,6 +7976,26 @@ function paintMarketPhase(){
 // tracks, or auto-builds there.
 const RTH_CLOSE_MIN=960,EARLY_CLOSE_MIN=780;   // 4:00 PM / 1:00 PM ET
 function sessionCloseMin(ymd){return isEarlyClose(ymd||nowET().ymd)?EARLY_CLOSE_MIN:RTH_CLOSE_MIN;}
+// Whether a chart series' LAST bar is still forming, i.e. its period has not ended yet. An intraday bucket
+// ends at the earlier of its own end and the end of that day's data session (the regular close — 13:00 on an
+// early-close day — in the RTH view, 20:00 in the ETH view), so RTH's truncated last 1H/4H bucket closes at
+// the bell. A daily bar ends at that day's regular close; a weekly bar at the close of the week's last
+// trading day.
+function lastBarForming(tf,last){
+  if(!last)return false;
+  const now=nowET(),nowMin=now.h*60+now.m;
+  const closeTs=(ymd,min)=>parseEtStamp(ymd+' '+String(Math.floor(min/60)).padStart(2,'0')+':'+String(min%60).padStart(2,'0')+':00')/1000;
+  if(tf==='D')return last.ymd===now.ymd&&nowMin<sessionCloseMin(now.ymd);
+  if(tf==='W'){
+    if(last.ymd!==satyPeriodKey('multiday',now.ymd))return false;
+    const mon=new Date(last.ymd+'T12:00:00Z');let lastDay=null;
+    for(let k=4;k>=0&&!lastDay;k--){const d=new Date(mon);d.setUTCDate(mon.getUTCDate()+k);const y=d.toISOString().slice(0,10);if(isTradingDay(y))lastDay=y;}
+    return !!lastDay&&(now.ymd<lastDay||(now.ymd===lastDay&&nowMin<sessionCloseMin(lastDay)));
+  }
+  if(last.t==null)return false;
+  const sessEnd=closeTs(last.ymd,cfg.sess==='rth'?sessionCloseMin(last.ymd):1200);
+  return Math.floor(Date.now()/1000)<Math.min(last.t+(+tf||5)*60,sessEnd);
+}
 function tfRemaining(tf){
   if(!dataActive())return null;                    // market closed / Tradier not collecting
   const p=nowET();const sec=+p.hms.split(':')[2];
@@ -8661,7 +8646,8 @@ function deleteAlert(id){
 }
 
 /* ================================ Saty ATR Levels =====================================
-   Ported from Saty Mahajan's Pine v5 indicator. The arithmetic is the same:
+   Native implementation of Saty Mahajan's "Saty ATR Levels" (his published script defines the intended
+   behaviour; checked against github.com/satymahajan/saty_atr_levels on 2026-09-29). The arithmetic:
 
      previous_close  close of the PREVIOUS complete period (or the current one, optionally)
      atr             Wilder ATR(len) of that period series, read at the same offset
@@ -8672,20 +8658,21 @@ function deleteAlert(id){
 
    It is a per-pane indicator, not a level family: its own eye and gear sit in the pane bar
    next to Structure and MAs, it draws on whichever pane has it switched on, and it reads
-   that pane's own symbol and timeframe. Two deliberate differences from the Pine, both
-   about fitting this app rather than changing the maths:
+   that pane's own symbol and timeframe. Deliberate differences from the reference script, about
+   fitting this app rather than changing the maths (the ATR length is the one maths difference: see
+   AUTO ATR LENGTH below; the reference defaults to a fixed 14):
      - Levels are drawn as this chart's price lines, so the axis plate is transparent and
        the reading carries the colour, exactly like every other price label here.
    ====================================================================================== */
 
-// TradingView's input list for this indicator, verbatim, with its defaults. Everything the
+// The reference script's inputs with its defaults (except the ATR length, see AUTO ATR LENGTH). Everything the
 // dialog edits lives here so one object is saved, restored and reset.
 const SATY_DEFAULTS={
   mode:'day',
   useCurrentClose:false, useOptionsLabels:true,
   allFib:true, extensions:false, showInfo:true,
   // autoLen fits the length from the tape at each close; atrLen is only the manual fallback
-  autoLen:true, trigger:0.236, atrLen:5, levelSize:1,
+  autoLen:true, trigger:0.236, atrLen:5, levelSize:2,   // level_size: the reference script's default line width
   emaFast:8, emaPivot:21, emaSlow:34,
   cClose:'#ffffff', cTrigDn:'#facc15', cTrigUp:'#22d3ee',
   cKey:'#c0c0c0', cAtr:'#ffffff', cMid:'#8b8b8b',
@@ -8708,8 +8695,8 @@ function satyC(){
       ?JSON.parse(JSON.stringify(SATY_DEFAULTS[k])):SATY_DEFAULTS[k];
   return c;
 }
-// Matches the Pine's timeframe_func(): Day='D', Multiday='W', Swing='M', Position='3M',
-// Long-term='12M'. trading_mode label strings are verbatim from the Pine too.
+// The reference script's trading types and their periods: Day='D', Multiday='W', Swing='M',
+// Position='3M', Long-term='12M', with the same labels.
 const SATY_MODES={
   day:{tf:'D',label:'Day'},
   multiday:{tf:'W',label:'Multiday'},
@@ -8717,12 +8704,13 @@ const SATY_MODES={
   position:{tf:'3M',label:'Position'},
   longterm:{tf:'12M',label:'Long-term'}
 };
-// The Pine's request.security(ticker, timeframe_func(), ...) rolls the daily series up into
+// The reference script reads the trading type's own period series (weekly/monthly/...), which is the daily
+// series rolled up into
 // weekly/monthly/quarterly/yearly bars before computing ATR on THAT series. Same roll-up here,
 // straight from dailyRows (open = first day's open, high/low = the period's extremes, close =
 // most recent day's close) — the trailing, still-open bucket is deliberately included as the
 // last row: that's what satyCompute's off=0/1 (useCurrentClose) logic expects to find there,
-// exactly mirroring how a Pine security() call reflects the still-forming higher-TF bar.
+// as the reference script's period series includes the still-forming period.
 function satyPeriodKey(mode,dateStr){
   if(mode==='day')return dateStr;
   const d=new Date(dateStr+'T00:00:00Z');
@@ -8769,7 +8757,7 @@ function satyPeriods(mode,rows){
   return out;
 }
 
-// ta.atr = RMA (Wilder) of true range. Same seed as Pine: a simple mean of the first len.
+// Wilder's ATR = RMA of true range, seeded with the simple mean of the first len true ranges.
 function satyATR(rows,len){
   if(!rows||rows.length<len+1)return null;
   const tr=[];
@@ -8786,7 +8774,7 @@ function satyATR(rows,len){
   return out;                                    // out[i] aligns with rows[i+1]
 }
 
-// The full ladder. Multiples and which flag gates them mirror the Pine plot list exactly,
+// The full ladder. Multiples and which flag gates them follow the reference script's plotted levels,
 // including the three Saty leaves commented out (2.382 / 2.500 / 2.786).
 const SATY_LADDER=[
   {m:0.382,kind:'mid'},{m:0.500,kind:'mid'},{m:0.618,kind:'key'},
@@ -8882,7 +8870,7 @@ function satyCompute(drows){
   if(rows.length<len+2)return null;
   const atrArr=satyATR(rows,len);
   if(!atrArr)return null;
-  // period_index: 1 = the last COMPLETE period (Pine's default), 0 = the developing one.
+  // period_index: 1 = the last COMPLETE period (the reference default), 0 = the developing one.
   // Was previously "assume rows[last] is today, back off exactly one row" - fixed last to
   // check rows[last]'s own date instead of assuming, but that is STILL a positional index
   // (rows.length-2), which silently drifts if dailyRows ever has a gap, a duplicate, or is
@@ -8932,7 +8920,7 @@ function satyTrend(p){
 
 /* ---- the 31 plots, in the order TradingView lists them in the Style tab ----------------
    Each row is {key, mult, kind, ext}. `mult` is signed: negative rows are the ones below
-   the previous close. The three rungs Saty leaves commented out in the Pine (2.382, 2.500,
+   the previous close. The three rungs Saty leaves unplotted in his script (2.382, 2.500,
    2.786) are absent here too, which is why the list is 31 rows and not 37. */
 const SATY_NEG_NAMES=['-300.0%','-261.8%','-223.6%','-200.0%','-178.6%','-161.8%','-150.0%',
   '-138.2%','-123.6%','-100%','-78.6%','-61.8%','-50.0%','-38.2%'];
@@ -9105,7 +9093,7 @@ function openSatyStyler(anchorEl,key){
     satyRedraw();
   },s=>previewSatyColor(key,s.color,s.tc));
 }
-// The Pine table, as a chart-corner readout: period, how much of the average range this
+// The reference script's info label, as a chart-corner readout: period, how much of the average range this
 // period has already spent, the ribbon trend, and the two trigger prices.
 function positionSatyInfo(p){
   // Positioned at the chart's bottom-left independently of .chartcorner (top-left indicator
@@ -9712,16 +9700,15 @@ let gexTimer=null,gexBusy=false,gexLastT=0,gexNextT=0,gexSrc='',_gexSwapT0=0;
 // survive a reload.
 let gex2Busy=false,gex2LastT=0,gex2NextT=0,gex2Src='',gex2Board=null,gex2Spot=null;
 // STREAMING GEX: gexContracts maps each OCC symbol currently on the board (both the ±4% level
-// window and the wider ±20% heatmap window) to its own {strike,isPut,oi,ex,bid,ask,lastVal,
-// inStrikeWindow} — populated wholesale by a successful computeChainGex() bootstrap, then kept
-// current by live quote ticks (handleGexQuoteTick) on the SAME WebSocket already open for the
-// underlying's trades. gexByStrike/gexByExp are the running aggregates parseGexRows/renderGexHeat
-// already consume; ticks update them by DELTA (subtract this contract's last value, add its new
-// one) rather than re-summing the whole board, the same O(1)-per-tick idiom this file already
-// uses for VWAP/the ribbon. gexWsSymbols/gexStreamSid let a later bootstrap (the periodic
-// backstop) push an updated subscription onto the SAME already-open connection.
+// window and the wider ±20% heatmap window) to its own {strike,isPut,oi,ex,bid,ask,iv,inStrikeWindow}
+// — populated wholesale by a successful computeChainGex() bootstrap, then kept current by live quote
+// ticks (handleGexQuoteTick, which re-solves that contract's iv) on the SAME WebSocket already open for
+// the underlying's trades. gexByStrike/gexByExp are the aggregates parseGexRows/renderGexHeat consume,
+// rebuilt from every contract at the current spot on each (throttled) re-render — see gexRebuild.
+// gexWsSymbols/gexStreamSid let a later bootstrap (the periodic backstop) push an updated
+// subscription onto the SAME already-open connection.
 let gexContracts=new Map(),gexByStrike={},gexByExp={},gexWsSymbols=[],gexStreamSid=null,gexRerenderTimer=null;
-// Pane 2's own mirror of the block above — same shapes, same O(1)-per-tick delta idiom, same
+// Pane 2's own mirror of the block above — same shapes, same rebuild at its own spot (gex2Spot), same
 // single shared WebSocket connection (never a second one), just committing into gex2Board/
 // #gexStatus2 instead (see handleGex2QuoteTick/scheduleGex2Rerender near handleGexQuoteTick).
 let gex2Contracts=new Map(),gex2ByStrike={},gex2ByExp={},gex2WsSymbols=[],gex2RerenderTimer=null;
@@ -9938,11 +9925,38 @@ function gexResubscribe(){
   const altSym=(alt&&alt.sym&&alt.sym!==cfg.sym)?[alt.sym]:[];
   try{ws.send(JSON.stringify({symbols:[wsWantSym,...altSym,...gexWsSymbols,...gex2WsSymbols],sessionid:gexStreamSid,linebreak:true,filter:['trade','quote']}));}catch(e){}
 }
-// One option contract's own live quote tick. Reruns exactly the same exclusion rules as the
-// full-chain bootstrap below (no two-sided market / mid outside no-arbitrage bounds / IV solver
-// doesn't converge) so a contract that stops qualifying contributes 0 rather than a stale value —
-// the delta against its own last contribution then correctly nets it out of the board, the same
-// "subtract old, add new" idiom as VWAP's live tail.
+/* LIVE GEX. The board is dealer gamma exposure AT ONE SPOT AND TIME: every contract's gamma evaluated at
+   the current underlying price and time to expiry, from that contract's own implied volatility. A quote
+   tick changes only what it can know — that contract's IV, re-solved from its fresh mid at the spot of
+   that moment — and each re-render recomputes EVERY contract at the current spot/time.
+   This used to add each ticking contract's change as a delta onto a board whose other contracts were
+   still valued at the spot of their own last tick or of the 2-minute bootstrap, while the heatmap and
+   levels were labelled with the current price. GEX scales with spot squared and gamma(spot), so that
+   sum mixed different underlying prices: replayed on the real SPY 2026-09-29 chain (94 contracts), a
+   0.2-0.5% move with 30-70% of contracts re-quoting left net GEX off by up to 4x (-488M vs -123M), a
+   single strike off by up to 7.4% of the board, and the top magnet / air pocket on the wrong strike. */
+// A contract's IV from its current two-sided quote, or null when it does not qualify (the bootstrap's own
+// exclusion rules: no two-sided market / mid outside the no-arbitrage bounds / the solver cannot converge).
+function gexQuoteIV(c,spot,r,T){
+  if(!(c.bid>0&&c.ask>0&&c.bid<=c.ask))return null;
+  const mid=(c.bid+c.ask)/2,bnd=bsBounds(c.isPut,spot,c.strike,T,r,GEX_DIV_YIELD);
+  if(!(mid>bnd.lo&&mid<bnd.hi))return null;
+  return solveIV(c.isPut,spot,c.strike,T,r,GEX_DIV_YIELD,mid);
+}
+// Every qualifying contract's GEX at one spot, each with its own time to expiry and latest IV.
+function gexRebuild(contracts,spot,r){
+  const byStrike={},byExp={};
+  for(const c of contracts.values()){
+    if(c.iv==null)continue;
+    const T=yearsToExpiry(c.ex);if(!(T>0))continue;
+    const g=bsGamma(spot,c.strike,T,r,GEX_DIV_YIELD,c.iv);if(!isFinite(g))continue;
+    const v=gexContract(g,c.oi,spot,c.isPut);
+    const e=byExp[c.ex]||(byExp[c.ex]={});e[c.strike]=(e[c.strike]||0)+v;
+    if(c.inStrikeWindow)byStrike[c.strike]=(byStrike[c.strike]||0)+v;
+  }
+  return{byStrike,byExp};
+}
+// One option contract's own live quote tick (pane 1 board).
 function handleGexQuoteTick(d){
   if(gexBusy)return;   // a fresh bootstrap is rebuilding the board right now; let it finish and commit
   const c=gexContracts.get(d.symbol);if(!c)return;
@@ -9950,47 +9964,30 @@ function handleGexQuoteTick(d){
   if(isFinite(bid))c.bid=bid;if(isFinite(ask))c.ask=ask;
   if(!(lastPx>0))return;
   const rfrPct=+cfg.gexRfr;if(!isFinite(rfrPct))return;
-  const r=rfrPct/100,spot=lastPx;
   const T=yearsToExpiry(c.ex);if(!(T>0))return;
-  let val=0;
-  if(c.bid>0&&c.ask>0&&c.bid<=c.ask){
-    const mid=(c.bid+c.ask)/2;
-    const bnd=bsBounds(c.isPut,spot,c.strike,T,r,GEX_DIV_YIELD);
-    if(mid>bnd.lo&&mid<bnd.hi){
-      const sigma=solveIV(c.isPut,spot,c.strike,T,r,GEX_DIV_YIELD,mid);
-      if(sigma!=null){
-        const g=bsGamma(spot,c.strike,T,r,GEX_DIV_YIELD,sigma);
-        if(isFinite(g))val=gexContract(g,c.oi,spot,c.isPut);
-      }
-    }
-  }
-  const delta=val-(c.lastVal||0);
-  if(delta===0)return;
-  if(c.inStrikeWindow)gexByStrike[c.strike]=(gexByStrike[c.strike]||0)+delta;
-  gexByExp[c.ex]=gexByExp[c.ex]||{};gexByExp[c.ex][c.strike]=(gexByExp[c.ex][c.strike]||0)+delta;
-  c.lastVal=val;
+  c.iv=gexQuoteIV(c,lastPx,rfrPct/100,T);
   scheduleGexRerender();
 }
-// The math above is O(1) per tick and negligible even at a full board's tick rate (measured live:
-// dozens of contracts, several ticks/sec each). The re-render below touches the DOM (heatmap grid,
-// level table, chart price lines) and is throttled to at most once/second so a burst of ticks
-// across the whole board repaints once, not once per tick.
+// The re-render touches the DOM (heatmap grid, level table, chart price lines) and is throttled to at
+// most once/second, so a burst of ticks across the whole board is rebuilt and repainted once.
 function scheduleGexRerender(){
   if(gexRerenderTimer)return;
   gexRerenderTimer=setTimeout(()=>{
     gexRerenderTimer=null;
-    const rows=Object.keys(gexByStrike).map(k=>({strike:+k,val:gexByStrike[k]}));
+    const rfrPct=+cfg.gexRfr;if(!(lastPx>0)||!isFinite(rfrPct))return;
+    const B=gexRebuild(gexContracts,lastPx,rfrPct/100);
+    const rows=Object.keys(B.byStrike).map(k=>({strike:+k,val:B.byStrike[k]}));
     if(!rows.length)return;
+    gexByStrike=B.byStrike;gexByExp=B.byExp;
     gexHeat={exps:gexHeat?gexHeat.exps:[],byExp:gexByExp,spot:lastPx,t:Date.now()};
     parseGexRows(rows,'live stream');
     renderGexHeat();
   },1000);
 }
-// Pane 2's own live quote tick — identical math/exclusion rules to handleGexQuoteTick above, just
-// against gex2Contracts/gex2ByStrike/gex2ByExp/gex2Spot instead of the shared board's own state.
-// gex2Spot (not lastPx) is Pane 2's best current price: updated live by its own underlying
-// symbol's quote ticks (see the WS message handler) now that gexResubscribe() subscribes to it,
-// falling back to whatever computeChainGex2()'s last REST bootstrap saw if no tick has landed yet.
+// Pane 2's own live quote tick — identical math to handleGexQuoteTick above, against gex2Contracts and
+// gex2Spot. gex2Spot (not lastPx) is Pane 2's best current price: updated live by its own underlying
+// symbol's quote ticks (see the WS message handler) now that gexResubscribe() subscribes to it, falling
+// back to whatever computeChainGex2()'s last REST bootstrap saw if no tick has landed yet.
 function handleGex2QuoteTick(d){
   if(gex2Busy)return;
   const c=gex2Contracts.get(d.symbol);if(!c)return;
@@ -9998,33 +9995,19 @@ function handleGex2QuoteTick(d){
   if(isFinite(bid))c.bid=bid;if(isFinite(ask))c.ask=ask;
   if(!(gex2Spot>0))return;
   const rfrPct=+cfg.gexRfr;if(!isFinite(rfrPct))return;
-  const r=rfrPct/100,spot=gex2Spot;
   const T=yearsToExpiry(c.ex);if(!(T>0))return;
-  let val=0;
-  if(c.bid>0&&c.ask>0&&c.bid<=c.ask){
-    const mid=(c.bid+c.ask)/2;
-    const bnd=bsBounds(c.isPut,spot,c.strike,T,r,GEX_DIV_YIELD);
-    if(mid>bnd.lo&&mid<bnd.hi){
-      const sigma=solveIV(c.isPut,spot,c.strike,T,r,GEX_DIV_YIELD,mid);
-      if(sigma!=null){
-        const g=bsGamma(spot,c.strike,T,r,GEX_DIV_YIELD,sigma);
-        if(isFinite(g))val=gexContract(g,c.oi,spot,c.isPut);
-      }
-    }
-  }
-  const delta=val-(c.lastVal||0);
-  if(delta===0)return;
-  if(c.inStrikeWindow)gex2ByStrike[c.strike]=(gex2ByStrike[c.strike]||0)+delta;
-  gex2ByExp[c.ex]=gex2ByExp[c.ex]||{};gex2ByExp[c.ex][c.strike]=(gex2ByExp[c.ex][c.strike]||0)+delta;
-  c.lastVal=val;
+  c.iv=gexQuoteIV(c,gex2Spot,rfrPct/100,T);
   scheduleGex2Rerender();
 }
 function scheduleGex2Rerender(){
   if(gex2RerenderTimer)return;
   gex2RerenderTimer=setTimeout(()=>{
     gex2RerenderTimer=null;
-    const rows=Object.keys(gex2ByStrike).map(k=>({strike:+k,val:gex2ByStrike[k]}));
+    const rfrPct=+cfg.gexRfr;if(!(gex2Spot>0)||!isFinite(rfrPct))return;
+    const B=gexRebuild(gex2Contracts,gex2Spot,rfrPct/100);
+    const rows=Object.keys(B.byStrike).map(k=>({strike:+k,val:B.byStrike[k]}));
     if(!rows.length)return;
+    gex2ByStrike=B.byStrike;gex2ByExp=B.byExp;
     gex2Heat={exps:gex2Heat?gex2Heat.exps:[],byExp:gex2ByExp,spot:gex2Spot,t:Date.now()};
     parseGexRows(rows,'live stream',true,gex2Spot);
     renderGexHeat(true);
@@ -10130,7 +10113,7 @@ async function computeChainGex(){
         // Recorded for every contract in the (wider) heatmap window, not just the ±4% level
         // window, so a live quote tick can update byExp's heatmap contribution too, not only
         // byStrike's level lines.
-        contracts.set(o.symbol,{strike:k,isPut,oi,ex,bid,ask,lastVal:gex,inStrikeWindow});
+        contracts.set(o.symbol,{strike:k,isPut,oi,ex,bid,ask,iv:sigma,inStrikeWindow});
       });
     }
     if(exNoMid||exOi||exArb||exNoConverge||exGamma)
@@ -10237,7 +10220,7 @@ async function computeChainGex2(){
         // Same live-tick registry as computeChainGex()'s own contracts Map — this is what lets
         // handleGex2QuoteTick patch this ONE contract's contribution on its next quote instead
         // of waiting for the next 2-minute bootstrap.
-        contracts.set(o.symbol,{strike:k,isPut,oi,ex,bid,ask,lastVal:gex,inStrikeWindow});
+        contracts.set(o.symbol,{strike:k,isPut,oi,ex,bid,ask,iv:sigma,inStrikeWindow});
       });
     }
     if(exNoMid||exOi||exArb||exNoConverge||exGamma)

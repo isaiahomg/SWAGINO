@@ -1,0 +1,10 @@
+export default [{files:['*.js'],languageOptions:{ecmaVersion:2022,sourceType:'script',
+  globals:{window:'readonly',document:'readonly',localStorage:'readonly',navigator:'readonly',location:'readonly',console:'readonly',fetch:'readonly',
+  setTimeout:'readonly',clearTimeout:'readonly',setInterval:'readonly',clearInterval:'readonly',requestAnimationFrame:'readonly',cancelAnimationFrame:'readonly',
+  performance:'readonly',Intl:'readonly',AbortController:'readonly',WebSocket:'readonly',Blob:'readonly',URL:'readonly',matchMedia:'readonly',
+  getComputedStyle:'readonly',ResizeObserver:'readonly',MutationObserver:'readonly',Image:'readonly',LightweightCharts:'writable',Event:'readonly',
+  CustomEvent:'readonly',HTMLElement:'readonly',alert:'readonly',confirm:'readonly',prompt:'readonly',devicePixelRatio:'readonly',innerWidth:'readonly',innerHeight:'readonly',
+  Notification:'readonly',Audio:'readonly',AudioContext:'readonly',webkitAudioContext:'readonly',screen:'readonly',visualViewport:'readonly',TextEncoder:'readonly',
+  crypto:'readonly',IntersectionObserver:'readonly',FileReader:'readonly',queueMicrotask:'readonly',structuredClone:'readonly',scrollX:'readonly',scrollY:'readonly',
+  sessionStorage:'readonly',history:'readonly',open:'readonly',Element:'readonly',Node:'readonly',DOMParser:'readonly',Response:'readonly',Request:'readonly',Headers:'readonly'}},
+  rules:{'no-unused-vars':['error',{vars:'local',args:'none'}],'no-undef':'error','no-redeclare':'error','no-const-assign':'error','no-dupe-keys':'error'}}];
