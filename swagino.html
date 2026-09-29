@@ -2236,7 +2236,7 @@ table.lv td{padding:6px 10px}
 <div id="rbModal" role="dialog" aria-modal="true" style="position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:150;display:none;align-items:center;justify-content:center">
   <div class="card" style="width:500px">
     <h1>Saty Pivot Ribbon <span id="rbPaneTag"></span></h1>
-    <div class="hint" style="margin:2px 0 0">Three EMAs &mdash; fast, pivot and slow &mdash; with a cloud filled between each pair and coloured by which side is on top. A faithful port of Saty Mahajan's Pine v6 indicator: same inputs, same defaults.</div>
+    <div class="hint" style="margin:2px 0 0">Three EMAs &mdash; fast, pivot and slow &mdash; with a cloud filled between each pair and coloured by which side is on top. Based on Saty Mahajan's Saty Pivot Ribbon, with its inputs and default lengths, calculated natively in this app.</div>
     <h3 style="font-size:11px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase;margin:12px 0 6px">Inputs</h3>
     <div class="row"><label>Time Warp</label>
       <select id="rbWarp" style="width:96px">
@@ -2256,7 +2256,7 @@ table.lv td{padding:6px 10px}
       <span class="hint" style="margin:0 12px 0 6px">bullish</span><span class="sw" id="rbSwBearSlow" title="Bearish Slow Cloud Color"></span>
       <span class="hint" style="margin:0 0 0 6px">bearish</span></div>
     <div class="row"><label>Cloud transparency</label><input id="rbTransp" type="number" min="0" max="100" step="1" style="width:60px">
-      <span class="hint" style="margin:0;flex:1">Pine's <b>color.new</b> convention &mdash; 0 is solid, 100 invisible</span></div>
+      <span class="hint" style="margin:0;flex:1">0 is solid, 100 invisible</span></div>
     <h3 style="font-size:11px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase;margin:12px 0 6px">Highlight lines</h3>
     <div class="row"><label style="min-width:0;flex:1"><input type="checkbox" id="rbShowFastHi"> Show Fast EMA Highlight</label></div>
     <div class="row"><label style="min-width:0;flex:1"><input type="checkbox" id="rbShowPivotHi"> Show Pivot EMA Highlight</label></div>
@@ -2276,7 +2276,7 @@ table.lv td{padding:6px 10px}
     <h3 style="font-size:11px;letter-spacing:.12em;color:var(--dim);text-transform:uppercase;margin:12px 0 6px">Candle bias</h3>
     <div class="row"><label style="min-width:0;flex:1"><input type="checkbox" id="rbShowBias"> Show Candle Bias</label>
       <label style="min-width:66px">Bias EMA</label><input id="rbBiasLen" type="number" min="1" max="400" step="1" style="width:52px"></div>
-    <div class="hint">Recolours the candles green or red by close vs the bias EMA, as Pine's <b>barcolor</b> does. This replaces your own candle colours while it is on.</div>
+    <div class="hint">Recolours each candle by whether it closed up or down and whether it closed at/above or below the bias EMA: up and above uses the bullish fast-cloud colour, up and below the bearish slow-cloud colour, down and above the bullish slow-cloud colour, down and below the bearish fast-cloud colour; a doji is grey. This replaces your own candle colours while it is on.</div>
     <div class="row" style="justify-content:flex-end;margin-top:12px">
       <button class="tbtn" id="rbDefaults">Defaults</button><span style="flex:1"></span>
       <button class="tbtn" id="rbCancel">Cancel</button>
@@ -2357,7 +2357,7 @@ table.lv td{padding:6px 10px}
     <div class="row"><label style="min-width:0"><input type="checkbox" id="rsLoOn"></label><span style="min-width:96px;font-size:12px">Lower Band</span><span class="sw" id="swRsLo"></span><input id="rsLo" style="width:56px"></div>
     <div class="row"><label style="min-width:0"><input type="checkbox" id="rsFill"></label><span style="min-width:96px;font-size:12px">Background Fill</span><span class="sw" id="swRsFill"></span></div>
     <div class="row"><label style="min-width:0"><input type="checkbox" id="rsGrad"></label><span style="min-width:200px;font-size:12px">Overbought / oversold gradient fill</span><span class="sw" id="swRsOb" title="Overbought color"></span><span class="sw" id="swRsOs" title="Oversold color"></span></div>
-    <div class="hint">This is TradingView's built-in <b>Relative Strength Index</b> indicator, ported from its Pine v6 source — Wilder RMA smoothing, the same 70 / 50 / 30 bands, band background fill, and gradient overbought/oversold fills. Divergence does NOT follow Pine's stock version (RSI-line pivots) — see the note under Divergence above for why. The scale is locked 0–100. The RSI line colour is on the Style tab.</div>
+    <div class="hint">Wilder's <b>Relative Strength Index</b>, calculated natively with the same formula as TradingView's built-in RSI — Wilder RMA smoothing, the same 70 / 50 / 30 bands, band background fill, and gradient overbought/oversold fills. Divergence does NOT follow TradingView's stock version (RSI-line pivots) — see the note under Divergence above for why. The scale is locked 0–100. The RSI line colour is on the Style tab.</div>
     <div id="rsAuto" class="hint" style="margin:8px 0 0"></div>
     <div class="row" style="justify-content:flex-end"><button class="tbtn" id="rsCancel">Close</button><button class="tbtn primary" id="rsOk">OK</button></div>
   </div>
@@ -2401,7 +2401,7 @@ table.lv td{padding:6px 10px}
     <div class="row"><label style="min-width:0"><input type="checkbox" id="mcMacdOn"></label><span style="min-width:96px;font-size:12px">MACD line</span><span class="sw" id="swMcMacd"></span></div>
     <div class="row"><label style="min-width:0"><input type="checkbox" id="mcSigOn"></label><span style="min-width:96px;font-size:12px">Signal line</span><span class="sw" id="swMcSig"></span></div>
     <div class="row"><span style="min-width:96px;font-size:12px">Zero line</span><span class="sw" id="swMcZero"></span></div>
-    <div class="hint">This is TradingView's built-in <b>Moving Average Convergence Divergence</b> indicator, ported from its Pine v6 source verbatim — fast/slow EMA (or SMA) of the source, MACD = fast &minus; slow, signal = EMA (or SMA) of MACD, histogram = MACD &minus; signal, coloured by sign and by whether it just rose or fell. Fast 12 / Slow 26 / Signal 9 / EMA+EMA are Pine's own defaults, fixed on every timeframe — unlike RSI's optional per-timeframe auto-tune, MACD has no measured basis here for retuning it per chart, so it runs the same on every timeframe the way TradingView's own version does.</div>
+    <div class="hint">The standard <b>Moving Average Convergence Divergence</b>, calculated natively with the same formula as TradingView's built-in MACD — fast/slow EMA (or SMA) of the source, MACD = fast &minus; slow, signal = EMA (or SMA) of MACD, histogram = MACD &minus; signal, coloured by sign and by whether it just rose or fell. Fast 12 / Slow 26 / Signal 9 / EMA+EMA are TradingView's defaults, fixed on every timeframe — unlike RSI's optional per-timeframe auto-tune, MACD has no measured basis here for retuning it per chart, so it runs the same on every timeframe the way TradingView's own version does.</div>
     <div class="row" style="justify-content:flex-end"><button class="tbtn" id="mcCancel">Close</button><button class="tbtn primary" id="mcOk">OK</button></div>
   </div>
 </div>
@@ -4019,14 +4019,32 @@ function resetView(p,_again){
 function sessKeep(b){
   const dow=new Date(b.etYmd+'T12:00:00Z').getUTCDay();
   if(dow===0||dow===6)return false;
-  if(cfg.sess==='rth')return b.etMin>=570&&b.etMin<960;
+  // regular session ends at that day's actual close: 13:00 on an early-close day, when 13:00-16:00 is post-market
+  if(cfg.sess==='rth')return b.etMin>=570&&b.etMin<sessionCloseMin(b.etYmd);
   return true;
+}
+// Minutes from the start of b's bucket to b itself. Tradier's timesales leaves out intervals with
+// no trades, so on thin tape the first sub-bar of a bucket can open well after the bucket does;
+// stamping the aggregate with that sub-bar's time put the candle at the wrong time and made its
+// spacing uneven. Clamped to b.etMin so a bucket that would reach back past midnight starts at
+// 00:00 of b's own day (its key is per day) — never hit by the 04:00-20:00 data this aggregates.
+function bucketInto(b,groupMin,anchorMin){
+  return Math.min((((b.etMin-anchorMin)+1440)%1440)%groupMin,b.etMin);
+}
+function bucketStartT(b,groupMin,anchorMin){
+  return b.t-bucketInto(b,groupMin,anchorMin)*60-(((b.t%60)+60)%60);
 }
 function aggregate(src,groupMin,anchorMin){
   const out=[];let cur=null,key=null;
   for(const b of src){
     const k=b.etYmd+'#'+Math.floor(((b.etMin-anchorMin)+1440)%1440/groupMin);
-    if(k!==key){if(cur)out.push(cur);cur={t:b.t,o:b.o,h:b.h,l:b.l,c:b.c,v:b.v,etYmd:b.etYmd,etMin:b.etMin,etHm:b.etHm};key=k;}
+    if(k!==key){
+      if(cur)out.push(cur);
+      const m0=b.etMin-bucketInto(b,groupMin,anchorMin);
+      cur={t:bucketStartT(b,groupMin,anchorMin),o:b.o,h:b.h,l:b.l,c:b.c,v:b.v,etYmd:b.etYmd,etMin:m0,
+        etHm:String(Math.floor(m0/60)).padStart(2,'0')+':'+String(m0%60).padStart(2,'0')};
+      key=k;
+    }
     else{cur.h=Math.max(cur.h,b.h);cur.l=Math.min(cur.l,b.l);cur.c=b.c;cur.v+=b.v;}
   }
   if(cur)out.push(cur);return out;
@@ -4124,7 +4142,7 @@ function seriesForTFRaw(tf,D){
   // most of the morning session, and an opens-inside test would have called it overnight.
   const span=tf==='5'?5:tf==='10'?10:tf==='60'?60:240;
   return src.map(b=>({time:toChartTime(b.t),t:b.t,open:b.o,high:b.h,low:b.l,close:b.c,volume:b.v,
-    ymd:b.etYmd,etMin:b.etMin,rth:b.etMin<960&&b.etMin+span>570}));
+    ymd:b.etYmd,etMin:b.etMin,rth:b.etMin<sessionCloseMin(b.etYmd)&&b.etMin+span>570}));
 }
 
 /* ---------- indicators ---------- */
@@ -4213,9 +4231,6 @@ function rmaSeries(vals,n){
     if(r==null){sum+=v;cnt++;if(cnt===n){r=sum/n;out[i]=r;}else out[i]=null;}
     else{r=(r*(n-1)+v)/n;out[i]=r;}}
   return out;
-}
-function sessionBreaks(data){
-  return data.map((d,i)=>i>0&&d.ymd!==undefined&&data[i-1].ymd!==undefined&&d.ymd!==data[i-1].ymd);
 }
 // TradingView's built-in RSI, ported verbatim from the Pine v6 source:
 //   change = ta.change(src); up = ta.rma(max(change,0), len); down = ta.rma(-min(change,0), len)
@@ -5016,8 +5031,26 @@ function lwcStyle(st){return LSTYLE[st]!==undefined?LSTYLE[st]:0;}
 // Every series must span the SAME logical indices as the candles, otherwise
 // setVisibleLogicalRange (used to sync the panels) and the crosshair land on
 // different bars. Gaps become whitespace points instead of being filtered out.
-function padSeries(data,arr){
-  return data.map((d,i)=>arr[i]==null?{time:d.time}:{time:d.time,value:+arr[i].toFixed(2)});
+/* Plotted-value precision. Every indicator value handed to the chart is rounded, and a flat
+   2 decimals was only right for the bounded oscillators (RSI/ADX, 0-100). On price overlays it
+   quantised low-priced tape to whole cents — split-adjusted history under $10 drew the ribbon and
+   VWAP as visible stair-steps against unrounded candles — and on MACD, which is a difference of two
+   averages and so far smaller than the price, it rounded real histogram bars to zero height and
+   flattened the lines. Batch render and live tick use the same rule, so a
+   forming bar's value never shifts when the next full render replaces it.
+     r2    bounded oscillators: 2 decimals
+     rPx   price overlays: at least 5 significant digits, never fewer than 2 decimals
+     rMacd MACD/signal/histogram: 2 decimals finer than the bar's own price (pxDp of its close) */
+function pxDp(v){
+  const a=Math.abs(v);
+  return a>0&&isFinite(a)?Math.min(10,Math.max(2,4-Math.floor(Math.log10(a)))):2;
+}
+function r2(v){return +v.toFixed(2);}
+function rPx(v){return +v.toFixed(pxDp(v));}
+function rMacd(v,close){return +v.toFixed(pxDp(close)+2);}
+function padSeries(data,arr,round){
+  const rd=round||r2;
+  return data.map((d,i)=>arr[i]==null?{time:d.time}:{time:d.time,value:rd(arr[i],i)});
 }
 /* ===================== Saty Pivot Ribbon =========================================
    A port of Saty Mahajan's "Saty Pivot Ribbon" (Pine v6). Three EMAs — fast 8, pivot 21,
@@ -5139,8 +5172,48 @@ const RB_LINE_TRANSP=35;
    never rewrite finalized history), and the live tick in paneTick advances ONLY the forming
    bar's point via a one-step recursion seeded from the LAST CLOSED bar — never from the
    previous tick — so repeated intrabar prints can neither compound nor corrupt the series. */
-function rbEma(closes,len,mins,data){
+/* Time Warp D/W/M/Y: calendar periods, not fixed spans. Bucketing by floor(t/span) — as the
+   intraday warps below do — cut "W" into Thursday-to-Wednesday weeks (the Unix epoch fell on a
+   Thursday), "M" into 30-day blocks and "Y" into 365-day blocks, none of which is a real week,
+   month or year. These warps instead roll the pane's own daily rows up into Monday-anchored weeks
+   (the same satyPeriodKey grouping the W chart and Saty's Multiday mode use), calendar months and
+   calendar years, and take each period's close from the daily bar — the session close, which is
+   what a D/W/M/Y bar closes at. */
+const RB_CAL_WARP={1440:'D',10080:'W',43200:'M',525600:'Y'};
+function rbCalKey(kind,ymd){
+  if(kind==='W')return satyPeriodKey('multiday',ymd);
+  if(kind==='M')return ymd.slice(0,7);
+  if(kind==='Y')return ymd.slice(0,4);
+  return ymd;
+}
+// [{key,close}] per period, oldest first; the still-open period is included but never read, since a
+// bar only ever takes the value of a period that ended before its own began.
+function rbCalPeriods(kind,drows){
+  const out=[];
+  for(const r of drows||[]){
+    if(!r||!/^\d{4}-\d{2}-\d{2}$/.test(r.date)||!isFinite(r.close))continue;
+    const dow=new Date(r.date+'T12:00:00Z').getUTCDay();
+    if(dow===0||dow===6)continue;          // same weekend guard as satyPeriods('day')
+    const k=rbCalKey(kind,r.date);
+    if(out.length&&out[out.length-1].key===k)out[out.length-1].close=r.close;
+    else out.push({key:k,close:r.close});
+  }
+  return out;
+}
+function rbEma(closes,len,mins,data,cal){
   if(!mins)return emaCalc(closes,len);
+  if(cal){
+    // lookahead_off: each bar gets the EMA as of the last period that CLOSED before the bar's own
+    // period began (keys are ISO strings, so string order is time order).
+    const e=emaCalc(cal.periods.map(x=>x.close),len),out=new Array(data.length).fill(null);
+    let j=-1;
+    for(let i=0;i<data.length;i++){
+      const k=rbCalKey(cal.kind,data[i].ymd);
+      while(j+1<cal.periods.length&&cal.periods[j+1].key<k)j++;
+      out[i]=j>=0?e[j]:null;
+    }
+    return out;
+  }
   // Time Warp: bucket the base bars to `mins`-minute buckets, EMA the bucket closes, then step
   // each base bar onto the last bucket that has CLOSED (lookahead_off — a warped value only
   // appears once its higher-timeframe bar finishes, so it never repaints).
@@ -5185,20 +5258,24 @@ function renderRibbon(p,data){
   // a hand-picked field list) specifically so it can never silently drift out of sync with a
   // field added to that config later — correctness over precision, and JSON.stringify on ~24
   // scalar fields is microseconds, nowhere near the cost being saved.
+  const mins=RB_TF[R.timeWarp]||0;
+  // D/W/M/Y warps read the pane's daily rows, which the bar array does not identify, so the
+  // period closes are part of the cache key (a daily refetch changes them with `data` unchanged).
+  const calKind=RB_CAL_WARP[mins]||null;
+  const cal=calKind?{kind:calKind,periods:rbCalPeriods(calKind,(paneData(p)||{}).daily)}:null;
   let rbKey=null;
   if(!R.showCandleBias){
-    rbKey=JSON.stringify(R);
+    rbKey=JSON.stringify(R)+(cal?'|'+cal.periods.map(x=>x.key+':'+x.close).join(','):'');
     const rc=p._rbRenderCache;
     if(rc&&rc.data===data&&rc.rbKey===rbKey)return;
   }else{
     p._rbRenderCache=null;
   }
-  const mins=RB_TF[R.timeWarp]||0;
   const closes=data.map(d=>d.close);
   const Lf=+R.fastEma||8,Lp=+R.pivotEma||21,Ls=+R.slowEma||34,
         Lfc=+R.fastConvLen||13,Lsc=+R.slowConvLen||48,Lb=+R.biasEma||21;
-  const fast=rbEma(closes,Lf,mins,data),piv=rbEma(closes,Lp,mins,data),slow=rbEma(closes,Ls,mins,data),
-        fc=rbEma(closes,Lfc,mins,data),sc=rbEma(closes,Lsc,mins,data),bias=rbEma(closes,Lb,mins,data);
+  const fast=rbEma(closes,Lf,mins,data,cal),piv=rbEma(closes,Lp,mins,data,cal),slow=rbEma(closes,Ls,mins,data,cal),
+        fc=rbEma(closes,Lfc,mins,data,cal),sc=rbEma(closes,Lsc,mins,data,cal),bias=rbEma(closes,Lb,mins,data,cal);
   // Clouds: fast fill = fast>=pivot ? bull:bear ; slow fill = pivot>=slow ? bull:bear (>=, ties bull),
   // each at the shared cloud transparency, exactly as Pine's fill(color.new(cloud_color, transp)).
   const T=+R.cloudTransparency;
@@ -5206,7 +5283,7 @@ function renderRibbon(p,data){
   const cBullS=rbAlpha(R.bullSlowCloud,T),cBearS=rbAlpha(R.bearSlowCloud,T);
   const band=(a,b,bull,bear)=>data.map((d,i)=>
     (a[i]==null||b[i]==null)?{time:d.time}
-      :{time:d.time,a:+a[i],b:+b[i],color:a[i]>=b[i]?bull:bear});
+      :{time:d.time,a:rPx(a[i]),b:rPx(b[i]),color:a[i]>=b[i]?bull:bear});
   p.rbCloudFast.setData(band(fast,piv,cBullF,cBearF));
   p.rbCloudSlow.setData(band(piv,slow,cBullS,cBearS));
   // The three ribbon EMAs override Pine's display.none: each is drawn in the colour of the cloud
@@ -5221,7 +5298,7 @@ function renderRibbon(p,data){
   const hSB=rbAlpha(R.bullSlowCloud,hiT),hSR=rbAlpha(R.bearSlowCloud,hiT);
   const cloudLine=(sr,arr,show,aArr,bArr,bull,bear)=>{
     sr.applyOptions({visible:!!show});
-    try{sr.setData(show?padSeries(data,arr).map((pt,i)=>pt.value==null?pt
+    try{sr.setData(show?padSeries(data,arr,rPx).map((pt,i)=>pt.value==null?pt
       :Object.assign(pt,{color:(aArr[i]!=null&&bArr[i]!=null&&aArr[i]>=bArr[i])?bull:bear})):[]);}catch(e){}
   };
   cloudLine(p.rbFast, fast,R.showFastHi, fast,piv,hFB,hFR);   // fast EMA borders the FAST cloud
@@ -5231,7 +5308,7 @@ function renderRibbon(p,data){
   // thickness/style), plotted only when their toggle is on (Pine default: off).
   const line=(sr,arr,show,col,w,st)=>{
     sr.applyOptions({visible:!!show,color:col,lineWidth:+w||2,lineStyle:lwcStyle(st||'solid')});
-    sr.setData(show?padSeries(data,arr):[]);
+    sr.setData(show?padSeries(data,arr,rPx):[]);
   };
   line(p.rbFastConv,fc,R.showFastConv,R.fastConvC,R.fastConvW,R.fastConvSt);
   line(p.rbSlowConv,sc,R.showSlowConv,R.slowConvC,R.slowConvW,R.slowConvSt);
@@ -5336,7 +5413,7 @@ function renderVwap(p,data){
   computed.forEach((res,k)=>{
     const L=V.lines[k];
     p.vwLines[k].applyOptions({visible:!!L.on,color:L.color,lineWidth:+L.width||2,lineStyle:lwcStyle(L.style||'solid')});
-    p.vwLines[k].setData(L.on?padSeries(data,res.values):[]);
+    p.vwLines[k].setData(L.on?padSeries(data,res.values,rPx):[]);
   });
   p.vwapTail={t:data.length?data[data.length-1].time:null,lines:computed.map(res=>Object.assign({},res.tail))};
   p.vwSets=computed.map(res=>res.values);
@@ -5506,6 +5583,11 @@ function pushMainSeriesData(p){
   syncLvlCarrier(p);
   if(p._liveColor)try{(p.lvl||p.candles).applyOptions({priceLineColor:volRgba(p._liveColor,PRICE_LINE_ALPHA)});}catch(e){}
 }
+// RSI overbought/oversold fill: the first RSI_FILL_RAMP values after warm-up are eased in from the
+// band edge (see rampFill in renderPane). Shared with paneTick so a forming bar in that window
+// gets the same value the next full render will give it.
+const RSI_FILL_RAMP=3;
+function rsiFillRamp(v,edge,k){return edge+(v-edge)*((k+1)/RSI_FILL_RAMP);}
 function renderPane(p){
   if(!p||!p.candles)return;
   ensureChartType(p);
@@ -5618,7 +5700,7 @@ function renderPane(p){
   {
     const n=data.length,pair=a=>[n>=2?a[n-2]:null,n>=1?a[n-1]:null];
     p.rsiTail={t:n?data[n-1].time:null,upR:pair(_rp.ru),dnR:pair(_rp.rd),prevClose:pair(srcArr),
-      n:Math.max(1,PP.rsiLen),src:cfg.rsi.src,on:cfg.ind.rsi.on};
+      n:Math.max(1,PP.rsiLen),src:cfg.rsi.src};
   }
   // visible stays true even with the RSI line "off" — that flag only hides the LINE itself
   // (lineVisible/lastValueVisible); the series must stay visible or the bands, background fill
@@ -5645,31 +5727,10 @@ function renderPane(p){
     const volAt=(endIdx)=>{const out=[];for(let j=0;j<winN;j++){const idx=endIdx-j;out.push(idx>=0&&vv?vv[idx]:null);}return out;};
     p.rsiMaTail={t:n?data[n-1].time:null,kind:maKind,len:winN,
       prevMa:[n>=2?ma[n-2]:null,n>=1?ma[n-1]:null],
-      win:[winAt(n-2),winAt(n-1)],volWin:[volAt(n-2),volAt(n-1)]};
+      win:[winAt(n-2),winAt(n-1)],volWin:[volAt(n-2),volAt(n-1)],
+      // Bollinger variant: the tick re-derives the bands from the same window (see paneTick)
+      bbMult:isBB?(+cfg.rsi.bbMult||2):null};
   }else p.rsiMaTail=null;
-  {
-    const n=data.length-1;
-    if(n>=0){
-      const s0=Math.max(0,n-20),seg=data.slice(s0,n);
-      const vAvg=seg.length?seg.reduce((a,b)=>a+b.volume,0)/seg.length:null;
-      // only swings already CONFIRMED at the last bar may inform the badge
-      let sHi=null,sLo=null,sTr=0;
-      if(p.sw&&p.sw.length){
-        const st=Math.max(2,PP.swing);
-        const seen=p.sw.filter(x=>x.i+st<=n);
-        const HH=seen.filter(x=>x.type==='H'),LL=seen.filter(x=>x.type==='L');
-        if(HH.length)sHi=HH[HH.length-1].price;
-        if(LL.length)sLo=LL[LL.length-1].price;
-        if(HH.length>=2&&LL.length>=2){
-          const hh=HH[HH.length-1].price>HH[HH.length-2].price,
-                hl=LL[LL.length-1].price>LL[LL.length-2].price,
-                lh=HH[HH.length-1].price<HH[HH.length-2].price,
-                ll=LL[LL.length-1].price<LL[LL.length-2].price;
-          sTr=(hh&&hl)?1:(lh&&ll)?-1:0;
-        }
-      }
-    }
-  }
   const stOn=cfg['struct'+p.idx];
   // MEASURED: this block's own math (RSI/MA/stdev/divergence detection) is cheap — the real
   // cost (~35-45ms, dominated by the divergence-line churn alone at ~26ms for removing and
@@ -5714,18 +5775,26 @@ function renderPane(p){
     // the first RMA value is just the lookback's raw average), the fill has no prior bar to ramp
     // from and appears as a solid block out of nowhere. Fading the fed value toward the band edge
     // over a few bars only touches this decorative shading, never the RSI line or its MA.
+    const first=rsi.findIndex(v=>v!=null);
     const rampFill=(edge)=>{
-      const out=rsi.slice(),first=out.findIndex(v=>v!=null);
+      const out=rsi.slice();
       if(first<0)return out;
-      const RAMP=3;
-      for(let k=0;k<RAMP&&first+k<out.length;k++){
+      for(let k=0;k<RSI_FILL_RAMP&&first+k<out.length;k++){
         const v=out[first+k];if(v==null)continue;
-        out[first+k]=edge+(v-edge)*((k+1)/RAMP);
+        out[first+k]=rsiFillRamp(v,edge,k);
       }
       return out;
     };
-    p.rsiOB.setData(gradOn?padSeries(data,rampFill(+cfg.rsi.up)):[]);
-    p.rsiOS.setData(gradOn?padSeries(data,rampFill(+cfg.rsi.lo)):[]);
+    const obArr=gradOn?rampFill(+cfg.rsi.up):null,osArr=gradOn?rampFill(+cfg.rsi.lo):null;
+    p.rsiOB.setData(gradOn?padSeries(data,obArr):[]);
+    p.rsiOS.setData(gradOn?padSeries(data,osArr):[]);
+    // What the two fills show at the last two bars, so paneTick can step the forming bar's fill point
+    // (and skip the repaint when neither bar touches the fill's side of its band edge).
+    {
+      const n=data.length,at=(a,i)=>i>=0&&a[i]!=null?r2(a[i]):null;
+      p.rsiFillTail=gradOn?{t:n?data[n-1].time:null,idx:n-1,first,up:+cfg.rsi.up,lo:+cfg.rsi.lo,
+        ob:{prev:at(obArr,n-2),cur:at(obArr,n-1)},os:{prev:at(osArr,n-2),cur:at(osArr,n-1)}}:null;
+    }
     const divOn=!!(cfg.rsi.div&&cfg.ind.rsi.on);
     // Divergence — off by default. When on it draws the pivot-to-pivot line plus a marker+label
     // at the swing (positionDivergence, HTML overlay over the RSI pane — see its own comment for
@@ -5773,7 +5842,6 @@ function renderPane(p){
       const macdArr=maFast.map((v,i)=>v==null||maSlow[i]==null?null:v-maSlow[i]);
       const sigArr=maCalc(macdArr,sigLen,M.sigType);
       const histArr=macdArr.map((v,i)=>v==null||sigArr[i]==null?null:v-sigArr[i]);
-      p.vals.macd=macdArr;   // crossSync value lookup (key:'macd'), independent of any style on/off
       // hColor = hist>=0 ? (hist>hist[1] ? histC[0] : histC[1]) : (hist>hist[1] ? histC[2] : histC[3])
       // — hist[1] is just the PREVIOUS bar's histogram value; na (bar 0, or any bar right after a
       // null) compares false in Pine, which the `prevH!=null&&h>prevH` guard below reproduces.
@@ -5783,7 +5851,7 @@ function renderPane(p){
         const prevH=i>0?histArr[i-1]:null;
         const rising=prevH!=null&&h>prevH;
         const col=h>=0?(rising?M.histC[0]:M.histC[1]):(rising?M.histC[2]:M.histC[3]);
-        return{time:d.time,value:+h.toFixed(2),color:col};
+        return{time:d.time,value:rMacd(h,d.close),color:col};
       });
       // MACD's axis auto-scales to whichever bars are currently visible, same as RSI's below and
       // any default LWC pane — a prior pass locked it to the full loaded series' own min/max for
@@ -5792,9 +5860,10 @@ function renderPane(p){
       p.macdHist.applyOptions({visible:!!M.histOn});
       p.macdHist.setData(M.histOn?histPts:[]);
       p.macdLine.applyOptions({visible:!!M.macdOn,color:M.macdC,lineWidth:M.macdW,lineStyle:lwcStyle(M.macdSt)});
-      p.macdLine.setData(M.macdOn?padSeries(data,macdArr):[]);
+      const macdRound=(v,i)=>rMacd(v,data[i].close);
+      p.macdLine.setData(M.macdOn?padSeries(data,macdArr,macdRound):[]);
       p.sigLine.applyOptions({visible:!!M.sigOn,color:M.sigC,lineWidth:M.sigW,lineStyle:lwcStyle(M.sigSt)});
-      p.sigLine.setData(M.sigOn?padSeries(data,sigArr):[]);
+      p.sigLine.setData(M.sigOn?padSeries(data,sigArr,macdRound):[]);
       try{p.macdZeroLine.applyOptions({color:M.zeroC});}catch(e){}
       // CONFIRMED tail for paneTick's own live one-step recursion (or, for the SMA case, a
       // window re-sum) — same pair/window-seeding idiom every other per-bar recursive
@@ -5814,8 +5883,12 @@ function renderPane(p){
         slow:tailFor(M.oscType,slowLen,maSlow,srcArrM),
         sig:tailFor(M.sigType,sigLen,sigArr,macdArr),
         prevHist:pair(histArr)};
-      p._macdRenderCache={data,key:macdBlockKey};
+      p._macdRenderCache={data,key:macdBlockKey,macd:macdArr};
     }
+    // crossSync value lookup (key:'macd'), independent of any style on/off. Assigned on a cache hit
+    // too: p.vals is rebuilt every render, and setting it only when the block recomputed left the
+    // synced crosshair with no MACD values after any render that reused the cache.
+    p.vals.macd=p._macdRenderCache.macd;
   }
   // ---- ADX (own subpane, below MACD) - see cfg.adx's comment. The length comes from the pane's CURRENT timeframe (adxParams), and it is part of the cache
   // key together with the bar array itself, so switching timeframe/symbol (a different array) or a length change always recalculates, while an
@@ -5942,15 +6015,15 @@ function renderPane(p){
     const a=Math.max(0,pat.from),b=data.length-1,mid=Math.floor((a+b)/2);
     const draw=(series,f)=>{
       series.applyOptions({color,lineWidth,lineStyle});
-      series.setData([{time:data[a].time,value:+(f.b+f.m*a).toFixed(2)},
-        {time:data[b].time,value:+(f.b+f.m*b).toFixed(2)}]);
+      series.setData([{time:data[a].time,value:rPx(f.b+f.m*a)},
+        {time:data[b].time,value:rPx(f.b+f.m*b)}]);
     };
     if(hasBounds){
       draw(p.patLineA,pat.upper);draw(p.patLineB,pat.lower);
-      p.patMid={time:data[mid].time,value:+(pat.upper.b+pat.upper.m*mid).toFixed(2)};
+      p.patMid={time:data[mid].time,value:rPx(pat.upper.b+pat.upper.m*mid)};
     }else{
       draw(p.patLineA,pat.neckline);p.patLineB.setData([]);
-      p.patMid={time:data[mid].time,value:+(pat.neckline.b+pat.neckline.m*mid).toFixed(2)};
+      p.patMid={time:data[mid].time,value:rPx(pat.neckline.b+pat.neckline.m*mid)};
     }
   }else{
     p.patLineA.setData([]);p.patLineB.setData([]);
@@ -6506,12 +6579,13 @@ function etMinOfChartTime(t){
   if(typeof t==='string')return -1;               // 1D bar: no intraday session
   const d=new Date(t*1000);return d.getUTCHours()*60+d.getUTCMinutes();
 }
-function sessClass(mm){
+function sessClass(mm,ymd){
   if(mm<0)return null;
+  const close=ymd?sessionCloseMin(ymd):960;
   // 00:00-09:30 all carries the premarket hue. The overnight lead-in (12:00-03:55) used to
   // stay black and read as regular-session tape; 04:00-09:30 is the premarket proper.
   if(mm<570)return 'pre';                          // 00:00-09:30
-  if(mm>=960&&mm<1200)return 'post';              // 16:00-20:00
+  if(mm>=close&&mm<1200)return 'post';            // 16:00-20:00 (13:00-20:00 on an early-close day)
   return null;                                     // RTH 09:30-16:00 (and the 20:00-24:00 gap)
 }
 // RSI divergence's own marker+label, over the RSI subpane — moved off LWC's native
@@ -6552,7 +6626,7 @@ function positionDivergence(p){
 function computeSessBands(times){
   const out=[];let run=null;
   for(let i=0;i<times.length;i++){
-    const cls=sessClass(etMinOfChartTime(times[i]));
+    const cls=sessClass(etMinOfChartTime(times[i]),typeof times[i]==='number'?new Date(times[i]*1000).toISOString().slice(0,10):null);
     if(cls&&run&&run.cls===cls){run.t1=times[i];}
     else{if(run)out.push(run);run=cls?{cls,t0:times[i],t1:times[i]}:null;}
   }
@@ -6966,7 +7040,7 @@ function touchSessionExtremes(px){
   const t=nowET(),mm=t.h*60+t.m;
   if(sessExt.ymd!==t.ymd)sessExt={ymd:t.ymd,hod:-Infinity,lod:Infinity,pmh:-Infinity,pml:Infinity};
   let moved=false;
-  if(mm>=570&&mm<960){
+  if(mm>=570&&mm<sessionCloseMin(t.ymd)){
     if(px>sessExt.hod){sessExt.hod=px;moved=true;}
     if(px<sessExt.lod){sessExt.lod=px;moved=true;}
   }else if(mm>=240&&mm<570){
@@ -7085,7 +7159,15 @@ function updateForming(px,sz,closeOnly,cvol,tradeTs){
   if(touchSessionExtremes(px))computeLevels();
   const t=m.ymd,r=dailyRows[dailyRows.length-1];
   let dailyExtremeMoved=false;
-  if(r&&r.date===t){
+  // Today's daily row is a REGULAR-SESSION bar: Tradier's daily history (and its own quote `last` and
+  // volume after the close) stop at the 16:00 close — verified 2026-09-28 22:00 ET, TSLA daily close /
+  // quote last 357.45 while the after-hours bid/ask sat at 358.08/358.20. Extended-hours prints used to
+  // move this row too, so after 16:00 the Daily/Weekly candle's close (and possibly high/low) drifted to
+  // post-market prices that the next day's re-pull silently took back. Only a print time-stamped inside
+  // 09:30:00-close (inclusive of the closing-auction second; 13:00 on an early-close day) may touch it.
+  const pT=etParts(new Date(now*1000)),pSec=pT.h*3600+pT.m*60+(+pT.hms.slice(6,8));
+  const inRegular=pT.ymd===t&&pSec>=570*60&&pSec<=sessionCloseMin(t)*60;
+  if(r&&r.date===t&&inRegular){
     r.close=px;
     if(px>r.high){r.high=px;dailyExtremeMoved=true;}
     if(px<r.low){r.low=px;dailyExtremeMoved=true;}
@@ -7156,7 +7238,7 @@ function applyTradeTick(px,sz,cvolNum,tradeTs){
 function filterTradeTick(px,sz,cvolNum,tradeTs,sizeSuspect){
   if(!isFinite(px)||px<=0)return;
   const mm=nowET().h*60+nowET().m;
-  if(mm>=570&&mm<960){applyTradeTick(px,sz,cvolNum,tradeTs);return;}   // RTH — unfiltered, as before
+  if(mm>=570&&mm<sessionCloseMin(nowET().ymd)){applyTradeTick(px,sz,cvolNum,tradeTs);return;}   // RTH — unfiltered, as before
   const held=_pendingTick;
   if(held){
     _pendingTick=null;
@@ -7495,15 +7577,16 @@ function paneTick(p){
     if(lastIdx<0)return;
     const lastB=src[lastIdx];
     const key=lastB.etYmd+'#'+Math.floor(((lastB.etMin-anchor)+1440)%1440/g);
-    let o=null,h=-1e9,l=1e9,t0=null,vol=0,ymd=lastB.etYmd;
+    let o=null,h=-1e9,l=1e9,vol=0,ymd=lastB.etYmd;
     for(let i=lastIdx;i>=0;i--){
       const b=src[i];
       if(!sessKeep(b))continue;
       const kk=b.etYmd+'#'+Math.floor(((b.etMin-anchor)+1440)%1440/g);
       if(kk!==key){barPrevClose=b.c;break;}
-      o=b.o;h=Math.max(h,b.h);l=Math.min(l,b.l);t0=b.t;vol+=(b.v||0);ymd=b.etYmd;
+      o=b.o;h=Math.max(h,b.h);l=Math.min(l,b.l);vol+=(b.v||0);ymd=b.etYmd;
     }
-    if(t0==null)return;
+    // the bucket's own start, exactly as aggregate() stamps the same bucket in the full series
+    const t0=bucketStartT(lastB,g,anchor);
     bar={time:toChartTime(t0),open:o,high:h,low:l,close:lastB.c,volume:vol,ymd};
   }
   if(!bar)return;
@@ -7585,9 +7668,10 @@ function paneTick(p){
       const step=(prev,len)=>{if(prev==null)return null;const k=2/(len+1);return bar.close*k+prev*(1-k);};
       const nf=step(RT.fast[sd],LN.f),np=step(RT.piv[sd],LN.p),ns=step(RT.slow[sd],LN.s),
             nfc=step(RT.fc[sd],LN.fc),nsc=step(RT.sc[sd],LN.sc);
-      const put=(sr,v,show,name)=>{if(v==null||!show)return;try{sr.update({time:bar.time,value:+v.toFixed(2)});}
+      p._rbRenderCache=null;   // tick-drawn values on the chart: see the ADX note below
+      const put=(sr,v,show,name)=>{if(v==null||!show)return;try{sr.update({time:bar.time,value:rPx(v)});}
         catch(e){logDiagError('tick|rb'+name+'|'+p.idx,`Ribbon ${name} tick update failed — ${tickCtx}: ${e&&e.message||e}`);}};
-      const putc=(sr,v,show,col,name)=>{if(v==null||!show)return;try{sr.update({time:bar.time,value:+v.toFixed(2),color:col});}
+      const putc=(sr,v,show,col,name)=>{if(v==null||!show)return;try{sr.update({time:bar.time,value:rPx(v),color:col});}
         catch(e){logDiagError('tick|rb'+name+'|'+p.idx,`Ribbon ${name} tick update failed — ${tickCtx}: ${e&&e.message||e}`);}};
       putc(p.rbFast,nf,R.showFastHi,rbAlpha(nf>=np?R.bullFastCloud:R.bearFastCloud,RT.lineT),'fast');
       putc(p.rbPivot,np,R.showPivotHi,rbAlpha(nf>=np?R.bullFastCloud:R.bearFastCloud,RT.lineT),'pivot');
@@ -7600,10 +7684,10 @@ function paneTick(p){
         if(nfc!=null)p.rbLast.fc={time:bar.time,value:+nfc};
         if(nsc!=null)p.rbLast.sc={time:bar.time,value:+nsc};
       }
-      if(nf!=null&&np!=null){try{p.rbCloudFast.update({time:bar.time,a:+nf,b:+np,
+      if(nf!=null&&np!=null){try{p.rbCloudFast.update({time:bar.time,a:rPx(nf),b:rPx(np),
         color:nf>=np?RT.colors.bullF:RT.colors.bearF});}
         catch(e){logDiagError('tick|rbCloudFast|'+p.idx,`Ribbon fast-cloud tick update failed — ${tickCtx}: ${e&&e.message||e}`);}}
-      if(np!=null&&ns!=null){try{p.rbCloudSlow.update({time:bar.time,a:+np,b:+ns,
+      if(np!=null&&ns!=null){try{p.rbCloudSlow.update({time:bar.time,a:rPx(np),b:rPx(ns),
         color:np>=ns?RT.colors.bullS:RT.colors.bearS});}
         catch(e){logDiagError('tick|rbCloudSlow|'+p.idx,`Ribbon slow-cloud tick update failed — ${tickCtx}: ${e&&e.message||e}`);}}
     }
@@ -7629,7 +7713,7 @@ function paneTick(p){
         const totalV=L.cumV+L.lastV;
         if(totalV>0&&Lc.on){
           const v=(L.cumPV+L.lastPV)/totalV;
-          try{p.vwLines[k].update({time:bar.time,value:+v.toFixed(2)});}
+          try{p.vwLines[k].update({time:bar.time,value:rPx(v)});}
           catch(e){logDiagError('tick|vwap'+k+'|'+p.idx,`VWAP (${Lc.anchor}) tick update failed — ${tickCtx}: ${e&&e.message||e}`);}
           if(p.vwLast)p.vwLast[k]={time:bar.time,value:v};
         }
@@ -7641,19 +7725,48 @@ function paneTick(p){
     // here, never mutated, so repeated intrabar ticks cannot corrupt the running RMA. seed 1 = a
     // just-closed bar became the base (new bucket), seed 0 = still the same forming bar. Divergence
     // is NOT touched on a tick — it confirms on bar close only (MODULE 3 / the full render).
+    // Runs whether or not the RSI LINE is shown: the full render always feeds the RSI series (the
+    // line toggle only hides it), and the smoothing MA, Bollinger bands and OB/OS fills below are all
+    // stepped from this value — gating it on the line's visibility froze the MA whenever the line was off.
     const RS=p.rsiTail;
-    let rv=null;
-    if(RS&&RS.on&&p.rsi){
+    let rv=null,rvFresh=false;
+    if(RS&&p.rsi){
       const sd2=bar.time!==RS.t?1:0,upR=RS.upR[sd2],dnR=RS.dnR[sd2],pc=RS.prevClose[sd2];
       if(upR!=null&&dnR!=null&&pc!=null){
         const sv=srcVal(bar,RS.src),ch=sv-pc,nn=RS.n;
         const upF=Math.max(ch,0),dnF=-Math.min(ch,0);
         const ruF=(upF+(nn-1)*upR)/nn,rdF=(dnF+(nn-1)*dnR)/nn;
         rv=rdF===0?100:ruF===0?0:100-(100/(1+ruF/rdF));
+        rvFresh=true;
         p._rsiLast=rv;
       }else if(p._rsiLast!=null)rv=p._rsiLast;   // skipped (warm-up/gap): carry last RSI so the panel keeps a timestamped point for the synced crosshair
-      if(rv!=null){try{p.rsi.update({time:bar.time,value:+rv.toFixed(4)});}
-        catch(e){logDiagError('tick|rsi|'+p.idx,`RSI tick update failed — ${tickCtx}: ${e&&e.message||e}`);}}
+      if(rv!=null){
+        // The chart now holds tick-derived values, so the render's "same bars, same settings" skip must not trust its cache (see ADX below).
+        p._rsiRenderCache=null;
+        try{p.rsi.update({time:bar.time,value:r2(rv)});}
+        catch(e){logDiagError('tick|rsi|'+p.idx,`RSI tick update failed — ${tickCtx}: ${e&&e.message||e}`);}
+        // crosshair lookup for the forming bar follows the tick, as ADX's does
+        if(rvFresh&&sd2===0&&p.vals&&p.vals.rsi&&p.vals.rsi.length)p.vals.rsi[p.vals.rsi.length-1]=rv;
+      }
+    }
+    // Overbought/oversold gradient fills — the full render feeds them the RSI series itself, so they
+    // must follow the forming bar too, or the shading sits where the RSI was at the last full render.
+    // Each fill only paints on its own side of its band edge (above `up` / below `lo`); when the last
+    // closed bar, the point currently drawn for the forming bar and the new value are all on the other
+    // side, the update would not change a pixel, so the repaint is skipped.
+    const FT=p.rsiFillTail;
+    if(FT&&rvFresh){
+      if(bar.time!==FT.t){FT.t=bar.time;FT.idx++;FT.ob={prev:FT.ob.cur,cur:null};FT.os={prev:FT.os.cur,cur:null};}
+      const k=FT.idx-(FT.first>=0?FT.first:FT.idx);
+      const stepFill=(sr,st,edge,above,name)=>{
+        const v=r2(k>=0&&k<RSI_FILL_RAMP?rsiFillRamp(rv,edge,k):rv);
+        const shows=x=>x!=null&&(above?x>edge:x<edge);
+        if(!shows(st.prev)&&!shows(st.cur)&&!shows(v))return;
+        try{sr.update({time:bar.time,value:v});st.cur=v;}
+        catch(e){logDiagError('tick|'+name+'|'+p.idx,`RSI ${name} fill tick update failed — ${tickCtx}: ${e&&e.message||e}`);}
+      };
+      stepFill(p.rsiOB,FT.ob,FT.up,true,'OB');
+      stepFill(p.rsiOS,FT.os,FT.lo,false,'OS');
     }
     // MODULE 2c provisional RSI smoothing MA — same one-step idea as the raw RSI above, but
     // stepped over the RSI series (rsiMaTail, built alongside rsiTail in renderPane) instead of
@@ -7684,8 +7797,17 @@ function paneTick(p){
         for(let j=0;j<MT.len-1;j++){const v=win[j],w=vwin[j];if(v==null||w==null){ok=false;break;}pv+=v*w;vv+=w;}
         if(ok&&vv>0)mv=pv/vv;
       }
-      if(mv!=null){try{p.rsiMa.update({time:bar.time,value:+mv.toFixed(4)});}
+      if(mv!=null){try{p.rsiMa.update({time:bar.time,value:r2(mv)});}
         catch(e){logDiagError('tick|rsiMa|'+p.idx,`RSI-MA tick update failed — ${tickCtx}: ${e&&e.message||e}`);}}
+      // Bollinger variant (the MA is then an SMA): population stdev over the same window, summed in
+      // the same order as taStdev, so the forming bar's bands equal what the next full render draws.
+      if(MT.bbMult!=null&&MT.kind==='sma'&&mv!=null){
+        const win=MT.win[sd3];let acc=(rv-mv)*(rv-mv);
+        for(let j=0;j<MT.len-1;j++){const d=win[j]-mv;acc+=d*d;}
+        const sdv=Math.sqrt(acc/MT.len)*MT.bbMult;
+        try{p.rsiBBu.update({time:bar.time,value:r2(mv+sdv)});p.rsiBBl.update({time:bar.time,value:r2(mv-sdv)});}
+        catch(e){logDiagError('tick|rsiBB|'+p.idx,`RSI Bollinger tick update failed — ${tickCtx}: ${e&&e.message||e}`);}
+      }
     }
     // MACD — one-step recursion for fast/slow (from the raw source) and signal (from the
     // freshly-stepped MACD value), same seed-selection rule as every tail above: sd4=0 stays on
@@ -7710,13 +7832,17 @@ function paneTick(p){
       if(nf!=null&&ns!=null){
         const nm=nf-ns,nsig=stepTail(MC.sig,nm);
         if(nsig!=null){
+          // tick-drawn values on the chart: the render cache may not be trusted any more, and the
+          // crosshair lookup for the forming bar follows the tick (both exactly as ADX below)
+          p._macdRenderCache=null;
+          if(sd4===0&&p.vals&&p.vals.macd&&p.vals.macd.length)p.vals.macd[p.vals.macd.length-1]=nm;
           const nh=nm-nsig,prevH=MC.prevHist[sd4],rising=prevH!=null&&nh>prevH;
           const col=nh>=0?(rising?M.histC[0]:M.histC[1]):(rising?M.histC[2]:M.histC[3]);
-          try{if(M.macdOn)p.macdLine.update({time:bar.time,value:+nm.toFixed(2)});}
+          try{if(M.macdOn)p.macdLine.update({time:bar.time,value:rMacd(nm,bar.close)});}
           catch(e){logDiagError('tick|macdLine|'+p.idx,`MACD tick update failed — ${tickCtx}: ${e&&e.message||e}`);}
-          try{if(M.sigOn)p.sigLine.update({time:bar.time,value:+nsig.toFixed(2)});}
+          try{if(M.sigOn)p.sigLine.update({time:bar.time,value:rMacd(nsig,bar.close)});}
           catch(e){logDiagError('tick|macdSig|'+p.idx,`MACD signal tick update failed — ${tickCtx}: ${e&&e.message||e}`);}
-          try{if(M.histOn)p.macdHist.update({time:bar.time,value:+nh.toFixed(2),color:col});}
+          try{if(M.histOn)p.macdHist.update({time:bar.time,value:rMacd(nh,bar.close),color:col});}
           catch(e){logDiagError('tick|macdHist|'+p.idx,`MACD histogram tick update failed — ${tickCtx}: ${e&&e.message||e}`);}
         }
       }
@@ -7796,6 +7922,7 @@ function easterSunday(y){
   return new Date(Date.UTC(y,mo-1,da));
 }
 const _mktCal={};
+const MKT_ONE_OFF_CLOSED=['2018-12-05','2025-01-09'];
 function marketCalendar(y){
   if(_mktCal[y])return _mktCal[y];
   const iso=d=>d.toISOString().slice(0,10);
@@ -7809,15 +7936,20 @@ function marketCalendar(y){
     return d;};
   const gf=easterSunday(y);gf.setUTCDate(gf.getUTCDate()-2);          // Good Friday
   const thx=nth(10,4,4);                                             // 4th Thu Nov
+  // Juneteenth became an exchange holiday in 2022 (real bars exist on June 19 2014-2020 and June 18
+  // 2021). The two one-off closures are national days of mourning inside the loaded daily history.
   const closed=[obs(0,1,true),nth(0,1,3),nth(1,1,3),gf,lastOf(4,1),
-                obs(5,19),obs(6,4),nth(8,1,1),thx,obs(11,25)]
-    .filter(Boolean).map(iso);
+                y>=2022?obs(5,19):null,obs(6,4),nth(8,1,1),thx,obs(11,25)]
+    .filter(Boolean).map(iso).concat(MKT_ONE_OFF_CLOSED.filter(d=>+d.slice(0,4)===y));
   // 1:00 PM ET early closes
   const early=[];
   const blackFri=new Date(thx);blackFri.setUTCDate(thx.getUTCDate()+1);early.push(iso(blackFri));
   [[6,3],[11,24]].forEach(([mo,da])=>{const d=new Date(Date.UTC(y,mo,da));
     if(d.getUTCDay()>=1&&d.getUTCDay()<=5)early.push(iso(d));});
-  return (_mktCal[y]={closed:new Set(closed),early:new Set(early)});
+  // July 3 / Dec 24 falling on the OBSERVED holiday itself (July 4 or Dec 25 on a Saturday) is a
+  // full closure, not a 1:00 PM close (Tradier: 2026-07-03 "closed for Independence Day (Observed)").
+  const closedSet=new Set(closed);
+  return (_mktCal[y]={closed:closedSet,early:new Set(early.filter(d=>!closedSet.has(d)))});
 }
 function isMarketHoliday(ymd){return marketCalendar(+String(ymd).slice(0,4)).closed.has(ymd);}
 function isEarlyClose(ymd){return marketCalendar(+String(ymd).slice(0,4)).early.has(ymd);}
@@ -7884,7 +8016,8 @@ function tfRemaining(tf){
   const p=nowET();const sec=+p.hms.split(':')[2];
   const minute=p.h*60+p.m;const s=minute*60+sec;
   if(tf==='D'){
-    if(minute>=570&&minute<960)return 960*60-s;   // counting to 4:00 PM close
+    const close=sessionCloseMin(p.ymd);
+    if(minute>=570&&minute<close)return close*60-s; // counting to the close (4:00 PM, 1:00 PM early)
     if(minute<570)return 570*60-s;                 // counting to 9:30 open
     return null;                                   // after close
   }
@@ -8706,24 +8839,46 @@ function satyAutoLen(rows,look){
    MSFT drew its ladder on AAPL's 14 instead of its own 10 — which mis-scales every rung and both triggers
    (the previous-close anchor stays right, so it looks plausible). The date half was dead too: satyPeriods()
    rows carry `key`, not `date`, so it always read undefined and only the row count ever invalidated it.
-   Keyed per symbol now, in a Map so two panes on different symbols don't evict each other every render;
-   capped the same way _serCache is. The explicit resets below (new session, auto-len re-ticked) clear it. */
+   Keyed by the rows' own content now (see satyLen), in a Map so two panes on different symbols don't evict
+   each other every render; capped the same way _serCache is. The explicit resets below (new session,
+   auto-len re-ticked) clear it. */
 const satyAutoCache=new Map();
-function satyLen(rows,id){
+/* The rows the auto length is fitted on. Day mode: COMPLETED days only (strictly before today, ET).
+   satyPeriods('day') keeps today's still-forming row, and fitting on it made the length depend on
+   how much of today's range existed when the memo was first filled (its key cannot see the row
+   growing), so reloading mid-session could re-fit to a different length and move every rung. The
+   ATR is anchored on the last completed day (satyCompute's ci), and the fit now uses exactly the
+   days that exist at that anchor, so the length is fixed for the whole session. Other modes are
+   unchanged. */
+function satyFitRows(mode,rows){
+  if(mode!=='day'||!rows)return rows;
+  const todayYmd=nowET().ymd;
+  let n=rows.length;
+  while(n>0&&rows[n-1].key>=todayYmd)n--;
+  return n===rows.length?rows:rows.slice(0,n);
+}
+function satyLen(rows){
   const C=satyC();
   if(C.autoLen===false)return Math.max(2,+C.atrLen||5);
-  const k=(id==null?cfg.sym:id)+'|'+(rows&&rows.length?rows.length+':'+rows[rows.length-1].key:'0');
+  // The fit is a pure function of `rows`, so the key identifies the ROWS, not a ticker name. Keying on
+  // the name (plus length/last date, which every ticker shares) still leaked: a render that ran after
+  // cfg.sym had switched but before the new daily rows arrived cached the OLD symbol's fit under the
+  // NEW name, and it stuck for the session — reproduced QQQ -> TSLA: TSLA drawn on QQQ's length 5
+  // (ATR 12.10) instead of its own 14 (ATR 12.73), in 2 of 4 switches. The checksum covers every row.
+  let ck=0;
+  if(rows)for(let i=0;i<rows.length;i++){const r=rows[i];ck=(ck*31+r.high*7+r.low*3+r.close)%1e12;}
+  const k=(rows&&rows.length?rows.length+':'+rows[0].key+':'+rows[rows.length-1].key+':'+ck:'0');
   if(!satyAutoCache.has(k)){
     if(satyAutoCache.size>64)satyAutoCache.clear();
     satyAutoCache.set(k,satyAutoLen(rows));
   }
   return satyAutoCache.get(k);
 }
-function satyCompute(drows,id){
+function satyCompute(drows){
   const C=satyC();
   const mode=SATY_MODES[C.mode]?C.mode:'day';
   const rows=satyPeriods(mode,drows);
-  const len=satyLen(rows,id);
+  const len=satyLen(satyFitRows(mode,rows));
   if(rows.length<len+2)return null;
   const atrArr=satyATR(rows,len);
   if(!atrArr)return null;
@@ -8834,8 +8989,8 @@ function drawSatyOn(p){
   const C=satyC();
   if(C.tfs[String(p.tf)]===false)return;
   const drows=(paneData(p)||{}).daily||dailyRows;
-  // pane 2 can be on its own alt symbol, so the ATR-length memo is keyed by THIS pane's symbol, not cfg.sym
-  const st=satyCompute(drows,p.sym||cfg.sym);
+  // pane 2 can be on its own alt symbol: drows is THIS pane's daily series (the length memo keys on its content)
+  const st=satyCompute(drows);
   if(!st){
     // say WHY nothing is drawn instead of leaving a blank chart to be puzzled over
     const need=Math.max(2,+C.atrLen||14)+2;
@@ -9071,7 +9226,7 @@ function computeInstitutionalLevels(push,dailyRowsSrc,bars5Src,spotSrc){
     }
   };
   rows.forEach(r=>{
-    const dayBars=barsSrc.filter(b=>b.etYmd===r.date&&b.etMin>=570&&b.etMin<960);
+    const dayBars=barsSrc.filter(b=>b.etYmd===r.date&&b.etMin>=570&&b.etMin<sessionCloseMin(r.date));
     const dayBarVol=dayBars.reduce((s,b)=>s+(b.v||0),0);
     if(dayBars.length>=INST_MIN_RTH_BARS&&dayBarVol>0){
       // Shape from 5-min bars, rescaled to the day's true (dailyRows) total — see comment above.
@@ -9131,7 +9286,7 @@ function computeLevels(){
     prevClosePx=pd.close;
   }
   const tb=bars5.filter(b=>b.etYmd===todayYmd);
-  const pre=tb.filter(b=>b.etMin>=240&&b.etMin<570),rth=tb.filter(b=>b.etMin>=570&&b.etMin<960);
+  const pre=tb.filter(b=>b.etMin>=240&&b.etMin<570),rth=tb.filter(b=>b.etMin>=570&&b.etMin<sessionCloseMin(todayYmd));
   if(pre.length){push(Math.max(...pre.map(b=>b.h)),'PM high','session',2,'PMH');push(Math.min(...pre.map(b=>b.l)),'PM low','session',2,'PML');}
   if(rth.length){push(Math.max(...rth.map(b=>b.h)),'High of Day','session',1,'HOD');push(Math.min(...rth.map(b=>b.l)),'Low of Day','session',1,'LOD');}
   const g=LS.gex;if(g&&g.levels)g.levels.forEach(x=>push(x.price,x.label,'gex',x.w||1,x.key||x.label,x.color,x.style));
@@ -9164,7 +9319,7 @@ function computeLevels2(){
     push(pd.high,'Prev H','prev',2,'PrevH');push(pd.low,'Prev L','prev',2,'PrevL');
   }
   const tb=bars5_2.filter(b=>b.etYmd===todayYmd);
-  const pre=tb.filter(b=>b.etMin>=240&&b.etMin<570),rth=tb.filter(b=>b.etMin>=570&&b.etMin<960);
+  const pre=tb.filter(b=>b.etMin>=240&&b.etMin<570),rth=tb.filter(b=>b.etMin>=570&&b.etMin<sessionCloseMin(todayYmd));
   if(pre.length){push(Math.max(...pre.map(b=>b.h)),'PM high','session',2,'PMH');push(Math.min(...pre.map(b=>b.l)),'PM low','session',2,'PML');}
   if(rth.length){push(Math.max(...rth.map(b=>b.h)),'High of Day','session',1,'HOD');push(Math.min(...rth.map(b=>b.l)),'Low of Day','session',1,'LOD');}
   const g=gex2Board;if(g&&g.levels)g.levels.forEach(x=>push(x.price,x.label,'gex',x.w||1,x.key||x.label,x.color,x.style));
@@ -9668,13 +9823,37 @@ addEventListener('resize',()=>{if(gexHeat)renderGexHeat();if(gex2Heat)renderGexH
        silently substitute a number if it is ever unset either way. */
 const GEX_DIV_YIELD=0;   // ASSUMPTION: 0% dividend yield — see comment block above
 function normPdf(x){return Math.exp(-0.5*x*x)/Math.sqrt(2*Math.PI);}
-// Standard normal CDF, Abramowitz & Stegun 7.1.26 (max abs error ~1.5e-7) — well inside the
-// solver's own 1e-6 price-convergence tolerance below.
+/* Standard normal CDF to full double precision. This was Abramowitz & Stegun 7.1.26, whose
+   ~7e-8 absolute error is NOT inside solveIV's 1e-6 price tolerance as the old comment claimed:
+   bsPrice multiplies N() by the spot, so on a $500 underlying the model price was off by up to
+   ~3.5e-5, and the solver converged onto that wrong price (measured on 426 identifiable test
+   contracts: IV error up to 1.3e-5 before, 8.7e-7 now). In the tails the error is relative —
+   5% at N(-8).
+     |x| < 1.5 : N(x) = 1/2 ± phi(x)·sum x^(2n+1)/(1·3·5···(2n+1)) — all terms positive.
+     |x| >= 1.5: tail Q(|x|) = phi(|x|)/(|x|+1/(|x|+2/(|x|+3/(...)))) by modified Lentz; the
+                 exponent is split so x² is formed exactly (xh has few bits).
+   Measured against a 40-digit mpmath reference over |x| <= 37 (where the tail is still a normal
+   double): max relative error 4.9e-15, max absolute error 3.3e-16. */
 function normCdf(x){
-  const sign=x<0?-1:1;const ax=Math.abs(x)/Math.SQRT2;
-  const t=1/(1+0.3275911*ax);
-  const y=1-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-0.284496736)*t+0.254829592)*t*Math.exp(-ax*ax);
-  return 0.5*(1+sign*y);
+  if(isNaN(x))return NaN;
+  const ax=Math.abs(x),INV_SQRT_2PI=0.3989422804014327;
+  if(ax<1.5){
+    const x2=ax*ax;let term=ax,sum=ax;
+    for(let n=1;n<100;n++){term*=x2/(2*n+1);sum+=term;if(term<sum*1e-17)break;}
+    const h=Math.exp(-0.5*x2)*INV_SQRT_2PI*sum;
+    return x>=0?0.5+h:0.5-h;
+  }
+  if(ax>40)return x>0?1:0;                       // the tail is below the smallest double
+  let f=ax,C=ax,D=0;
+  for(let n=1;n<1000;n++){
+    D=ax+n*D;D=D===0?1e300:1/D;
+    C=ax+n/C;if(C===0)C=1e-300;
+    const del=C*D;f*=del;
+    if(Math.abs(del-1)<1e-16)break;
+  }
+  const xh=Math.round(ax*16)/16;
+  const q=Math.exp(-0.5*xh*xh)*Math.exp(-0.5*(ax-xh)*(ax+xh))*INV_SQRT_2PI/f;
+  return x>0?1-q:q;
 }
 function bsD1D2(S,K,T,r,q,sigma){
   const d1=(Math.log(S/K)+(r-q+0.5*sigma*sigma)*T)/(sigma*Math.sqrt(T));
@@ -9861,6 +10040,8 @@ async function computeChainGex(){
   const rfrPct=+cfg.gexRfr;
   if(!isFinite(rfrPct)){toast('GEX','Risk-free rate not set — enter one in Settings → GEX before computing','short');return;}
   const r=rfrPct/100;
+  // SYMBOL GUARD (see loadBars5): every request and the final commit belong to the ticker this started for
+  const sym=cfg.sym;
   gexBusy=true;gexStatus();
   try{
     // §2c: spot must be tied to a live quote at COMPUTE TIME, not the cached stream value. Pull a
@@ -9885,8 +10066,8 @@ async function computeChainGex(){
     // not their sum — measured against real Tradier latency this is the single biggest lever on
     // "how long until the GEX board updates after typing a new ticker".
     const [qRes,eRes]=await Promise.allSettled([
-      tradier(`/v1/markets/quotes?symbols=${cfg.sym}`),
-      tradier(`/v1/markets/options/expirations?symbol=${cfg.sym}&includeAllRoots=true&strikes=false`)
+      tradier(`/v1/markets/quotes?symbols=${sym}`),
+      tradier(`/v1/markets/options/expirations?symbol=${sym}&includeAllRoots=true&strikes=false`)
     ]);
     if(qRes.status==='fulfilled'){
       const qj=qRes.value,qq=qj.quotes&&qj.quotes.quote,Q=Array.isArray(qq)?qq[0]:qq,qlast=Q&&+Q.last;
@@ -9917,7 +10098,7 @@ async function computeChainGex(){
       if(!(T>0))throw new Error('expiration '+ex+' has no time remaining to its market close — cannot price');
       // greeks=true dropped — the chain's own bid/ask (unconditional, not an entitlement) is now
       // the only thing this reads; Tradier's greeks object is no longer requested or used at all.
-      const jc=await tradier(`/v1/markets/options/chains?symbol=${cfg.sym}&expiration=${ex}`);
+      const jc=await tradier(`/v1/markets/options/chains?symbol=${sym}&expiration=${ex}`);
       let os=jc.options&&jc.options.option;os=Array.isArray(os)?os:os?[os]:[];
       // §1: log ONE raw option object so field names (bid, ask, open_interest, ...) can be spot-checked.
       if(!sampled&&os.length){log('GEX raw sample ('+ex+'): '+JSON.stringify(os[0]).slice(0,600),'warn');sampled=true;}
@@ -9970,6 +10151,7 @@ async function computeChainGex(){
     if(!(totalAbs>0))throw new Error('gamma is zero across every strike in range — board rejected');
     // COMMIT: every guardrail above passed, so this board replaces the live one atomically (no
     // await between here and gexResubscribe() below — nothing can observe a half-swapped state).
+    if(cfg.sym!==sym){log('GEX board for '+sym+' discarded — the chart moved to '+cfg.sym+' while it was computing','warn');return;}
     gexByStrike=byStrike;gexByExp=byExp;gexContracts=contracts;gexWsSymbols=[...contracts.keys()];
     gexHeat={exps:front.slice(),byExp,spot,t:Date.now()};
     // §2/§4 freshness surfaced to the UI (see gexStatus): spot as-of + what was excluded.
@@ -10072,6 +10254,7 @@ async function computeChainGex2(){
     // COMMIT into the PERSISTENT gex2* state (not the local byStrike/byExp above) — this is what
     // handleGex2QuoteTick's per-tick deltas patch between bootstraps, same "commit only after
     // every guardrail passed" discipline as computeChainGex()'s own gexByStrike/gexByExp commit.
+    if(!altState[1]||altState[1].sym!==sym2){log('Pane 2 GEX board for '+sym2+' discarded — the pane changed ticker while it was computing','warn');return;}   // SYMBOL GUARD
     gex2ByStrike=byStrike;gex2ByExp=byExp;gex2Contracts=contracts;gex2WsSymbols=[...contracts.keys()];
     gex2Spot=spot;
     gex2Heat={exps:front.slice(),byExp,spot,t:Date.now()};
@@ -10978,27 +11161,6 @@ function paneParams(p){
   };
 }
 
-/* ---------- 5m indicator stack (always computed on 5m, whatever is displayed) ---------- */
-let ind5={ready:false};
-function computeInd5(){
-  _computeInd5Core();
-}
-function _computeInd5Core(){
-  if(!bars5.length){ind5={ready:false};return;}
-  const d=bars5.map(b=>({high:b.h,low:b.l,close:b.c,ymd:b.etYmd}));
-  const brk5=sessionBreaks(d);
-  const trA=[];
-  for(let i=0;i<d.length;i++){
-    // Overnight gaps are ALWAYS excluded, and this is no longer a setting. ATR drives the
-    // break buffer, the retest zone, the probe pierce and the stop pad — every distance a
-    // trigger measures. Letting a 3-point Sunday-night gap into a 14-period ATR inflates all
-    // of them at Monday's open, which is exactly when the opening-range setups fire. There
-    // is no configuration of this book where including the gap is the right answer.
-    if(i===0||brk5[i]){trA.push(null);continue;}
-    trA.push(Math.max(d[i].high-d[i].low,Math.abs(d[i].high-d[i-1].close),Math.abs(d[i].low-d[i-1].close)));
-  }
-  ind5={ready:true,atr:rmaSeries(trA,14)};
-}
 function beep(kind){
   try{
     const ctx=beep.ctx||(beep.ctx=new(window.AudioContext||window.webkitAudioContext)());
@@ -11115,10 +11277,21 @@ function cleanBadVolumeRows(rows){
 }
 // Re-pull the dailies when the session date moves on. Cheap (one request, ~1200 rows) and
 // it only fires on the first tick of a new trading day, so it costs nothing intraday.
-let dailyYmd=null;
+let dailyYmd=null,_dailyTodayTryAt=0;
 async function rollDailyIfNeeded(){
   const t=nowET().ymd;
-  if(dailyYmd===t)return;
+  if(dailyYmd===t){
+    // The daily series is otherwise fetched once per ET date, so if that fetch ran before Tradier
+    // had a row for today (a pre-market start), the Daily/Weekly charts and every daily-based
+    // readout had no bar for today for the whole session — ticks only ever UPDATE an existing row.
+    // Once the regular session is open, pull again (at most once a minute) until today's row exists.
+    const L=dailyRows[dailyRows.length-1];
+    if(marketPhase()==='open'&&(!L||L.date<t)&&Date.now()-_dailyTodayTryAt>60000){
+      _dailyTodayTryAt=Date.now();
+      await loadDaily();
+    }
+    return;
+  }
   const had=dailyYmd;
   await loadDaily();
   dailyYmd=t;
@@ -11148,7 +11321,9 @@ async function loadDaily(){
   // roll daily bars up into quarterly/yearly periods, and those need real years of daily
   // history behind them to have enough periods for even the shortest auto-fit ATR length.
   const start=new Date(Date.now()-4400*864e5).toISOString().slice(0,10);
-  const j=await tradier(`/v1/markets/history?symbol=${cfg.sym}&interval=daily&start=${start}&end=${end}`);
+  const sym=cfg.sym;
+  const j=await tradier(`/v1/markets/history?symbol=${sym}&interval=daily&start=${start}&end=${end}`);
+  if(cfg.sym!==sym)return;   // the chart moved to another ticker while this was in flight (see SYMBOL GUARD)
   const day=j.history&&j.history.day;
   dailyRows=(Array.isArray(day)?day:day?[day]:[]).map(r=>({date:r.date,open:+r.open,high:+r.high,low:+r.low,close:+r.close,volume:+r.volume||0}));
   if(!dailyRows.length)throw new Error('no daily history returned');
@@ -11242,6 +11417,7 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 // Walk backwards in chunks until Tradier stops returning data or the cap is reached,
 // so each interval reaches its true retention limit instead of a guessed window.
 async function deepen(interval,chunkDays,maxDays){
+  const sym=cfg.sym;   // SYMBOL GUARD (see loadBars5): returns false if the chart changed ticker mid-backfill
   // Once Tradier's true intraday retention window for this interval is known — cached below
   // from an earlier run's discovery, or this run's own once it happens — never send a request
   // that starts before it. That is what actually eliminates the "benign" 400 the walk used to
@@ -11267,7 +11443,7 @@ async function deepen(interval,chunkDays,maxDays){
     if(knownBoundaryMs!=null&&startMs<knownBoundaryMs)startMs=knownBoundaryMs;
     const startD=new Date(startMs);
     let rows=[];
-    try{rows=await fetchTsRange(interval,startD,endD);}catch(e){
+    try{rows=await fetchTsRange(interval,startD,endD,sym);}catch(e){
       // Tradier's timesales endpoint has a hard intraday retention limit; walking back past it
       // always fails with this SPECIFIC "start: must be on or after ..." validation error — that
       // is not a problem, it is the signal this loop is DESIGNED to detect (see the comment above
@@ -11288,38 +11464,50 @@ async function deepen(interval,chunkDays,maxDays){
         }
       }else log('History backfill stopped for '+interval+': '+e.message,'warn');
       break;}
+    if(cfg.sym!==sym)return false;   // SYMBOL GUARD (see loadBars5)
     if(!rows.length)break;
     if(interval==='5min')bars5=mergeBars(rows,bars5);else bars15=mergeBars(rows,bars15);
     await sleep(200);
+    if(cfg.sym!==sym)return false;
   }
   const arr=interval==='5min'?bars5:bars15;
   if(arr.length)log(`History depth \u00b7 ${interval}: ${arr.length} bars back to ${arr[0].etYmd}`,'long');
 }
 async function deepenAll(){
   try{
-    await deepen('5min',20,400);
+    if(await deepen('5min',20,400)===false)return;
     // deepen() PREPENDS older bars to the front of bars5/bars15 \u2014 every existing bar's logical
     // index shifts by however many were added. lockView()'s index-based preservation (via
     // renderAll()) would silently relocate a user who is reading history right as a backfill
     // step lands; renderPaneKeepView's bar-spacing/scroll-position approach is immune to that.
     visPanes().forEach(renderPaneKeepView);
-    await deepen('15min',45,400);
+    if(await deepen('15min',45,400)===false)return;
     visPanes().forEach(renderPaneKeepView);
     log('Backfill complete \u2014 all timeframes now span the maximum history Tradier returns','long');
   }catch(e){log('Backfill halted: '+(e.message||e),'warn');}
 }
+/* SYMBOL GUARD. bars5/bars15/dailyRows/lastPx belong to cfg.sym, but every loader below awaits the
+   network, and a ticker switch in the meantime used to let the OLD symbol's response land on the NEW
+   symbol's arrays. Reproduced (QQQ -> TSLA the moment the first chart painted, 300ms API latency):
+   QQQ's still-running backfill merged 2,138 QQQ bars into TSLA's 5m history, and a slow QQQ 15m
+   response replaced TSLA's whole 15m history (so TSLA's 1H/4H charts drew QQQ). Each loader now
+   fetches for the symbol it started with and drops the result if the chart has moved on. */
 async function loadBars5(full){
-  const now=new Date();
-  if(full){bars5=await fetchTsRange('5min',new Date(Date.now()-20*864e5),now);return;}
-  bars5=mergeBars(bars5,await fetchTsRange('5min',new Date(Date.now()-864e5),now),300);
+  const now=new Date(),sym=cfg.sym;
+  const rows=await fetchTsRange('5min',new Date(Date.now()-(full?20:1)*864e5),now,sym);
+  if(cfg.sym!==sym)return;
+  bars5=full?rows:mergeBars(bars5,rows,300);
 }
 async function loadBars15(full){
-  const now=new Date();
-  if(full){bars15=await fetchTsRange('15min',new Date(Date.now()-45*864e5),now);return;}
-  bars15=mergeBars(bars15,await fetchTsRange('15min',new Date(Date.now()-2*864e5),now),900);
+  const now=new Date(),sym=cfg.sym;
+  const rows=await fetchTsRange('15min',new Date(Date.now()-(full?45:2)*864e5),now,sym);
+  if(cfg.sym!==sym)return;
+  bars15=full?rows:mergeBars(bars15,rows,900);
 }
 async function loadQuote(){
-  const j=await tradier(`/v1/markets/quotes?symbols=${cfg.sym}`);
+  const sym=cfg.sym;
+  const j=await tradier(`/v1/markets/quotes?symbols=${sym}`);
+  if(cfg.sym!==sym)return;   // SYMBOL GUARD (see loadBars5)
   const q=j.quotes&&j.quotes.quote;if(!q)return;
   // WS is the primary tick source, but "connected" doesn't mean "delivering" - Tradier's
   // per-symbol quote stream can go quiet for one ticker while the socket itself stays open and
@@ -11373,11 +11561,18 @@ async function loadAlt(sym,paneIdx){
   const now=new Date();
   const end=nowET().ymd;
   const startD=new Date(Date.now()-4400*864e5).toISOString().slice(0,10);   // see loadDaily()
+  // Same SYMBOL GUARD as the main loaders (see loadBars5): fetch everything first, then commit all three
+  // series together — and only if this is still the newest request for the pane. It used to write each
+  // series as it arrived while st.sym still named the previous ticker, and two overlapping loads could
+  // leave the pane holding one symbol's daily with another's intraday bars.
+  const req=st._req=(st._req||0)+1;
   const jd=await tradier(`/v1/markets/history?symbol=${sym}&interval=daily&start=${startD}&end=${end}`);
   let day=jd.history&&jd.history.day;day=Array.isArray(day)?day:day?[day]:[];
-  st.data.daily=day.map(r=>({date:r.date,open:+r.open,high:+r.high,low:+r.low,close:+r.close,volume:+r.volume||0}));
-  st.data.bars5=await fetchTsRange('5min',new Date(Date.now()-20*864e5),now,sym);
-  st.data.bars15=await fetchTsRange('15min',new Date(Date.now()-45*864e5),now,sym);
+  const daily=day.map(r=>({date:r.date,open:+r.open,high:+r.high,low:+r.low,close:+r.close,volume:+r.volume||0}));
+  const b5=await fetchTsRange('5min',new Date(Date.now()-20*864e5),now,sym);
+  const b15=await fetchTsRange('15min',new Date(Date.now()-45*864e5),now,sym);
+  if(st._req!==req)return;
+  st.data.daily=daily;st.data.bars5=b5;st.data.bars15=b15;
   st.sym=sym;
   if(!st.data.daily.length&&!st.data.bars5.length)throw new Error('no data returned for '+sym);
   log(`Pane ${paneIdx+1} loaded ${sym} \u00b7 ${st.data.bars5.length}\u00d75m, ${st.data.daily.length} daily`,'long');
@@ -11387,8 +11582,12 @@ async function refreshAlt(paneIdx){
   if(!st||!st.sym||st.sym===cfg.sym)return;
   const now=new Date();
   try{
-    st.data.bars5=mergeBars(st.data.bars5,await fetchTsRange('5min',new Date(Date.now()-864e5),now,st.sym));
-    st.data.bars15=mergeBars(st.data.bars15,await fetchTsRange('15min',new Date(Date.now()-2*864e5),now,st.sym));
+    const sym=st.sym,req=st._req;
+    const r5=await fetchTsRange('5min',new Date(Date.now()-864e5),now,sym);
+    const r15=await fetchTsRange('15min',new Date(Date.now()-2*864e5),now,sym);
+    if(st.sym!==sym||st._req!==req)return;   // SYMBOL GUARD: the pane switched ticker while this was in flight
+    st.data.bars5=mergeBars(st.data.bars5,r5);
+    st.data.bars15=mergeBars(st.data.bars15,r15);
     if(panes[paneIdx]){renderPane(panes[paneIdx]);drawAlertLines();}
     // Pane 2's own Levels ladder rides this SAME poll (no separate timer) — same idea as GEX
     // riding gexAutoTick's existing 1s ticker instead of getting one of its own.
@@ -11529,6 +11728,7 @@ async function connect(){
   clearInterval(quoteTimer);clearInterval(barTimer);stopStream();
   const prevSym=cfg.sym;
   cfg.sym=$('#symInput').value.trim().toUpperCase()||'QQQ';
+  const connSym=cfg.sym;   // SYMBOL GUARD (see loadBars5): a newer connect() for another ticker supersedes this one
   // MEASURE, DON'T GUESS: a ticker swap touches three independently-timed things — the chart
   // (daily+5m, awaited below), Levels (needs a fresh quote, fired but not awaited), and GEX (its
   // own multi-call bootstrap, also fired but not awaited) — so "how long until it's all caught up"
@@ -11573,12 +11773,19 @@ async function connect(){
        in a moment later as a cheap per-tick update. That removes one full network round trip from
        the time-to-first-chart on every ticker entry. */
     await Promise.all([loadDaily(),loadBars5(true)]);
+    if(cfg.sym!==connSym)return;
     dailyYmd=nowET().ymd;
+    // A render that runs while the previous ticker's data is still in the arrays (cfg.sym already switched)
+    // can key BOS/CHoCH's classification-freeze cache to THIS symbol with the OLD symbol's swings, and swing
+    // timestamps are shared across tickers — so start it fresh now that this symbol's own bars are in.
+    // (Defensive: not observed in the switch tests, which did reproduce the bar and Saty-length leaks.)
+    if(_isSwap)panes.forEach(pp=>{if(pp&&(!pp.sym||pp.sym===cfg.sym)){pp._bosChochSeriesKey=null;pp._bosChochKindCache=null;}});
     loadBars15(true).then(()=>{
+      if(cfg.sym!==connSym)return;
       log(`15m history ready · ${bars15.length} bars — 1H/4H now use it`,'long');
       visPanes().forEach(renderPaneKeepView);
     }).catch(()=>{});
-    computeInd5();computeLevels();
+    computeLevels();
     visPanes().forEach(renderPaneKeepView);      // FIRST PAINT — no longer waits on the quote RTT
     setStatus();
     if(_isSwap)log(`⏱ swap→chart painted: ${(performance.now()-_swapT0).toFixed(0)}ms`,'long');
@@ -11640,7 +11847,7 @@ async function connect(){
     // bar from bars5/bars15's current, just-reconciled state, so it stays correct) and reserve
     // the full render for when a bar has genuinely closed, or there was nothing to compare yet.
     const b5Len=bars5.length,b5T=b5Len?bars5[b5Len-1].t:null,b15Len=bars15.length,b15T=b15Len?bars15[b15Len-1].t:null;
-    await loadBars5(false);await loadBars15(false);computeInd5();computeLevels();
+    await loadBars5(false);await loadBars15(false);computeLevels();
     const barClosed=b5Len===0||b5Len!==bars5.length||(bars5.length&&bars5[bars5.length-1].t!==b5T)
       ||b15Len!==bars15.length||(bars15.length&&bars15[bars15.length-1].t!==b15T);
     if(!document.hidden){
@@ -11651,7 +11858,7 @@ async function connect(){
   }catch(e){fail(e);}
 }
 // Returning to the tab after it was backgrounded: pull the authoritative bars (correcting any
-// WebSocket drift), recompute the 5m indicators and levels, then render once and summarise it
+// WebSocket drift), recompute the levels, then render once and summarise it
 // in a single line.
 let resyncBusy=false;
 async function resyncOnReturn(){
@@ -11660,7 +11867,7 @@ async function resyncOnReturn(){
   try{
     bgEvents=[];catchingUp=true;
     await loadBars5(false);await loadBars15(false);
-    computeInd5();computeLevels();
+    computeLevels();
     catchingUp=false;
     renderAll();
     lastPaneTickAt=Date.now();   // a full render just caught everything up — the watchdog below shouldn't re-fire immediately
@@ -13129,8 +13336,8 @@ function satyLenNote(){
     el.innerHTML='Manual. <b>'+Math.max(2,+C.atrLen||5)+'</b> bars.';
     return;
   }
-  const rows=satyPeriods(SATY_MODES[C.mode]?C.mode:'day',dailyRows);
-  const L=satyLen(rows);
+  const mode=SATY_MODES[C.mode]?C.mode:'day';
+  const L=satyLen(satyFitRows(mode,satyPeriods(mode,dailyRows)));
   // the box shows the length actually in force, greyed, rather than the manual fallback
   // sitting underneath it — same treatment as RSI and Market structure
   autoBind('#syLen',L,true);
@@ -13298,7 +13505,7 @@ bindLineSwatch($('#rbSwSlowConv'),
 {
   const D=$('#rbDefaults');if(D)D.onclick=()=>{
     Object.assign(cfg.satyRibbon,RB_DEFAULTS);saveCfg();rbLoadForm();scheduleRenderAll();
-    log('Saty Pivot Ribbon reset to the Pine v6 defaults','warn');};
+    log('Saty Pivot Ribbon reset to its defaults','warn');};
   const C=$('#rbCancel');if(C)C.onclick=closeRbModal;
   const O=$('#rbOk');if(O)O.onclick=()=>{rbSaveForm();closeRbModal();};
   // live-apply the numeric and checkbox inputs so the chart follows while the panel is open
