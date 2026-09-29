@@ -9,11 +9,17 @@ const CONFIGS={
   def:{},
   // presets off + the variants the defaults never exercise
   var:{tfPresets:false,macd:{oscType:'sma',sigType:'sma'},satyRibbon:{timeWarp:'M',showCandleBias:true,showArrows:true,showFastConv:true,showSlowConv:true}},
+  // Time Warp placement (lookahead_off) across calendar and intraday warps, both session views
+  wD:{tfPresets:false,satyRibbon:{timeWarp:'D',showArrows:true,showFastConv:true,showSlowConv:true}},
+  wW:{tfPresets:false,sess:'rth',satyRibbon:{timeWarp:'W',showArrows:true,showFastConv:true,showSlowConv:true}},
+  w1hR:{tfPresets:false,sess:'rth',satyRibbon:{timeWarp:'1h',showArrows:true,showFastConv:true,showSlowConv:true}},
+  w4hR:{tfPresets:false,sess:'rth',satyRibbon:{timeWarp:'4h',showArrows:true,showFastConv:true,showSlowConv:true}},
+  w20E:{tfPresets:false,satyRibbon:{timeWarp:'20m',showArrows:true,showFastConv:true,showSlowConv:true}},
 };
 const RSI_VAR={'5':'vwma','10':'rma','60':'wma','240':'ema','D':'bb','W':'sma'};
 (async()=>{
   const hosts=new Set();
-  for(const sym of SYMS)for(const cn of Object.keys(CONFIGS)){
+  for(const sym of SYMS)for(const cn of (process.env.CONFIGS?process.env.CONFIGS.split(','):Object.keys(CONFIGS))){
     const t0=etMs('2026-09-28',21,0,0);
     const A=await boot({build:process.env.BUILD||'new',sym,t0,cfg:Object.assign({tf0:'D',tf1:'D',paneN:1,ribbon0:true,vwap0:true,struct0:true,saty0:true},CONFIGS[cn])});
     await A.stopPolling();

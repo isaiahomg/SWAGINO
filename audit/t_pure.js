@@ -98,9 +98,16 @@ const SYMS=process.argv[2]?process.argv[2].split(','):['QQQ','TSLA','LOWP'];
           let bad=0,cmp=0;
           for(const [li,L] of [[0,'fast'],[1,'piv']]){
             const e=ema(per.map(x=>x.c),got.lens[li]);
+            // lookahead_off (TradingView docs): a period's own value lands on the LAST chart bar inside it;
+            // earlier bars show the previous period. At t0 (11:07 on a trading day) the final bar's period is
+            // still open, so it shows the previous one. D warp on the W chart (finer than the chart): the bar
+            // reads the week's last daily period.
+            const wkLast={};if(warp==='D'&&tf==='W')for(const x of per){const d=new Date(x.k+'T00:00:00Z');const dow=d.getUTCDay()||7;d.setUTCDate(d.getUTCDate()-dow+1);wkLast[d.toISOString().slice(0,10)]=x.k;}
+            const bk=got.ymd.map(ymd=>warp==='D'&&tf==='W'?(wkLast[ymd]||ymd):keyOf(ymd));
             got.ymd.forEach((ymd,i)=>{
-              const k=keyOf(ymd);let j=-1;for(let q=0;q<per.length;q++){if(per[q].k<k)j=q;else break;}
-              const want=j>=0?e[j]:null;const have=got[L][i];cmp++;
+              const k=bk[i];let j=-1;for(let q=0;q<per.length;q++){if(per[q].k<k)j=q;else break;}
+              const ends=i<bk.length-1&&bk[i+1]!==k;const own=per.findIndex(x=>x.k===k);
+              const want=ends&&own>=0?e[own]:j>=0?e[j]:null;const have=got[L][i];cmp++;
               if(!(want==null&&have==null)&&!(want!=null&&have!=null&&Math.abs(want-have)<=1e-9*Math.abs(want)))bad++;
             });
           }

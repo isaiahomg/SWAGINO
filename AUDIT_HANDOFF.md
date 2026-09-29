@@ -4,6 +4,29 @@ Paused mid-way through the third indicator audit round (2026-09-29, UTC ~04:00) 
 new session with network access. **This file and `audit/` are working material: delete both before the
 final merge to `main`** (unless the owner asks to keep the harness).
 
+## RESUME-3 session (2026-09-29 ~05:30 UTC) — network + Tradier token available
+Real data now used everywhere possible: harness `REAL_INTRADAY=1` records/replays real Tradier timesales +
+quotes through the local proxy (127.0.0.1:8787, shared-token mode) into `real/cache/`; `REAL_TAPE=1` makes
+`t_tick.js` replay the REAL Tradier trade tape (interval=tick) for Sep 28 11:07-12:39 ET.
+Fixes added this session (all in `swagino.html`, all confirmed on real data first, each with a negative control):
+1. `deepen()` retention boundary: Tradier's "start: must be on or after YYYY-MM-DD HH:MM:SS" is ET wall-clock;
+   the app parsed it as UTC midnight, so every boot re-hit the 400 and never loaded the oldest days Tradier
+   holds (5m back to Aug 11 instead of Aug 20; 15m back to Aug 3 instead of Aug 17). Now ET calendar-day cache
+   + one retry from the stated boundary (`t_retain.js`).
+2. Time Warp placement: TradingView docs (Other timeframes and data -> lookahead) state a lookahead_off series
+   "has a new historical value at the end of each HTF period" -> the period's own EMA sits on the LAST chart bar
+   of the period (app put it on the first bar of the next). Intraday warp buckets now anchored like the chart's
+   own bars (RTH 09:30), not midnight. D warp on the W chart reads the week's last daily period.
+3. Bar-end re-render: `lastBarEnd()`; renderPane stores `_formingUntil`; the per-second timer and paneTick
+   re-render when the last bar's period ends; paneTick also re-renders when a late print edits a closed last bar
+   (`_closedTail`). Found by the real-tape tick replay (1-cent ribbon mismatches at bar boundaries).
+Real-data results so far: dump+verify 7.6M checks / 0 fail (9 syms x 6 TFs x 2 cfgs) + warp configs 1.48M / 0;
+t_render 1.34M / 0; t_pure 0 bad; GEX in-app on real SPY chain 4.7e-7 of board; ncdf vs mpmath 3.3e-15.
+Observed (not changed): real ETH timesales include 00:00-04:00 ET overnight bars (app shows them, shaded as
+pre-market; tooltip says 4:00 AM-8:00 PM); intraday warps finer than the chart TF cannot be computed (no
+lower-TF series) and behave like "off"; Saty range% realtime bar under session.extended undocumented.
+Remaining: final full re-run on final code, then step 5 below.
+
 ## The request being worked (round 3, verbatim scope)
 Deep-audit all included indicators for a correct, fully native conversion. Include: Saty ATR Levels (Day
 only), Saty Pivot Ribbon/EMAs, Market Structure, VWAP, Volume, RSI, MACD, ADX, GEX, any other chart

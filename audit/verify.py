@@ -1,7 +1,7 @@
 """Independent reference implementations (written from the published definitions, not from
 swagino.html) checked against what the SWAGINO chart series actually hold.
 Usage: python3 verify.py dumpdir [SYM...]"""
-import json, sys, math, glob, os, datetime as dt
+import json, sys, math, glob, os, bisect, datetime as dt
 from collections import defaultdict, OrderedDict
 
 DUMP = sys.argv[1]
@@ -121,6 +121,19 @@ def et_epoch(ymd, minute):
     d = dt.datetime.fromisoformat(ymd) + dt.timedelta(minutes=minute)
     return int(d.replace(tzinfo=dt.timezone.utc).timestamp())
 
+WARP_MIN = {'1m': 1, '2m': 2, '3m': 3, '4m': 4, '5m': 5, '10m': 10, '15m': 15, '20m': 20, '30m': 30, '1h': 60, '2h': 120, '4h': 240}
+def forming_bar(tf, data, D, C):
+    today = D['nowYmd']; nowm = D['nowHM']
+    if tf == 'D': return data[-1][6] == today and nowm < 960
+    if tf == 'W':
+        wk = monday(today); last_day = None
+        for k_ in range(4, -1, -1):
+            d_ = (dt.date.fromisoformat(wk) + dt.timedelta(days=k_)).isoformat()
+            if d_ not in HOLIDAYS: last_day = d_; break
+        return data[-1][6] == wk and (today < last_day or (today == last_day and nowm < 960))
+    end = min(data[-1][9] + int(tf)*60, et_epoch_real(data[-1][6], 960 if C['sess'] == 'rth' else 1200))
+    return NOW_TS[0] < end
+
 # ---------------- checks ----------------
 class R:
     def __init__(self): self.c = defaultdict(lambda: [0, 0, []])
@@ -180,7 +193,7 @@ def check_symbol(path):
         else:
             ref = series_from_raw(D['raw'], tf, C['sess'])
             good = len(ref) == n and all(a[0] == b[0] and a[1:6] == b[1:6] for a, b in zip(ref, data))
-            RES.ok(f'bars:{tf} aggregation+bucket-start stamps (synthetic intraday)', good, (len(ref), n))
+            RES.ok(f'bars:{tf} aggregation+bucket-start stamps ('+os.environ.get('INTRADAY_SRC','synthetic')+' intraday)', good, (len(ref), n))
         # ---- candles + volume ----
         cs = C['candle']; prev = None; badc = 0
         for i in range(n):
@@ -243,43 +256,74 @@ def check_symbol(path):
         if warp in ('off', None):
             E = {k: sma_seeded_ema(c, L) for k, L in lens.items()}
             # Saty's ribbon EMAs are ema[realtime ? 1 : 0]: a bar still forming shows the previous bar's EMA.
-            today = D['nowYmd']; nowm = D['nowHM']
-            if tf == 'D': forming = data[-1][6] == today and nowm < 960
-            elif tf == 'W':
-                wk = monday(today); last_day = None
-                for k_ in range(4, -1, -1):
-                    d_ = (dt.date.fromisoformat(wk) + dt.timedelta(days=k_)).isoformat()
-                    if d_ not in HOLIDAYS: last_day = d_; break
-                forming = data[-1][6] == wk and (today < last_day or (today == last_day and nowm < 960))
-            else:
-                end = min(data[-1][9] + int(tf)*60, et_epoch_real(data[-1][6], 960 if C['sess'] == 'rth' else 1200))
-                forming = NOW_TS[0] < end
+            forming = forming_bar(tf, data, D, C)
             RES.ok(f'Ribbon: forming-bar rule evaluated ({tf})', True)
             if forming and n >= 2:
                 for k in ('f', 'p', 's', 'fc', 'sc'): E[k][n-1] = E[k][n-2]
-        elif warp in ('D', 'W', 'M', 'Y'):
-            per = OrderedDict()
-            for r in D['raw']['daily']:
-                if dt.date.fromisoformat(r[0]).weekday() >= 5: continue
-                kk = r[0] if warp == 'D' else monday(r[0]) if warp == 'W' else r[0][:7] if warp == 'M' else r[0][:4]
-                per[kk] = r[4]
-            keys = list(per.keys()); pc = list(per.values())
-            def keyof(ymd): return ymd if warp == 'D' else monday(ymd) if warp == 'W' else ymd[:7] if warp == 'M' else ymd[:4]
-            E = {}
-            for k2, L in lens.items():
-                e = sma_seeded_ema(pc, L); out = []
-                for x in data:
-                    kb = keyof(x[6]); j = -1
-                    # last period strictly before the bar's own period
-                    lo_, hi_ = 0, len(keys)
-                    while lo_ < hi_:
-                        mid = (lo_+hi_)//2
-                        if keys[mid] < kb: lo_ = mid+1
-                        else: hi_ = mid
-                    j = lo_-1; out.append(e[j] if j >= 0 else None)
-                E[k2] = out
-        else:
-            E = None; RES.ok('ribbon: intraday time warp not covered here', True)
+        elif warp in ('D', 'W', 'M', 'Y') or warp in WARP_MIN:
+            # TradingView Pine docs (Other timeframes and data -> lookahead): a lookahead_off request "has a
+            # new historical value at the end of each HTF period" -> the period's own value sits on the LAST
+            # chart bar inside the period; earlier bars show the previous period. The chart's final bar takes
+            # its own period only once that period has ended (clock past the period's last session end).
+            sess = C['sess']; daily_chart = tf in ('D', 'W')
+            now_min_ts = NOW_TS[0]
+            def sess_end(ymd):
+                return et_epoch_real(ymd, 960 if (daily_chart or sess == 'rth') else 1200)
+            if warp in ('D', 'W', 'M', 'Y'):
+                def keyof(ymd): return ymd if warp == 'D' else monday(ymd) if warp == 'W' else ymd[:7] if warp == 'M' else ymd[:4]
+                per = OrderedDict()
+                for r in D['raw']['daily']:
+                    if dt.date.fromisoformat(r[0]).weekday() >= 5: continue
+                    per[keyof(r[0])] = r[4]
+                pkeys = list(per.keys()); pcl = list(per.values())
+                if tf == 'W' and warp == 'D':
+                    # warp finer than the chart: a lookahead_off request returns the LAST intrabar's value,
+                    # i.e. the week's final daily row; the chart bar ends with the week itself
+                    wk_last = {}
+                    for k in pkeys: wk_last[monday(k)] = k
+                    bkeys = [wk_last.get(x[6], x[6]) for x in data]
+                    last_ended = not forming_bar(tf, data, D, C)
+                else:
+                    bkeys = [keyof(x[6]) for x in data]
+                    # last trading day of the final bar's period
+                    d0 = dt.date.fromisoformat(data[-1][6]); lastday = None
+                    for k_ in range(0, 370):
+                        dd = (d0 + dt.timedelta(days=k_)).isoformat()
+                        if keyof(dd) != bkeys[-1]: break
+                        if dt.date.fromisoformat(dd).weekday() < 5 and dd not in HOLIDAYS: lastday = dd
+                    last_ended = (not forming_bar(tf, data, D, C)) and lastday is not None and now_min_ts >= sess_end(lastday)
+                E = {}
+                for k2, L in lens.items():
+                    e = sma_seeded_ema(pcl, L); pos = {k: i for i, k in enumerate(pkeys)}; out = []
+                    for i, x in enumerate(data):
+                        kb = bkeys[i]
+                        ends = (bkeys[i+1] != kb) if i < n-1 else last_ended
+                        if ends and kb in pos: out.append(e[pos[kb]]); continue
+                        j = bisect.bisect_left(pkeys, kb) - 1
+                        out.append(e[j] if j >= 0 else None)
+                    E[k2] = out
+            else:
+                g = WARP_MIN[warp]; anchor = 570 if sess == 'rth' else 240
+                bkeys = [(x[0],) if daily_chart else (x[6], ((x[7]-anchor) % 1440)//g) for x in data]
+                closes_b = []; bidx = []
+                for i, x in enumerate(data):
+                    if i == 0 or bkeys[i] != bkeys[i-1]: closes_b.append(x[4])
+                    else: closes_b[-1] = x[4]
+                    bidx.append(len(closes_b)-1)
+                if daily_chart: last_ended = not forming_bar(tf, data, D, C)
+                else:
+                    st_ = data[-1][7] - ((data[-1][7]-anchor) % 1440) % g
+                    endm = min(max(0, st_)+g, 960 if sess == 'rth' else 1200)
+                    last_ended = (not forming_bar(tf, data, D, C)) and now_min_ts >= et_epoch_real(data[-1][6], endm)
+                E = {}
+                for k2, L in lens.items():
+                    e = sma_seeded_ema(closes_b, L); out = []
+                    for i in range(n):
+                        ends = (bkeys[i+1] != bkeys[i]) if i < n-1 else last_ended
+                        j = bidx[i] if ends else bidx[i]-1
+                        out.append(e[j] if j >= 0 else None)
+                    E[k2] = out
+            RES.ok(f'Ribbon warp {warp} on {tf}: final bar period ended = {last_ended}', True)
         if E:
             rpx = lambda i, arr: pxdp(arr[i]) if arr[i] is not None else 2
             show = lambda k: Rb.get(k, True)

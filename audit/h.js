@@ -14,6 +14,21 @@ function serve(){
   });
   return new Promise(r=>server.listen(0,'127.0.0.1',()=>{PORT=server.address().port;r(PORT);}));
 }
+// REAL_INTRADAY=1: timesales + quotes come from the real Tradier API through the SWAGINO proxy
+// (127.0.0.1:8787, shared-token mode), recorded to real/cache/ so every rerun replays the same bytes.
+const crypto=require('crypto');
+async function realFetch(url){
+  const u=new URL(url);const key=u.pathname+u.search;const dir=path.join(__dirname,'real','cache');fs.mkdirSync(dir,{recursive:true});
+  const f=path.join(dir,crypto.createHash('sha1').update(key).digest('hex')+'.json');
+  if(fs.existsSync(f)){const c=JSON.parse(fs.readFileSync(f));return c;}
+  let c=null;
+  for(let a=0;a<5;a++){   // transient upstream/DNS failures (5xx) are retried and never recorded
+    const res=await fetch('http://127.0.0.1:8787'+key,{headers:{Accept:'application/json'}});
+    const txt=await res.text();let body;try{body=JSON.parse(txt);}catch(e){body=txt;}
+    c={status:res.status,body,key};if(res.status<500)break;await new Promise(r=>setTimeout(r,2000*2**a));}
+  if(c.status>=500)throw new Error('upstream '+c.status+' '+key);
+  fs.writeFileSync(f,JSON.stringify(c));return c;
+}
 let browser=null;
 async function getBrowser(){if(!browser)browser=await chromium.launch({args:['--use-gl=swiftshader','--enable-unsafe-swiftshader']});return browser;}
 // ymd + ET wall clock -> epoch ms
@@ -37,10 +52,11 @@ async function boot(opts){
     const startReal=Date.now();Object.defineProperty(state,'now',{get:()=>t0+(Date.now()-startReal),set:()=>{}});
   }else await page.clock.install({time:t0});
   await page.route(/\/v1\/markets\//,async route=>{
-    const r=mock.handle(route.request().url(),route.request().method());
+    const r=(process.env.REAL_INTRADAY==='1'&&/\/markets\/(timesales|quotes)/.test(route.request().url()))
+      ?await realFetch(route.request().url()):mock.handle(route.request().url(),route.request().method());
     if(opts.delayMs)await new Promise(res=>setTimeout(res,opts.delayMs*(0.5+Math.random())));
     if(opts.stall&&opts.stall.re.test(route.request().url()))await new Promise(res=>setTimeout(res,opts.stall.ms));
-    await route.fulfill({status:r.status,contentType:'application/json',body:JSON.stringify(r.body)});
+    await route.fulfill({status:r.status,contentType:typeof r.body==='string'?'text/plain':'application/json',body:typeof r.body==='string'?r.body:JSON.stringify(r.body)});
   });
   const c=Object.assign({sym,stream:false,proxy:true,paneN:2,link:true,tf0:'5',tf1:'5',rsiTV:1,gexRfrAuto:false},cfg);
   await page.addInitScript(([c])=>{localStorage.setItem('lc_key','test');localStorage.setItem('lc_cfg',JSON.stringify(c));},[c]);

@@ -30,7 +30,7 @@ const SYMS=(process.argv[2]||'SPY,QQQ,AAPL,MSFT,GOOGL,AMZN,NVDA,META,TSLA,LOWP')
         // RSI + BB (sma 14) from the primitives, rounded by the 2-decimal rule
         const rs=rsiWithParts(data.map(d=>d.close),Math.max(1,paneParams(p).rsiLen)).rsi;
         eq(p.rsi,rs,r2,'rsi');
-        const ma=maCalc(rs,14,'sma'),sd=taStdev(rs,14);
+        const ma=maCalc(rs,14,'sma'),sd=popStdev(rs,14);
         eq(p.rsiMa,ma,r2,'rsiMa');
         eq(p.rsiBBu,ma.map((m,i)=>m==null||sd[i]==null?null:m+sd[i]*2),r2,'rsiBBu');
         // MACD 12/26/9 ema, 2 decimals finer than the bar's price
@@ -40,7 +40,8 @@ const SYMS=(process.argv[2]||'SPY,QQQ,AAPL,MSFT,GOOGL,AMZN,NVDA,META,TSLA,LOWP')
         eq(p.macdLine,mac,(x,i)=>+x.toFixed(pxDp(data[i].close)+2),'macd');
         eq(p.sigLine,sig,(x,i)=>+x.toFixed(pxDp(data[i].close)+2),'signal');
         // ribbon (no warp) and VWAP session, 5 significant digits
-        eq(p.rbFast,emaCalc(cl,8),x=>+x.toFixed(pxDp(x)),'rbFast');
+        {const e8=emaCalc(cl,8);if(data.length>=2&&lastBarForming(tf,data[data.length-1]))e8[data.length-1]=e8[data.length-2];   // forming bar repeats the previous EMA
+         eq(p.rbFast,e8,x=>+x.toFixed(pxDp(x)),'rbFast');}
         if(!(tf==='D'||tf==='W')||!cfg.vwap.hideOnDWM){
           const vw=computeVwapSeries(data,'session').values;eq(p.vwLines[0],vw,x=>+x.toFixed(pxDp(x)),'vwap');}
         // crosshair lookups exist and cover every bar
